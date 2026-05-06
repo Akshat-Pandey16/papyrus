@@ -357,6 +357,39 @@ These are **non-negotiable**. Code that violates them gets fixed in review.
 - Indexes: `ix_<table>_<columns>`. Uniques: `uq_<table>_<columns>`. Checks: `ck_<table>_<rule>`. FKs: `fk_<table>_<ref_table>_<col>`. Configure SQLAlchemy's `MetaData(naming_convention=...)` so Alembic emits these automatically.
 - Every domain table has: `id`, `organization_id` (tenant scope), `created_at`, `updated_at`. Soft-delete via `deleted_at` only when truly required.
 
+### Database — indexing, uniqueness, and query patterns (mandatory)
+
+These are the rules every migration and model must satisfy. Reviewers reject PRs that don't.
+
+**Uniqueness**
+- Natural keys (`email`, `slug`, `prefix`, `token_hash`, `(organization_id, name)` for nameable resources) **must** carry a unique constraint or unique index. Do not enforce uniqueness only in app code.
+- Composite uniqueness (e.g. `memberships(user_id, organization_id)`) is declared with `UniqueConstraint`, never as "we'll just check before insert."
+
+**Indexing — required by default**
+- Every foreign key column has an index (Postgres does **not** index FKs automatically). Single-column FK → `index=True` on the `mapped_column`.
+- Every column used in an authenticated `WHERE` clause is indexed: `email` lookups for login, `token_hash` for password resets, `prefix` for API keys, etc.
+- Multi-tenant scoped queries get a **composite** index that puts `organization_id` first and the next-most-selective column second: `ix_<table>_org_<col>` (e.g. `ix_jobs_organization_id_status`, `ix_documents_organization_id_created_at`).
+- "Latest N per parent" patterns (`ORDER BY created_at DESC LIMIT 1` or paginated lists) need a covering composite index on `(parent_id, created_at)` — never rely on the FK index alone for ordered queries.
+- Lookups on partial state (`used_at IS NULL`, `revoked_at IS NULL`, `deleted_at IS NULL`) get a **partial index** when the filtered set is a small minority of the table:
+  ```python
+  Index("ix_password_reset_tokens_active", "token_hash", postgresql_where=text("used_at IS NULL"))
+  ```
+- Time-range scans (`expires_at < now()`, cleanup jobs) need a btree index on the time column.
+- Don't pile on indexes. Each index slows writes — every index must justify itself by an actual query that uses it.
+
+**Naming**
+- All constraint and index names follow the convention map in `db/base.py` (already configured). Hand-written index names use the same prefix scheme: `ix_<table>_<columns>`, `uq_<table>_<columns>`, partial indexes append a suffix describing the predicate (`ix_<table>_<col>_active`).
+
+**Query rules**
+- **Never** `SELECT *` over the network unintentionally. Specify columns when reads are hot. SQLAlchemy `select(User.id, User.email)` over `select(User)` for projections.
+- **Always** include `organization_id` in the `WHERE` clause for tenant-scoped tables. Repository methods take `organization_id` as a required parameter — there is no "global" helper that bypasses tenant scoping.
+- **Bounded results.** Every list query has a `LIMIT`. Pagination uses cursor pagination on indexed `(created_at, id)` — no `OFFSET` for user-facing endpoints.
+- **No N+1.** When loading a parent and its children, use `selectinload`/`joinedload` or batch-fetch by ID set with `WHERE id IN (...)`. Never loop and re-query.
+- **Single round-trip per logical step.** If you need user + org + memberships, fetch them in one `select(...).join(...)` rather than three sequential `await session.get(...)` calls.
+- **Transactions are explicit and short.** A request opens one session (FastAPI dep), commits once at the end of the unit of work, rolls back on exception. Never call `commit()` mid-request just to flush — use `session.flush()` for that.
+- **`flush()` not `commit()`** inside repository methods. Repos do not commit; services do. This keeps transaction boundaries with business logic.
+- **Never** issue queries inside Python comprehensions or generators that hide await behavior.
+
 ### API
 - Routes: plural nouns, kebab-case where multi-word (`/api/v1/document-versions`).
 - Versioned under `/api/v{n}`; breaking changes bump `n`. Never silently break v1.
