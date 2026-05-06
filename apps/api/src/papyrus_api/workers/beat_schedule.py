@@ -9,4 +9,8 @@ celery_app.conf.beat_schedule = {
         "task": "papyrus.cleanup.purge_expired",
         "schedule": crontab(minute="*/15"),
     },
+    "cleanup-orphaned-uploads": {
+        "task": "papyrus.cleanup.orphaned_uploads",
+        "schedule": crontab(minute="*/30"),
+    },
 }

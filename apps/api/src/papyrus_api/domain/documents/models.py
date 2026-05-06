@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import BigInteger, ForeignKey, Index, String, UniqueConstraint, text
@@ -44,9 +45,22 @@ class DocumentVersion(Base, IdMixin, TimestampMixin):
 
 class StorageObject(Base, IdMixin, TimestampMixin):
     __tablename__ = "storage_objects"
+    __table_args__ = (
+        Index(
+            "ix_storage_objects_unconfirmed_created_at",
+            "created_at",
+            postgresql_where=text("confirmed_at IS NULL"),
+        ),
+    )
 
     bucket: Mapped[str] = mapped_column(String(120), nullable=False)
     key: Mapped[str] = mapped_column(String(1024), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     sha256: Mapped[str | None] = mapped_column(String(64), default=None, nullable=True)
     content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    purpose: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default="upload",
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)

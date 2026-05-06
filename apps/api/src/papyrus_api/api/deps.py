@@ -4,15 +4,20 @@ from typing import Annotated
 from uuid import UUID
 
 import structlog
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.errors import AuthenticationError
 from papyrus_api.core.security import TokenType, decode_token
 from papyrus_api.db.session import get_session
 from papyrus_api.domain.identity.models import Organization, User
+from papyrus_api.integrations.redis import get_redis
+from papyrus_api.services.document_service import DocumentService
 from papyrus_api.services.identity_service import IdentityService
+from papyrus_api.services.job_service import JobService
+from papyrus_api.services.storage_service import StorageService
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 
@@ -26,13 +31,46 @@ def get_identity_service(session: DbSession) -> IdentityService:
 IdentityServiceDep = Annotated[IdentityService, Depends(get_identity_service)]
 
 
-async def get_current_principal(
-    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    service: IdentityServiceDep,
+def get_storage_service() -> StorageService:
+    return StorageService()
+
+
+StorageServiceDep = Annotated[StorageService, Depends(get_storage_service)]
+
+
+def get_redis_dep() -> Redis:
+    return get_redis()
+
+
+RedisDep = Annotated[Redis, Depends(get_redis_dep)]
+
+
+def get_document_service(
+    session: DbSession,
+    storage: StorageServiceDep,
+) -> DocumentService:
+    return DocumentService(session, storage)
+
+
+DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
+
+
+def get_job_service(
+    session: DbSession,
+    redis: RedisDep,
+    storage: StorageServiceDep,
+) -> JobService:
+    return JobService(session, redis, storage)
+
+
+JobServiceDep = Annotated[JobService, Depends(get_job_service)]
+
+
+async def _principal_from_token(
+    token: str,
+    service: IdentityService,
 ) -> tuple[User, Organization]:
-    if creds is None or not creds.credentials:
-        raise AuthenticationError("Missing bearer token.")
-    claims = decode_token(creds.credentials, expected_type=TokenType.ACCESS)
+    claims = decode_token(token, expected_type=TokenType.ACCESS)
     user_id = UUID(claims["sub"])
     user, organization = await service.get_session(user_id=user_id)
     structlog.contextvars.bind_contextvars(
@@ -42,4 +80,29 @@ async def get_current_principal(
     return user, organization
 
 
+async def get_current_principal(
+    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    service: IdentityServiceDep,
+) -> tuple[User, Organization]:
+    if creds is None or not creds.credentials:
+        raise AuthenticationError("Missing bearer token.")
+    return await _principal_from_token(creds.credentials, service)
+
+
 CurrentPrincipal = Annotated[tuple[User, Organization], Depends(get_current_principal)]
+
+
+async def get_principal_for_sse(
+    request: Request,
+    service: IdentityServiceDep,
+) -> tuple[User, Organization]:
+    auth = request.headers.get("authorization")
+    if auth and auth.lower().startswith("bearer "):
+        return await _principal_from_token(auth.split(" ", 1)[1], service)
+    ticket = request.cookies.get("papyrus_sse")
+    if ticket:
+        return await _principal_from_token(ticket, service)
+    raise AuthenticationError("Missing SSE auth.")
+
+
+SsePrincipal = Annotated[tuple[User, Organization], Depends(get_principal_for_sse)]

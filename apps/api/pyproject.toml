@@ -29,6 +29,9 @@ dependencies = [
     "opentelemetry-instrumentation-celery>=0.49b0",
     "prometheus-client>=0.21",
     "email-validator>=2.3.0",
+    "pikepdf>=9",
+    "pillow>=11",
+    "anyio>=4.7",
 ]
 
 [project.scripts]

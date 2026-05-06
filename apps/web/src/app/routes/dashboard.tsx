@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { FileText, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
@@ -43,7 +43,9 @@ function DashboardPage() {
             We'll detect what you can do with it — merge, split, compress, OCR, and more.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg">Choose a file</Button>
+            <Button size="lg" asChild>
+              <Link to="/tools/compress">Compress a PDF</Link>
+            </Button>
             <Button size="lg" variant="outline">
               Browse all tools
             </Button>
@@ -56,29 +58,45 @@ function DashboardPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { title: "Merge PDFs", desc: "Combine multiple PDFs into one." },
-              { title: "Compress", desc: "Reduce file size while preserving quality." },
-              { title: "OCR", desc: "Make scanned PDFs searchable and selectable." },
-              { title: "Split", desc: "Pull out pages or split into chunks." },
-              { title: "Convert", desc: "PDF ↔ Word, Excel, PowerPoint, images." },
-              { title: "Redact", desc: "Permanently remove sensitive content." },
-            ].map((tool) => (
-              <button
-                key={tool.title}
-                type="button"
-                className="group flex flex-col items-start gap-2 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:shadow-md"
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-md bg-foreground/5 text-foreground/80 transition-colors group-hover:bg-foreground/10">
-                  {tool.title === "OCR" ? (
-                    <Sparkles className="h-4.5 w-4.5" />
-                  ) : (
-                    <FileText className="h-4.5 w-4.5" />
-                  )}
-                </span>
-                <span className="text-base font-semibold">{tool.title}</span>
-                <span className="text-sm text-muted-foreground">{tool.desc}</span>
-              </button>
-            ))}
+              { title: "Merge PDFs", desc: "Combine multiple PDFs into one.", to: null },
+              {
+                title: "Compress",
+                desc: "Reduce file size while preserving quality.",
+                to: "/tools/compress" as const,
+              },
+              { title: "OCR", desc: "Make scanned PDFs searchable and selectable.", to: null },
+              { title: "Split", desc: "Pull out pages or split into chunks.", to: null },
+              { title: "Convert", desc: "PDF ↔ Word, Excel, PowerPoint, images.", to: null },
+              { title: "Redact", desc: "Permanently remove sensitive content.", to: null },
+            ].map((tool) => {
+              const className =
+                "group flex flex-col items-start gap-2 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-foreground/20 hover:shadow-md";
+              const inner = (
+                <>
+                  <span className="grid h-9 w-9 place-items-center rounded-md bg-foreground/5 text-foreground/80 transition-colors group-hover:bg-foreground/10">
+                    {tool.title === "OCR" ? (
+                      <Sparkles className="h-4.5 w-4.5" />
+                    ) : (
+                      <FileText className="h-4.5 w-4.5" />
+                    )}
+                  </span>
+                  <span className="text-base font-semibold">{tool.title}</span>
+                  <span className="text-sm text-muted-foreground">{tool.desc}</span>
+                </>
+              );
+              if (tool.to) {
+                return (
+                  <Link key={tool.title} to={tool.to} className={className}>
+                    {inner}
+                  </Link>
+                );
+              }
+              return (
+                <button key={tool.title} type="button" className={className} disabled>
+                  {inner}
+                </button>
+              );
+            })}
           </div>
         </section>
       </div>

@@ -52,6 +52,54 @@ class QuotaExceededError(AppError):
     http_status = status.HTTP_429_TOO_MANY_REQUESTS
 
 
+class GoneError(AppError):
+    code = "gone"
+    http_status = status.HTTP_410_GONE
+
+
+class UnsupportedMediaTypeError(AppError):
+    code = "unsupported_media_type"
+    http_status = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+
+
+class DocumentNotFoundError(NotFoundError):
+    code = "document_not_found"
+
+
+class JobNotFoundError(NotFoundError):
+    code = "job_not_found"
+
+
+class UploadNotFoundInStorageError(ValidationError):
+    code = "upload_not_found_in_storage"
+
+
+class PdfSignatureInvalidError(ValidationError):
+    code = "pdf_signature_invalid"
+
+
+class UploadAlreadyConfirmedError(ConflictError):
+    code = "upload_already_confirmed"
+
+
+class JobNotTerminalError(ConflictError):
+    code = "job_not_terminal"
+
+
+class JobOutputExpiredError(GoneError):
+    code = "job_output_expired"
+
+
+class PdfEncryptedError(AppError):
+    code = "pdf_encrypted"
+    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class PdfMalformedError(AppError):
+    code = "pdf_malformed"
+    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 def _envelope(
     *,
     code: str,

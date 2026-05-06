@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, Index, String, text
+from sqlalchemy import BigInteger, Enum, Float, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from papyrus_api.db.base import Base
@@ -22,6 +23,13 @@ class Job(Base, IdMixin, TenantMixin, TimestampMixin):
             "ix_jobs_pending_runnable",
             "created_at",
             postgresql_where=text("status IN ('PENDING', 'RUNNING')"),
+        ),
+        Index(
+            "uq_jobs_org_idempotency_active",
+            "organization_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
         ),
     )
 
@@ -40,6 +48,26 @@ class Job(Base, IdMixin, TenantMixin, TimestampMixin):
     output_object_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("storage_objects.id", ondelete="SET NULL"),
         index=True,
+        default=None,
+        nullable=True,
+    )
+    idempotency_key: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        default=None,
+        nullable=True,
+    )
+    input_size_bytes: Mapped[int | None] = mapped_column(
+        BigInteger,
+        default=None,
+        nullable=True,
+    )
+    output_size_bytes: Mapped[int | None] = mapped_column(
+        BigInteger,
+        default=None,
+        nullable=True,
+    )
+    compression_ratio: Mapped[float | None] = mapped_column(
+        Float,
         default=None,
         nullable=True,
     )

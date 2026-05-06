@@ -37,8 +37,8 @@ upgrade:  ## Bump every Python + Node dep to its latest version (regenerates loc
 api:  ## Run the FastAPI server with reload
 	$(UV_RUN) uvicorn papyrus_api.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
 
-worker:  ## Run a Celery worker
-	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=4
+worker:  ## Run a Celery worker (listens on default, pdf, cleanup queues)
+	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=4 -Q default,pdf,cleanup
 
 beat:  ## Run the Celery beat scheduler
 	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app beat --loglevel=INFO

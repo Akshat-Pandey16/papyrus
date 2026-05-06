@@ -68,3 +68,5 @@ apps/web/src/routeTree.gen.ts
 test-results/
 playwright-report/
 playwright/.cache/
+
+celerybeat-schedule
