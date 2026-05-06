@@ -9,7 +9,7 @@ from sqlalchemy.pool import NullPool
 
 from papyrus_api.core.config import settings
 from papyrus_api.db.base import Base
-from papyrus_api.domain import register_models  # noqa: F401 — side effect: import all models
+import papyrus_api.domain  # noqa: F401 — side effect: registers all models with Base.metadata
 
 config = context.config
 
