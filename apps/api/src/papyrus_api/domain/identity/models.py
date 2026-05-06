@@ -3,12 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
-
 from papyrus_api.db.base import Base
 from papyrus_api.db.mixins import IdMixin, TimestampMixin
 from papyrus_api.domain.identity.enums import MembershipRole
+from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Organization(Base, IdMixin, TimestampMixin):
@@ -23,8 +22,27 @@ class User(Base, IdMixin, TimestampMixin):
 
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(200), default=None, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
+
+
+class PasswordResetToken(Base, IdMixin, TimestampMixin):
+    __tablename__ = "password_reset_tokens"
+
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(
+        String(128),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
 
 
 class Membership(Base, IdMixin, TimestampMixin):

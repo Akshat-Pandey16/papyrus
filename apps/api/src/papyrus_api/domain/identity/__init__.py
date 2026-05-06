@@ -1,1 +1,7 @@
-from papyrus_api.domain.identity.models import ApiKey, Membership, Organization, User  # noqa: F401
+from papyrus_api.domain.identity.models import (
+    ApiKey,  # noqa: F401
+    Membership,
+    Organization,
+    PasswordResetToken,
+    User,
+)

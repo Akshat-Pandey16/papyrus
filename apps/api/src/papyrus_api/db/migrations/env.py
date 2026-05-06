@@ -3,13 +3,12 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
+import papyrus_api.domain  # noqa: F401 — side effect: registers all models with Base.metadata
 from alembic import context
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy.pool import NullPool
-
 from papyrus_api.core.config import settings
 from papyrus_api.db.base import Base
-import papyrus_api.domain  # noqa: F401 — side effect: registers all models with Base.metadata
+from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.pool import NullPool
 
 config = context.config
 

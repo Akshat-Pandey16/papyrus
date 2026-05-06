@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+from papyrus_api.core.config import settings
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-
-from papyrus_api.core.config import settings
 
 _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None

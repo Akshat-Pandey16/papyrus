@@ -28,6 +28,7 @@ dependencies = [
     "opentelemetry-instrumentation-httpx>=0.49b0",
     "opentelemetry-instrumentation-celery>=0.49b0",
     "prometheus-client>=0.21",
+    "email-validator>=2.3.0",
 ]
 
 [project.scripts]

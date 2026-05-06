@@ -4,13 +4,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
-
 from papyrus_api.db.base import Base
 from papyrus_api.db.mixins import IdMixin, TenantMixin, TimestampMixin
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
+from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Job(Base, IdMixin, TenantMixin, TimestampMixin):

@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
-
 from papyrus_api.db.session import dispose_engine, init_engine
 
 log = structlog.get_logger(__name__)

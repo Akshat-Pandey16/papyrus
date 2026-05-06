@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import BigInteger, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
-
 from papyrus_api.db.base import Base
 from papyrus_api.db.mixins import IdMixin, SoftDeleteMixin, TenantMixin, TimestampMixin
+from sqlalchemy import BigInteger, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Document(Base, IdMixin, TenantMixin, TimestampMixin, SoftDeleteMixin):

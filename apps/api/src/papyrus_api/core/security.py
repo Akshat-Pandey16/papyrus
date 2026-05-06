@@ -8,7 +8,6 @@ from uuid import UUID
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AuthenticationError
 from papyrus_api.core.time import utc_now

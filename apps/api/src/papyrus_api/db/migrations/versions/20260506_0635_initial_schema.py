@@ -114,7 +114,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_api_keys")),
     )
     op.create_index(
-        op.f("ix_api_keys_organization_id"), "api_keys", ["organization_id"], unique=False
+        op.f("ix_api_keys_organization_id"),
+        "api_keys",
+        ["organization_id"],
+        unique=False,
     )
     op.create_index(op.f("ix_api_keys_prefix"), "api_keys", ["prefix"], unique=True)
     op.create_table(
@@ -146,7 +149,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_documents")),
     )
     op.create_index(
-        op.f("ix_documents_organization_id"), "documents", ["organization_id"], unique=False
+        op.f("ix_documents_organization_id"),
+        "documents",
+        ["organization_id"],
+        unique=False,
     )
     op.create_table(
         "jobs",
@@ -169,7 +175,14 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED", name="job_status"),
+            sa.Enum(
+                "PENDING",
+                "RUNNING",
+                "SUCCEEDED",
+                "FAILED",
+                "CANCELLED",
+                name="job_status",
+            ),
             nullable=False,
         ),
         sa.Column("params", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -207,14 +220,18 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_jobs")),
     )
     op.create_index(op.f("ix_jobs_kind"), "jobs", ["kind"], unique=False)
-    op.create_index(op.f("ix_jobs_organization_id"), "jobs", ["organization_id"], unique=False)
+    op.create_index(
+        op.f("ix_jobs_organization_id"), "jobs", ["organization_id"], unique=False
+    )
     op.create_index(op.f("ix_jobs_status"), "jobs", ["status"], unique=False)
     op.create_table(
         "memberships",
         sa.Column("user_id", sa.Uuid(), nullable=False),
         sa.Column("organization_id", sa.Uuid(), nullable=False),
         sa.Column(
-            "role", sa.Enum("OWNER", "ADMIN", "MEMBER", name="membership_role"), nullable=False
+            "role",
+            sa.Enum("OWNER", "ADMIN", "MEMBER", name="membership_role"),
+            nullable=False,
         ),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column(
@@ -236,17 +253,27 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"], name=op.f("fk_memberships_users_user_id"), ondelete="CASCADE"
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_memberships_users_user_id"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_memberships")),
         sa.UniqueConstraint(
-            "user_id", "organization_id", name=op.f("uq_memberships_user_id_organization_id")
+            "user_id",
+            "organization_id",
+            name=op.f("uq_memberships_user_id_organization_id"),
         ),
     )
     op.create_index(
-        op.f("ix_memberships_organization_id"), "memberships", ["organization_id"], unique=False
+        op.f("ix_memberships_organization_id"),
+        "memberships",
+        ["organization_id"],
+        unique=False,
     )
-    op.create_index(op.f("ix_memberships_user_id"), "memberships", ["user_id"], unique=False)
+    op.create_index(
+        op.f("ix_memberships_user_id"), "memberships", ["user_id"], unique=False
+    )
     op.create_table(
         "document_versions",
         sa.Column("document_id", sa.Uuid(), nullable=False),
@@ -280,14 +307,24 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_document_versions")),
     )
     op.create_index(
-        op.f("ix_document_versions_document_id"), "document_versions", ["document_id"], unique=False
+        op.f("ix_document_versions_document_id"),
+        "document_versions",
+        ["document_id"],
+        unique=False,
     )
     op.create_table(
         "job_events",
         sa.Column("job_id", sa.Uuid(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("PENDING", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED", name="job_status"),
+            sa.Enum(
+                "PENDING",
+                "RUNNING",
+                "SUCCEEDED",
+                "FAILED",
+                "CANCELLED",
+                name="job_status",
+            ),
             nullable=False,
         ),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
@@ -305,17 +342,24 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["job_id"], ["jobs.id"], name=op.f("fk_job_events_jobs_job_id"), ondelete="CASCADE"
+            ["job_id"],
+            ["jobs.id"],
+            name=op.f("fk_job_events_jobs_job_id"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_job_events")),
     )
-    op.create_index(op.f("ix_job_events_job_id"), "job_events", ["job_id"], unique=False)
+    op.create_index(
+        op.f("ix_job_events_job_id"), "job_events", ["job_id"], unique=False
+    )
 
 
 def downgrade() -> None:
     op.drop_index(op.f("ix_job_events_job_id"), table_name="job_events")
     op.drop_table("job_events")
-    op.drop_index(op.f("ix_document_versions_document_id"), table_name="document_versions")
+    op.drop_index(
+        op.f("ix_document_versions_document_id"), table_name="document_versions"
+    )
     op.drop_table("document_versions")
     op.drop_index(op.f("ix_memberships_user_id"), table_name="memberships")
     op.drop_index(op.f("ix_memberships_organization_id"), table_name="memberships")
