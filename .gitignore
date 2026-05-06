@@ -1,0 +1,69 @@
+# Node
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+dist/
+build/
+coverage/
+.vite/
+.turbo/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# uv
+.uv/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Local data
+.data/
+postgres-data/
+redis-data/
+minio-data/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Generated
+apps/web/src/types/api.d.ts
+apps/web/src/app/routes/__route-tree.gen.ts
+apps/web/src/routeTree.gen.ts
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

@@ -1,0 +1,9 @@
+# Default owners for everything in the repo.
+# Replace with team handles before the first public release.
+*                          @papyrus/maintainers
+
+# Tighter ownership for sensitive areas.
+/apps/api/src/papyrus_api/core/security.py    @papyrus/security
+/infra/                                        @papyrus/platform
+/.github/                                      @papyrus/platform
+/CLAUDE.md                                     @papyrus/maintainers

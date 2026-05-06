@@ -1,0 +1,64 @@
+[project]
+name = "papyrus-api"
+version = "0.1.0"
+description = "Papyrus API — FastAPI service and Celery workers."
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "celery[redis]>=5.4",
+    "redis>=5.2",
+    "httpx>=0.28",
+    "structlog>=24.4",
+    "argon2-cffi>=23.1",
+    "pyjwt[crypto]>=2.10",
+    "boto3>=1.35",
+    "aioboto3>=13.3",
+    "python-ulid>=3.0",
+    "opentelemetry-api>=1.28",
+    "opentelemetry-sdk>=1.28",
+    "opentelemetry-exporter-otlp>=1.28",
+    "opentelemetry-instrumentation-fastapi>=0.49b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.49b0",
+    "opentelemetry-instrumentation-httpx>=0.49b0",
+    "opentelemetry-instrumentation-celery>=0.49b0",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+papyrus-api = "papyrus_api.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/papyrus_api"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6",
+    "anyio>=4.7",
+    "factory-boy>=3.3",
+    "polyfactory>=2.18",
+    "testcontainers[postgres,redis]>=4.8",
+    "freezegun>=1.5",
+    "respx>=0.22",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error", "ignore::DeprecationWarning"]
+markers = [
+    "integration: tests that hit Postgres/Redis via testcontainers",
+    "e2e: end-to-end tests against a fully wired app",
+]

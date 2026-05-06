@@ -1,0 +1,79 @@
+[project]
+name = "papyrus-workspace"
+version = "0.1.0"
+description = "Papyrus monorepo workspace root."
+requires-python = ">=3.13"
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["apps/api"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pre-commit>=4",
+]
+
+# ----- Ruff (workspace-wide defaults; api may override) -----------------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [".venv", "dist", "build", "**/migrations/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",     # pycodestyle / pyflakes
+    "I",                # isort
+    "UP",               # pyupgrade
+    "B",                # bugbear
+    "SIM",              # simplify
+    "RUF",              # ruff-specific
+    "N",                # pep8-naming
+    "ANN",              # annotations
+    "ASYNC",            # async pitfalls
+    "S",                # bandit security
+    "PERF",             # perflint
+    "PL",               # pylint subset
+    "TID",              # tidy-imports
+    "PT",               # pytest style
+    "RET",              # return
+    "PTH",              # pathlib
+]
+ignore = [
+    "ANN401",           # allow Any with justification comment
+    "PLR0913",          # too-many-arguments — disagree by default
+    "S101",             # assert in tests is fine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["S", "ANN", "PLR2004"]
+"**/migrations/**" = ["ANN", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["papyrus_api"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# ----- Mypy -------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy"]
+exclude = ["build/", "dist/", ".venv/", "migrations/versions/"]
+
+[[tool.mypy.overrides]]
+module = ["celery.*", "kombu.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
