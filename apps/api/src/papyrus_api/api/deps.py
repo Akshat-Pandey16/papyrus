@@ -6,12 +6,13 @@ from uuid import UUID
 import structlog
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.errors import AuthenticationError
 from papyrus_api.core.security import TokenType, decode_token
 from papyrus_api.db.session import get_session
 from papyrus_api.domain.identity.models import Organization, User
 from papyrus_api.services.identity_service import IdentityService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 

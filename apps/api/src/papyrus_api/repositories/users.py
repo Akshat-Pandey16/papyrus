@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
 from papyrus_api.domain.identity.models import (
@@ -12,8 +15,6 @@ from papyrus_api.domain.identity.models import (
     User,
 )
 from papyrus_api.repositories.base import AsyncRepository
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class UserRepository(AsyncRepository[User]):

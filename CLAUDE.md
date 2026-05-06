@@ -450,6 +450,19 @@ These are the rules every migration and model must satisfy. Reviewers reject PRs
 - **Performance**: lazy-load route bundles, use `React.lazy` for heavy components (PDF viewer), debounce expensive inputs, virtualize long lists with `@tanstack/react-virtual`.
 - **No `useEffect` for data fetching.** That's TanStack Query's job. Effects are for syncing with non-React systems only.
 
+### Frontend — performance and rendering rules (mandatory)
+- **Subscribe narrowly to Zustand.** Always pass a selector: `useStore((s) => s.user)`, never `const { user } = useStore()`. Multi-field reads use multiple subscriptions; do not return new object literals from selectors (they re-render every tick).
+- **Stable references.** Memoize event handlers and derived values with `useCallback` / `useMemo` only when they cross a memo boundary or feed `useEffect` deps — don't memoize for the sake of it.
+- **TanStack Query keys are tuples**, not template strings. Centralize per-feature in `<feature>/api.ts` as `featureKeys`. Mutations explicitly `setQueryData` or `invalidateQueries` — never both.
+- **Avoid waterfalls.** Multiple queries that don't depend on each other are issued in parallel via `useQueries`, not chained `useQuery` calls.
+- **Layout discipline.** Pages are full-bleed by default — no `max-w-3xl mx-auto` blog-style wrappers on application pages. Constrain content with `max-w-screen-2xl` inside a `mx-auto` only when that's the chosen design language for that surface. Use `w-full` on outer sections so chrome stretches edge-to-edge.
+- **Mobile-first.** Every layout works at 360px wide. Use `min-h-svh` (small viewport) instead of `min-h-screen` to handle mobile browser chrome. Tap targets ≥44px (`h-11` or larger for primary actions). Test at iPhone SE width before merging UI work.
+- **Forms.** React Hook Form + Zod resolver. The Zod schema is the single source of truth — derive types via `z.infer`. Inputs always have a stable `id` matching the `htmlFor` of their label. Show inline errors with `aria-invalid` + `role="alert"`. Disable submit while pending; show a busy label.
+- **Bundle hygiene.** Every route is automatically code-split by TanStack Router — don't import a route module from outside its file. Lazy-load expensive client-only libs (pdf.js, charting) at usage time. Manual chunks live in `vite.config.ts`.
+- **No prop drilling beyond two levels.** If state is shared across more than two components, hoist it to a Zustand store (client state) or TanStack Query (server state) — don't add a context.
+- **No global mutation outside stores/queries.** Components mutate via mutation hooks; stores own client state writes. Do not reach into `localStorage` or `window.*` from a component — wrap it in a hook or a store action.
+- **Errors stay typed.** Throw `ApiError` from `lib/api/client`; UI components switch on `error.code`, never `error.message.includes(...)`.
+
 ---
 
 ## 6. Cross-cutting concerns

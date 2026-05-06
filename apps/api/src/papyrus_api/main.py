@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from papyrus_api import __version__
 from papyrus_api.api.router import api_router
 from papyrus_api.core.config import settings

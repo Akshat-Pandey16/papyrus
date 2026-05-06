@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import structlog
+
 from papyrus_api.workers.celery_app import celery_app
 
 log = structlog.get_logger(__name__)

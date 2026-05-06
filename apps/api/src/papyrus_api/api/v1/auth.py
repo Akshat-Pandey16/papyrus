@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, status
+
 from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep
 from papyrus_api.core.config import settings
 from papyrus_api.core.security import TokenType, issue_token

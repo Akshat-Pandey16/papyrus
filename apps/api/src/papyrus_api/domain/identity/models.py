@@ -3,11 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy.orm import Mapped, mapped_column
+
 from papyrus_api.db.base import Base
 from papyrus_api.db.mixins import IdMixin, TimestampMixin
 from papyrus_api.domain.identity.enums import MembershipRole
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Organization(Base, IdMixin, TimestampMixin):
@@ -29,6 +30,13 @@ class User(Base, IdMixin, TimestampMixin):
 
 class PasswordResetToken(Base, IdMixin, TimestampMixin):
     __tablename__ = "password_reset_tokens"
+    __table_args__ = (
+        Index(
+            "ix_password_reset_tokens_active",
+            "token_hash",
+            postgresql_where=text("used_at IS NULL"),
+        ),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -41,13 +49,16 @@ class PasswordResetToken(Base, IdMixin, TimestampMixin):
         index=True,
         nullable=False,
     )
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(index=True, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
 
 
 class Membership(Base, IdMixin, TimestampMixin):
     __tablename__ = "memberships"
-    __table_args__ = (UniqueConstraint("user_id", "organization_id"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "organization_id"),
+        Index("ix_memberships_user_id_created_at", "user_id", "created_at"),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -67,6 +78,14 @@ class Membership(Base, IdMixin, TimestampMixin):
 
 class ApiKey(Base, IdMixin, TimestampMixin):
     __tablename__ = "api_keys"
+    __table_args__ = (
+        Index(
+            "ix_api_keys_prefix_active",
+            "prefix",
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        Index("ix_api_keys_organization_id_revoked_at", "organization_id", "revoked_at"),
+    )
 
     organization_id: Mapped[UUID] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"),

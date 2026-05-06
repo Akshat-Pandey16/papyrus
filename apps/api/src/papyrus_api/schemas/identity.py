@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Self
 from uuid import UUID
 
-from papyrus_api.schemas.common import StrictModel
 from pydantic import ConfigDict, EmailStr, Field, field_validator, model_validator
+
+from papyrus_api.schemas.common import StrictModel
 
 PasswordStr = Field(min_length=8, max_length=128)
 
@@ -90,7 +91,7 @@ class UserOut(StrictModel):
 class TokenPair(StrictModel):
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105
     expires_in: int
 
 

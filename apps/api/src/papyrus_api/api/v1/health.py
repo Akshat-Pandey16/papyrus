@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from papyrus_api import __version__
 from papyrus_api.schemas.common import HealthResponse
 

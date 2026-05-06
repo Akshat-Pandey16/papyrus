@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uvicorn
+
 from papyrus_api.core.config import settings
 
 

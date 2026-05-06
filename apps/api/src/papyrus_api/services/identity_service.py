@@ -8,6 +8,8 @@ from datetime import timedelta
 from uuid import UUID
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     AuthenticationError,
@@ -32,12 +34,12 @@ from papyrus_api.repositories.users import (
     PasswordResetTokenRepository,
     UserRepository,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 
 _RESET_TOKEN_TTL = timedelta(minutes=30)
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+_SLUG_COLLISION_RETRIES = 8
 
 
 def _slugify(value: str) -> str:
@@ -180,7 +182,7 @@ class IdentityService:
         while await self.organizations.get_by_slug(candidate) is not None:
             suffix += 1
             candidate = f"{_slugify(base)}-{secrets.token_hex(2)}"
-            if suffix > 8:
+            if suffix > _SLUG_COLLISION_RETRIES:
                 candidate = f"workspace-{secrets.token_hex(4)}"
                 break
         return candidate

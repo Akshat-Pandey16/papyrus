@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from celery import Celery
 from celery.signals import worker_process_init
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.logging import configure_logging
 
