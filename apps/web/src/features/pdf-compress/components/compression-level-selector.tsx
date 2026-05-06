@@ -1,7 +1,7 @@
-import { useId } from "react";
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useId } from "react";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
+import { cn } from "@/lib/utils";
 
 const LEVELS: ReadonlyArray<{
   value: CompressionLevel;
@@ -42,10 +42,10 @@ export function CompressionLevelSelector({
 }: CompressionLevelSelectorProps) {
   const groupId = useId();
   return (
-    <div role="radiogroup" aria-labelledby={`${groupId}-label`} className="flex flex-col gap-2">
-      <p id={`${groupId}-label`} className="text-sm font-medium">
+    <fieldset aria-labelledby={`${groupId}-label`} className="flex flex-col gap-2 border-0 p-0">
+      <legend id={`${groupId}-label`} className="text-sm font-medium">
         Compression level
-      </p>
+      </legend>
       <div className="grid gap-3 sm:grid-cols-3">
         {LEVELS.map((level) => {
           const selected = level.value === value;
@@ -53,8 +53,7 @@ export function CompressionLevelSelector({
             <button
               key={level.value}
               type="button"
-              role="radio"
-              aria-checked={selected}
+              aria-pressed={selected}
               disabled={disabled}
               onClick={() => onChange(level.value)}
               className={cn(
@@ -68,9 +67,7 @@ export function CompressionLevelSelector({
             >
               <div className="flex w-full items-center justify-between">
                 <span className="text-base font-semibold">{level.title}</span>
-                {selected ? (
-                  <Check className="h-4 w-4 text-foreground" aria-hidden />
-                ) : null}
+                {selected ? <Check className="h-4 w-4 text-foreground" aria-hidden /> : null}
               </div>
               <span className="text-xs font-medium text-muted-foreground">{level.hint}</span>
               <span className="text-xs text-muted-foreground">{level.detail}</span>
@@ -78,6 +75,6 @@ export function CompressionLevelSelector({
           );
         })}
       </div>
-    </div>
+    </fieldset>
   );
 }

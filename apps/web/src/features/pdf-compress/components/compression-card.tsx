@@ -1,19 +1,7 @@
+import { AlertCircle, CheckCircle2, CircleX, Download, FileText, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  CircleX,
-  Download,
-  FileText,
-  Loader2,
-  X,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  useCancelJobMutation,
-  useDownloadUrlMutation,
-} from "@/features/pdf-compress/api";
+import { useCancelJobMutation, useDownloadUrlMutation } from "@/features/pdf-compress/api";
 import {
   formatBytes,
   formatEta,
@@ -24,6 +12,7 @@ import { useJobStream } from "@/features/pdf-compress/hooks/use-job-stream";
 import { useThroughput } from "@/features/pdf-compress/hooks/use-throughput";
 import { selectUpload, useUploadStore } from "@/features/pdf-compress/store";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
+import { cn } from "@/lib/utils";
 
 export type CompressionCardProps = {
   clientUploadId: string;
@@ -42,7 +31,10 @@ const PHASE_LABELS: Record<string, string> = {
 
 const PHASES_ORDER = ["queued", "downloading", "compressing", "uploading", "done"];
 
-function statusTone(status: JobStatus | undefined, phase: string | null): {
+function statusTone(
+  status: JobStatus | undefined,
+  phase: string | null,
+): {
   label: string;
   className: string;
 } {
@@ -96,8 +88,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     }
   }, [job, entry, clientUploadId, updateEntry]);
 
-  const isUploading =
-    entry?.phase === "uploading" || entry?.phase === "preparing";
+  const isUploading = entry?.phase === "uploading" || entry?.phase === "preparing";
   const throughput = useThroughput(entry?.bytesUploaded ?? 0, !!isUploading);
 
   if (!entry) return null;
@@ -157,9 +148,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
         </div>
         <div className="flex items-center gap-2">
           <span className={cn("text-xs font-semibold", tone.className)}>
-            {entry.phase === "preparing" || entry.phase === "uploading"
-              ? "Uploading"
-              : tone.label}
+            {entry.phase === "preparing" || entry.phase === "uploading" ? "Uploading" : tone.label}
           </span>
           {!isTerminal && job ? (
             <Button
@@ -259,7 +248,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
         </div>
       ) : null}
 
-      {(entry.phase === "failed" || job?.status === "failed") ? (
+      {entry.phase === "failed" || job?.status === "failed" ? (
         <div className="flex flex-col gap-3 rounded-xl bg-destructive/5 p-4">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />

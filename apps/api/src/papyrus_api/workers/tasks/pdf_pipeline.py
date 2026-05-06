@@ -13,21 +13,14 @@ from celery.exceptions import SoftTimeLimitExceeded
 from redis.asyncio import Redis
 
 from papyrus_api.core.config import settings
-from papyrus_api.core.errors import (
-    AppError,
-    PdfEncryptedError,
-    PdfMalformedError,
-)
+from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
 from papyrus_api.db.session import dispose_engine, get_sessionmaker, init_engine
 from papyrus_api.domain.jobs.enums import JobStatus
 from papyrus_api.integrations.redis import close_redis, get_redis, init_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
-from papyrus_api.services.pdf.compress import (
-    CompressionLevel,
-    compress_pdf,
-)
+from papyrus_api.services.pdf.compress import CompressionLevel, compress_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 
@@ -41,7 +34,12 @@ class _JobCancelledError(Exception):
 def _classify_storage_error(exc: BaseException) -> bool:
     if isinstance(exc, ClientError):
         code = exc.response.get("Error", {}).get("Code", "")
-        if code in {"InternalError", "ServiceUnavailable", "SlowDown", "ThrottlingException"}:
+        if code in {
+            "InternalError",
+            "ServiceUnavailable",
+            "SlowDown",
+            "ThrottlingException",
+        }:
             return True
         status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
         if isinstance(status, int) and 500 <= status < 600:

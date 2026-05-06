@@ -1,25 +1,21 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Check } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { useSignupMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
 import { PasswordInput } from "@/features/auth/components/password-input";
-import { useSignupMutation } from "@/features/auth/api";
-import { signupSchema, type SignupInput } from "@/features/auth/schemas";
+import { type SignupInput, signupSchema } from "@/features/auth/schemas";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
 });
 
-const requirements = [
-  "At least 8 characters",
-  "A letter and a number",
-  "Passwords must match",
-];
+const requirements = ["At least 8 characters", "A letter and a number", "Passwords must match"];
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -57,7 +53,10 @@ function SignupPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Sign in
           </Link>
         </>
@@ -125,9 +124,7 @@ function SignupPage() {
                 <span
                   className={[
                     "grid h-4 w-4 place-items-center rounded-full transition-colors",
-                    ok
-                      ? "bg-emerald-500/15 text-emerald-600"
-                      : "bg-muted text-muted-foreground/70",
+                    ok ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground/70",
                   ].join(" ")}
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />

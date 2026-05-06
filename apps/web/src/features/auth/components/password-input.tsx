@@ -1,5 +1,5 @@
-import { forwardRef, useState, type ComponentProps } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { type ComponentProps, forwardRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type PasswordInputProps = Omit<ComponentProps<"input">, "type">;

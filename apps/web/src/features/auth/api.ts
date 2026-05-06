@@ -1,18 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api/client";
-import type {
-  AccessToken,
-  AuthOrganization,
-  AuthSession,
-  AuthUser,
-} from "@/features/auth/types";
-import { useAuthStore } from "@/features/auth/store";
 import type {
   ForgotPasswordInput,
   LoginInput,
   ResetPasswordInput,
   SignupInput,
 } from "@/features/auth/schemas";
+import { useAuthStore } from "@/features/auth/store";
+import type { AccessToken, AuthOrganization, AuthSession, AuthUser } from "@/features/auth/types";
+import { apiClient } from "@/lib/api/client";
 
 type ApiUser = {
   id: string;
@@ -138,11 +133,7 @@ export function useLogoutMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await apiClient.post(
-        "/auth/logout",
-        undefined,
-        { _skipAuthRetry: true } as never,
-      );
+      await apiClient.post("/auth/logout", undefined, { _skipAuthRetry: true } as never);
     },
     onSettled: () => {
       clear();
@@ -182,11 +173,9 @@ export async function fetchSession(): Promise<AuthSession | null> {
 
 export async function refreshAccessOnly(): Promise<AccessToken | null> {
   try {
-    const { data } = await apiClient.post<ApiAccess>(
-      "/auth/refresh",
-      undefined,
-      { _skipAuthRetry: true } as never,
-    );
+    const { data } = await apiClient.post<ApiAccess>("/auth/refresh", undefined, {
+      _skipAuthRetry: true,
+    } as never);
     return mapAccess(data);
   } catch {
     return null;

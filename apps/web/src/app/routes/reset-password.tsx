@@ -1,19 +1,16 @@
-import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { useResetPasswordMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
 import { PasswordInput } from "@/features/auth/components/password-input";
-import { useResetPasswordMutation } from "@/features/auth/api";
-import {
-  resetPasswordSchema,
-  type ResetPasswordInput,
-} from "@/features/auth/schemas";
+import { type ResetPasswordInput, resetPasswordSchema } from "@/features/auth/schemas";
 
 const searchSchema = z.object({
   token: z.string().min(1).optional(),
@@ -70,7 +67,10 @@ function ResetPasswordPage() {
       subtitle="Pick something memorable but unique. We'll keep your account safe."
       footer={
         <>
-          <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Back to sign in
           </Link>
         </>
@@ -94,11 +94,7 @@ function ResetPasswordPage() {
 
           <input type="hidden" {...register("token")} />
 
-          <FormField
-            id="password"
-            label="New password"
-            error={errors.password?.message}
-          >
+          <FormField id="password" label="New password" error={errors.password?.message}>
             <PasswordInput
               id="password"
               autoComplete="new-password"

@@ -46,6 +46,15 @@ ignore = [
     "ANN401",           # allow Any with justification comment
     "PLR0913",          # too-many-arguments — disagree by default
     "S101",             # assert in tests is fine
+    "PLC0415",          # local imports allowed (circular-import avoidance, lazy load)
+    "PLW0603",          # singleton globals (engine/redis pool/lazy init)
+    "PLR0911",          # too-many-return-statements — long worker funcs
+    "PLR0912",          # too-many-branches — long worker funcs
+    "PLR0915",          # too-many-statements — long worker funcs
+    "PLR2004",          # magic-value-comparison — http status, byte ranges, etc.
+    "S110",             # try-except-pass — fine for fire-and-forget cleanup
+    "S112",             # try-except-continue — fine for best-effort loops
+    "TRY003",           # long error messages — we want descriptive errors
 ]
 
 [tool.ruff.lint.per-file-ignores]

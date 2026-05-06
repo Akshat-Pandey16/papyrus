@@ -1,11 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { apiClient } from "@/lib/api/client";
+import { type ReactNode, useEffect, useState } from "react";
 import { fetchSession, refreshAccessOnly } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
-import {
-  isAccessTokenValid,
-  registerRefreshHandler,
-} from "@/lib/api/client";
+import { apiClient, isAccessTokenValid, registerRefreshHandler } from "@/lib/api/client";
 
 type ApiUser = {
   id: string;

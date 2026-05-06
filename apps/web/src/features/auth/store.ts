@@ -1,11 +1,6 @@
 import { create } from "zustand";
+import type { AccessToken, AuthOrganization, AuthSession, AuthUser } from "@/features/auth/types";
 import { setAccessToken } from "@/lib/api/client";
-import type {
-  AccessToken,
-  AuthOrganization,
-  AuthSession,
-  AuthUser,
-} from "@/features/auth/types";
 
 type AuthState = {
   user: AuthUser | null;

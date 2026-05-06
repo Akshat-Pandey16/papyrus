@@ -1,18 +1,15 @@
-import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { useForgotPasswordMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
-import { useForgotPasswordMutation } from "@/features/auth/api";
-import {
-  forgotPasswordSchema,
-  type ForgotPasswordInput,
-} from "@/features/auth/schemas";
+import { type ForgotPasswordInput, forgotPasswordSchema } from "@/features/auth/schemas";
 
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
@@ -47,7 +44,10 @@ function ForgotPasswordPage() {
       footer={
         <>
           Remembered it?{" "}
-          <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Back to sign in
           </Link>
         </>

@@ -1,9 +1,9 @@
-import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import { FileText, FileUp, X } from "lucide-react";
+import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { env } from "@/lib/env";
 import { formatBytes } from "@/features/pdf-compress/format";
+import { env } from "@/lib/env";
+import { cn } from "@/lib/utils";
 
 export type FileDropzoneProps = {
   onFile: (file: File) => void;
@@ -65,9 +65,6 @@ export function FileDropzone({
         Choose a PDF file
       </label>
       <div
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        aria-disabled={disabled}
         aria-describedby={error ? `${inputId}-error` : undefined}
         onClick={() => !disabled && inputRef.current?.click()}
         onKeyDown={onKeyDown}
@@ -141,6 +138,18 @@ export function FileDropzone({
                 Max file size {formatBytes(env.VITE_MAX_FILE_BYTES)} · PDF only
               </p>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                inputRef.current?.click();
+              }}
+              disabled={disabled}
+            >
+              Choose a file
+            </Button>
           </>
         )}
         <input

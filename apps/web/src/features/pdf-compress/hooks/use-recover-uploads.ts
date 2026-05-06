@@ -14,10 +14,7 @@ export function useRecoverUploads() {
 
     const snapshot = useUploadStore.getState().uploads;
     for (const entry of Object.values(snapshot)) {
-      if (
-        !entry.documentId &&
-        (entry.phase === "preparing" || entry.phase === "uploading")
-      ) {
+      if (!entry.documentId && (entry.phase === "preparing" || entry.phase === "uploading")) {
         update(entry.clientUploadId, {
           phase: "failed",
           errorCode: "upload_lost",

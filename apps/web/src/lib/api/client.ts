@@ -77,10 +77,10 @@ function decodeJwtExp(token: string): number | null {
   if (parts.length !== 3) return null;
   try {
     const payloadB64 = parts[1] ?? "";
-    const padded = payloadB64.replace(/-/g, "+").replace(/_/g, "/").padEnd(
-      Math.ceil(payloadB64.length / 4) * 4,
-      "=",
-    );
+    const padded = payloadB64
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(payloadB64.length / 4) * 4, "=");
     const json = atob(padded);
     const payload = JSON.parse(json) as { exp?: number };
     return typeof payload.exp === "number" ? payload.exp : null;
@@ -98,8 +98,7 @@ export function setAccessToken(token: string | null, expiresInSeconds?: number) 
   const exp = decodeJwtExp(token);
   const now = Math.floor(Date.now() / 1000);
   const expiresAt =
-    exp ??
-    (typeof expiresInSeconds === "number" ? now + expiresInSeconds : now + 900);
+    exp ?? (typeof expiresInSeconds === "number" ? now + expiresInSeconds : now + 900);
   accessSnapshot = { token, expiresAt };
   writeSnapshot(accessSnapshot);
 }
@@ -174,12 +173,7 @@ export function createApiClient(): AxiosInstance {
       const original = (error.config ?? {}) as RetriableConfig;
       const status = error.response?.status;
 
-      if (
-        status === 401 &&
-        !original._retry &&
-        !original._skipAuthRetry &&
-        refreshHandler
-      ) {
+      if (status === 401 && !original._retry && !original._skipAuthRetry && refreshHandler) {
         original._retry = true;
         const newToken = await refreshAccess();
         if (newToken) {

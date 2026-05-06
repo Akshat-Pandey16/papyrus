@@ -1,14 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { useLoginMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
 import { PasswordInput } from "@/features/auth/components/password-input";
-import { useLoginMutation } from "@/features/auth/api";
-import { loginSchema, type LoginInput } from "@/features/auth/schemas";
+import { type LoginInput, loginSchema } from "@/features/auth/schemas";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -40,7 +40,10 @@ function LoginPage() {
       footer={
         <>
           New to Papyrus?{" "}
-          <Link to="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            to="/signup"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Create an account
           </Link>
         </>

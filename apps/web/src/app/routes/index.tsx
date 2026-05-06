@@ -70,8 +70,7 @@ function Hero() {
           backgroundImage:
             "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
           backgroundSize: "44px 44px",
-          maskImage:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,0,0,0.6), transparent 70%)",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,0,0,0.6), transparent 70%)",
         }}
       />
       <div className="w-full px-6 py-20 sm:px-10 sm:py-28 lg:px-14 lg:py-36">
@@ -85,8 +84,8 @@ function Hero() {
             <span className="text-muted-foreground"> — and your privacy.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Merge, split, compress, OCR, redact, and sign — all from one fast workspace. No
-            uploads to a third party, no waiting, no nonsense.
+            Merge, split, compress, OCR, redact, and sign — all from one fast workspace. No uploads
+            to a third party, no waiting, no nonsense.
           </p>
           <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 px-7 text-[0.95rem]">
@@ -222,10 +221,18 @@ function SiteFooter() {
             <span className="ml-2">© {new Date().getFullYear()}</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="#" className="hover:text-foreground">Privacy</a>
-            <a href="#" className="hover:text-foreground">Terms</a>
-            <a href="#" className="hover:text-foreground">Status</a>
-            <a href="#" className="hover:text-foreground">GitHub</a>
+            <a href="#" className="hover:text-foreground">
+              Privacy
+            </a>
+            <a href="#" className="hover:text-foreground">
+              Terms
+            </a>
+            <a href="#" className="hover:text-foreground">
+              Status
+            </a>
+            <a href="#" className="hover:text-foreground">
+              GitHub
+            </a>
           </div>
         </div>
       </div>

@@ -5,7 +5,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api/client";
 import type {
   CompressionLevel,
   Document,
@@ -16,6 +15,7 @@ import type {
   JobsListPage,
   UploadInitiateResult,
 } from "@/features/pdf-compress/types";
+import { apiClient } from "@/lib/api/client";
 
 type ApiPresigned = {
   url: string;
@@ -211,9 +211,7 @@ export function useJobQuery(jobId: string | null, options?: { refetchInterval?: 
 export function useDownloadUrlMutation() {
   return useMutation({
     mutationFn: async (input: { jobId: string }): Promise<DownloadUrl> => {
-      const { data } = await apiClient.post<ApiDownloadUrl>(
-        `/jobs/${input.jobId}/download`,
-      );
+      const { data } = await apiClient.post<ApiDownloadUrl>(`/jobs/${input.jobId}/download`);
       return {
         url: data.url,
         expiresAt: data.expires_at,
@@ -239,7 +237,13 @@ export function useCancelJobMutation() {
 export type JobsListFilters = { status?: JobStatus | "all" };
 
 export function useJobsInfiniteQuery(filters: JobsListFilters) {
-  return useInfiniteQuery<JobsListPage, Error, InfiniteData<JobsListPage>, ReadonlyArray<unknown>, string | null>({
+  return useInfiniteQuery<
+    JobsListPage,
+    Error,
+    InfiniteData<JobsListPage>,
+    ReadonlyArray<unknown>,
+    string | null
+  >({
     queryKey: compressKeys.jobsList(filters),
     initialPageParam: null,
     refetchOnWindowFocus: false,

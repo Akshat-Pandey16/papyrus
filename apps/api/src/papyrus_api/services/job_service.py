@@ -403,10 +403,7 @@ def _suggest_output_filename(original: object) -> str:
     base = "compressed.pdf"
     if isinstance(original, str) and original.strip():
         clean = original.strip().replace("\\", "_").replace("/", "_")
-        if clean.lower().endswith(".pdf"):
-            stem = clean[:-4]
-        else:
-            stem = clean
+        stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
         base = f"{stem}-compressed.pdf"
     return base[:200]
 

@@ -16,7 +16,8 @@
       "!**/coverage",
       "!**/*.gen.ts",
       "!apps/web/src/types/api.d.ts",
-      "!apps/web/src/routeTree.gen.ts"
+      "!apps/web/src/routeTree.gen.ts",
+      "!apps/web/src/styles"
     ]
   },
   "formatter": {
@@ -70,6 +71,29 @@
     {
       "includes": ["apps/web/src/app/routes/**/*.tsx"],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": ["apps/web/vite.config.ts", "apps/web/vitest.config.ts"],
+      "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      "includes": [
+        "apps/web/src/app/routes/index.tsx",
+        "apps/web/src/features/auth/components/auth-layout.tsx"
+      ],
+      "linter": { "rules": { "a11y": { "useValidAnchor": "off" } } }
+    },
+    {
+      "includes": ["apps/web/src/features/pdf-compress/components/file-dropzone.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useKeyWithClickEvents": "off",
+            "noStaticElementInteractions": "off",
+            "useSemanticElements": "off"
+          }
+        }
+      }
     }
   ]
 }

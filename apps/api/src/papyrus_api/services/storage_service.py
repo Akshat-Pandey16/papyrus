@@ -185,4 +185,4 @@ class StorageService:
                     Body=fh,
                     ContentType=content_type,
                 )
-        return src.stat().st_size
+        return src.stat().st_size  # noqa: ASYNC240

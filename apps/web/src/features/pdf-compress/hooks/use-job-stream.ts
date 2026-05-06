@@ -54,11 +54,7 @@ export function useJobStream(jobId: string | null) {
         let updated: Job | null = null;
         if (looksLikeApiJob(parsed)) {
           updated = mapJob(parsed);
-        } else if (
-          parsed &&
-          typeof parsed === "object" &&
-          "status" in parsed
-        ) {
+        } else if (parsed && typeof parsed === "object" && "status" in parsed) {
           const prev = qc.getQueryData<Job>(compressKeys.job(jobId));
           if (prev) {
             const status = (parsed as { status: Job["status"] }).status;

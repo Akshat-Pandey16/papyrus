@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Enum, Float, ForeignKey, Index, String, text
+from sqlalchemy import BigInteger, Enum, Float, ForeignKey, Index, String, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from papyrus_api.db.base import Base
@@ -52,7 +51,7 @@ class Job(Base, IdMixin, TenantMixin, TimestampMixin):
         nullable=True,
     )
     idempotency_key: Mapped[UUID | None] = mapped_column(
-        PgUUID(as_uuid=True),
+        Uuid(),
         default=None,
         nullable=True,
     )

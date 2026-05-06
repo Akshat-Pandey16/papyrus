@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections.abc import AsyncIterator
 from typing import Annotated
@@ -9,12 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
 
-from papyrus_api.api.deps import (
-    CurrentPrincipal,
-    JobServiceDep,
-    RedisDep,
-    SsePrincipal,
-)
+from papyrus_api.api.deps import CurrentPrincipal, JobServiceDep, RedisDep, SsePrincipal
 from papyrus_api.core.config import settings
 from papyrus_api.core.security import TokenType, issue_token
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
@@ -218,11 +214,7 @@ async def _event_stream(
                 yield _format_event("terminal", payload)
                 break
     finally:
-        try:
+        with contextlib.suppress(Exception):
             await pubsub.unsubscribe(JobService.channel(job_id))
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             await pubsub.close()
-        except Exception:
-            pass

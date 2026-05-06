@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
+import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
   title: string;
@@ -75,8 +75,7 @@ export function AuthLayout({ title, subtitle, footer, aside, children }: AuthLay
             backgroundImage:
               "linear-gradient(to right, rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,1) 1px, transparent 1px)",
             backgroundSize: "44px 44px",
-            maskImage:
-              "radial-gradient(ellipse at center, rgba(0,0,0,0.95), transparent 70%)",
+            maskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.95), transparent 70%)",
           }}
         />
         <div className="relative z-10 flex h-full w-full flex-col justify-between p-12 text-white">
@@ -103,14 +102,16 @@ function DefaultAside() {
           async pipeline that scales.
         </p>
         <ul className="grid grid-cols-2 gap-3 text-sm text-white/80">
-          {["Merge & split", "OCR & convert", "Compress smartly", "Redact securely"].map((label) => (
-            <li
-              key={label}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 backdrop-blur-sm"
-            >
-              {label}
-            </li>
-          ))}
+          {["Merge & split", "OCR & convert", "Compress smartly", "Redact securely"].map(
+            (label) => (
+              <li
+                key={label}
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 backdrop-blur-sm"
+              >
+                {label}
+              </li>
+            ),
+          )}
         </ul>
       </div>
       <p className="text-xs text-white/50">© Papyrus. Self-hostable. Open source.</p>

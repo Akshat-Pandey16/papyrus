@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import {
-  useConfirmUploadMutation,
-  useInitiateUploadMutation,
-} from "@/features/pdf-compress/api";
+import { useConfirmUploadMutation, useInitiateUploadMutation } from "@/features/pdf-compress/api";
 import { useUploadStore } from "@/features/pdf-compress/store";
 
 const xhrRegistry = new Map<string, XMLHttpRequest>();

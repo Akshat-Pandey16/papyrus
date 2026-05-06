@@ -1,22 +1,22 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/features/auth/store";
 import {
   type CreateCompressionJobInput,
   useCreateCompressionJobMutation,
 } from "@/features/pdf-compress/api";
-import { CompressionLevelSelector } from "@/features/pdf-compress/components/compression-level-selector";
 import { CompressionCard } from "@/features/pdf-compress/components/compression-card";
+import { CompressionLevelSelector } from "@/features/pdf-compress/components/compression-level-selector";
 import { FileDropzone } from "@/features/pdf-compress/components/file-dropzone";
 import { JobHistoryList } from "@/features/pdf-compress/components/job-history-list";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { useRecoverUploads } from "@/features/pdf-compress/hooks/use-recover-uploads";
 import { useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
+import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/tools/compress")({
   beforeLoad: ({ location }) => {
@@ -124,9 +124,7 @@ function CompressPage() {
           <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
             Tools / Compress
           </span>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Compress a PDF
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Compress a PDF</h1>
           <p className="max-w-2xl text-[0.95rem] text-muted-foreground">
             Make PDFs smaller while keeping them readable. Pick a level, drop your file, and we
             handle the rest. Files stay private and are deleted after 24 hours.
@@ -161,11 +159,7 @@ function CompressPage() {
             </h2>
             <div className="flex flex-col gap-3">
               {sortedIds.map((id) => (
-                <CompressionCard
-                  key={id}
-                  clientUploadId={id}
-                  onRetry={onRetry}
-                />
+                <CompressionCard key={id} clientUploadId={id} onRetry={onRetry} />
               ))}
             </div>
           </section>

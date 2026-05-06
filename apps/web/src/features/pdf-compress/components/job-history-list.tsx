@@ -1,9 +1,6 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  useDownloadUrlMutation,
-  useJobsInfiniteQuery,
-} from "@/features/pdf-compress/api";
+import { useDownloadUrlMutation, useJobsInfiniteQuery } from "@/features/pdf-compress/api";
 import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import type { Job } from "@/features/pdf-compress/types";
 
@@ -23,9 +20,7 @@ function StatusPill({ status }: { status: Job["status"] }) {
   };
   const v = map[status];
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${v.className}`}>
-      {v.label}
-    </span>
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${v.className}`}>{v.label}</span>
   );
 }
 
@@ -72,8 +67,7 @@ export function JobHistoryList() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{filename}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(job.createdAt).toLocaleString()} ·{" "}
-                  {formatBytes(job.inputSizeBytes)}
+                  {new Date(job.createdAt).toLocaleString()} · {formatBytes(job.inputSizeBytes)}
                   {job.outputSizeBytes != null
                     ? ` → ${formatBytes(job.outputSizeBytes)} (${formatPercent(job.compressionRatio)})`
                     : null}

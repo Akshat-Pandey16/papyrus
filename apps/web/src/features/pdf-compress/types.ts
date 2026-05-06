@@ -1,11 +1,6 @@
 export type CompressionLevel = "low" | "medium" | "high";
 
-export type JobStatus =
-  | "pending"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "cancelled";
+export type JobStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type JobKind =
   | "merge"

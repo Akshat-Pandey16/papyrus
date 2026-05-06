@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { FileText, LogOut, Menu, X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/features/auth/store";
 import { useLogoutMutation } from "@/features/auth/api";
+import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -100,10 +100,7 @@ export function Topbar() {
       </div>
 
       <div
-        className={cn(
-          "border-t border-border bg-background md:hidden",
-          open ? "block" : "hidden",
-        )}
+        className={cn("border-t border-border bg-background md:hidden", open ? "block" : "hidden")}
       >
         <nav className="flex flex-col gap-1 px-6 py-4">
           {NAV.map((item) => (
