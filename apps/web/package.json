@@ -37,7 +37,7 @@
     "@papyrus/shared-types": "workspace:*",
     "@playwright/test": "^1.49.1",
     "@tailwindcss/vite": "^4.0.0-beta.7",
-    "@tanstack/router-devtools": "^1.95.0",
+    "@tanstack/react-router-devtools": "^1.166.13",
     "@tanstack/router-plugin": "^1.95.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

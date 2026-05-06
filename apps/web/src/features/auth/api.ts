@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import type {
+  AccessToken,
   AuthOrganization,
   AuthSession,
   AuthUser,
-  TokenPair,
 } from "@/features/auth/types";
 import { useAuthStore } from "@/features/auth/store";
 import type {
@@ -25,14 +25,13 @@ type ApiUser = {
 
 type ApiOrg = { id: string; name: string; slug: string };
 
-type ApiTokens = {
+type ApiAccess = {
   access_token: string;
-  refresh_token: string;
   token_type: string;
   expires_in: number;
 };
 
-type ApiSession = { user: ApiUser; organization: ApiOrg; tokens: ApiTokens };
+type ApiSession = { user: ApiUser; organization: ApiOrg; access: ApiAccess };
 
 function mapUser(u: ApiUser): AuthUser {
   return {
@@ -49,12 +48,11 @@ function mapOrg(o: ApiOrg): AuthOrganization {
   return { id: o.id, name: o.name, slug: o.slug };
 }
 
-function mapTokens(t: ApiTokens): TokenPair {
+function mapAccess(a: ApiAccess): AccessToken {
   return {
-    accessToken: t.access_token,
-    refreshToken: t.refresh_token,
-    tokenType: t.token_type,
-    expiresIn: t.expires_in,
+    accessToken: a.access_token,
+    tokenType: a.token_type,
+    expiresIn: a.expires_in,
   };
 }
 
@@ -62,12 +60,12 @@ function mapSession(s: ApiSession): AuthSession {
   return {
     user: mapUser(s.user),
     organization: mapOrg(s.organization),
-    tokens: mapTokens(s.tokens),
+    access: mapAccess(s.access),
   };
 }
 
 export const authKeys = {
-  me: ["auth", "me"] as const,
+  session: ["auth", "session"] as const,
 };
 
 export function useSignupMutation() {
@@ -85,7 +83,7 @@ export function useSignupMutation() {
     },
     onSuccess: (session) => {
       setSession(session);
-      qc.setQueryData(authKeys.me, session);
+      qc.setQueryData(authKeys.session, session);
     },
   });
 }
@@ -103,7 +101,7 @@ export function useLoginMutation() {
     },
     onSuccess: (session) => {
       setSession(session);
-      qc.setQueryData(authKeys.me, session);
+      qc.setQueryData(authKeys.session, session);
     },
   });
 }
@@ -140,37 +138,57 @@ export function useLogoutMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      try {
-        await apiClient.post("/auth/logout");
-      } catch {
-        // server-side stateless — ignore
-      }
+      await apiClient.post(
+        "/auth/logout",
+        undefined,
+        { _skipAuthRetry: true } as never,
+      );
     },
     onSettled: () => {
       clear();
-      qc.removeQueries({ queryKey: authKeys.me });
+      qc.removeQueries({ queryKey: authKeys.session });
     },
   });
 }
 
-export function useMeQuery(enabled: boolean) {
-  const setUser = useAuthStore((s) => s.setUser);
+export function useSessionQuery(enabled: boolean) {
+  const setSession = useAuthStore((s) => s.setSession);
   return useQuery({
-    queryKey: authKeys.me,
+    queryKey: authKeys.session,
     enabled,
     staleTime: 60_000,
+    retry: false,
     queryFn: async (): Promise<AuthSession> => {
-      const { data } = await apiClient.get<ApiSession>("/auth/me");
+      const { data } = await apiClient.get<ApiSession>("/auth/session", {
+        _skipAuthRetry: true,
+      } as never);
       const session = mapSession(data);
-      setUser(session.user, session.organization);
+      setSession(session);
       return session;
     },
   });
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<TokenPair> {
-  const { data } = await apiClient.post<ApiTokens>("/auth/refresh", {
-    refresh_token: refreshToken,
-  });
-  return mapTokens(data);
+export async function fetchSession(): Promise<AuthSession | null> {
+  try {
+    const { data } = await apiClient.get<ApiSession>("/auth/session", {
+      _skipAuthRetry: true,
+    } as never);
+    return mapSession(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshAccessOnly(): Promise<AccessToken | null> {
+  try {
+    const { data } = await apiClient.post<ApiAccess>(
+      "/auth/refresh",
+      undefined,
+      { _skipAuthRetry: true } as never,
+    );
+    return mapAccess(data);
+  } catch {
+    return null;
+  }
 }

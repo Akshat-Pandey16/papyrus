@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Cookie, Response, status
 
 from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep
 from papyrus_api.core.config import settings
+from papyrus_api.core.cookies import clear_refresh_cookie, set_refresh_cookie
+from papyrus_api.core.errors import AuthenticationError
 from papyrus_api.core.security import TokenType, issue_token
 from papyrus_api.schemas.identity import (
+    AccessToken,
     AuthSession,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     GenericMessage,
     LoginRequest,
     OrganizationOut,
-    RefreshRequest,
     ResetPasswordRequest,
     SignupRequest,
-    TokenPair,
     UserOut,
 )
 from papyrus_api.services.identity_service import AuthResult
@@ -23,16 +24,16 @@ from papyrus_api.services.identity_service import AuthResult
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _to_session(result: AuthResult) -> AuthSession:
+def _to_session(result: AuthResult, response: Response) -> AuthSession:
+    set_refresh_cookie(response, result.refresh_token)
     return AuthSession(
         user=UserOut.model_validate(result.user, from_attributes=True),
         organization=OrganizationOut.model_validate(
             result.organization,
             from_attributes=True,
         ),
-        tokens=TokenPair(
+        access=AccessToken(
             access_token=result.access_token,
-            refresh_token=result.refresh_token,
             expires_in=result.expires_in,
         ),
     )
@@ -43,29 +44,55 @@ def _to_session(result: AuthResult) -> AuthSession:
     response_model=AuthSession,
     status_code=status.HTTP_201_CREATED,
 )
-async def signup(payload: SignupRequest, service: IdentityServiceDep) -> AuthSession:
+async def signup(
+    payload: SignupRequest,
+    response: Response,
+    service: IdentityServiceDep,
+) -> AuthSession:
     result = await service.signup(
         email=payload.email,
         password=payload.password,
         full_name=payload.full_name,
     )
-    return _to_session(result)
+    return _to_session(result, response)
 
 
 @router.post("/login", response_model=AuthSession)
-async def login(payload: LoginRequest, service: IdentityServiceDep) -> AuthSession:
+async def login(
+    payload: LoginRequest,
+    response: Response,
+    service: IdentityServiceDep,
+) -> AuthSession:
     result = await service.login(email=payload.email, password=payload.password)
-    return _to_session(result)
+    return _to_session(result, response)
 
 
-@router.post("/refresh", response_model=TokenPair)
-async def refresh(payload: RefreshRequest, service: IdentityServiceDep) -> TokenPair:
-    result = await service.refresh(refresh_token=payload.refresh_token)
-    return TokenPair(
+@router.post("/refresh", response_model=AccessToken)
+async def refresh(
+    response: Response,
+    service: IdentityServiceDep,
+    refresh_token: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
+) -> AccessToken:
+    if not refresh_token:
+        raise AuthenticationError("Missing refresh cookie.")
+    result = await service.refresh(refresh_token=refresh_token)
+    set_refresh_cookie(response, result.refresh_token)
+    return AccessToken(
         access_token=result.access_token,
-        refresh_token=result.refresh_token,
         expires_in=result.expires_in,
     )
+
+
+@router.get("/session", response_model=AuthSession)
+async def session(
+    response: Response,
+    service: IdentityServiceDep,
+    refresh_token: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
+) -> AuthSession:
+    if not refresh_token:
+        raise AuthenticationError("Missing refresh cookie.")
+    result = await service.refresh(refresh_token=refresh_token)
+    return _to_session(result, response)
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
@@ -100,14 +127,14 @@ async def me(principal: CurrentPrincipal) -> AuthSession:
     return AuthSession(
         user=UserOut.model_validate(user, from_attributes=True),
         organization=OrganizationOut.model_validate(organization, from_attributes=True),
-        tokens=TokenPair(
+        access=AccessToken(
             access_token=access,
-            refresh_token="",
             expires_in=settings.jwt_access_ttl_seconds,
         ),
     )
 
 
 @router.post("/logout", response_model=GenericMessage)
-async def logout(_: CurrentPrincipal) -> GenericMessage:
+async def logout(response: Response) -> GenericMessage:
+    clear_refresh_cookie(response)
     return GenericMessage(detail="Logged out.")

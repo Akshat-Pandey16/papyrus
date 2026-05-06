@@ -80,6 +80,11 @@ class Settings(BaseSettings):
     argon2_memory_cost: int = 65536
     argon2_parallelism: int = 4
 
+    refresh_cookie_name: str = "papyrus_refresh"
+    refresh_cookie_path: str = "/api/v1/auth"
+    refresh_cookie_domain: str | None = None
+    refresh_cookie_samesite: str = "lax"
+
     anon_max_file_bytes: int = 25 * 1024 * 1024
     user_max_file_bytes: int = 500 * 1024 * 1024
     anon_daily_job_quota: int = 10

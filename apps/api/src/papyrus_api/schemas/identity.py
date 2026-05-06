@@ -44,10 +44,6 @@ class LoginRequest(_MutableModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-class RefreshRequest(_MutableModel):
-    refresh_token: str = Field(min_length=10, max_length=4096)
-
-
 class ForgotPasswordRequest(_MutableModel):
     email: EmailStr
 
@@ -88,9 +84,8 @@ class UserOut(StrictModel):
     created_at: datetime
 
 
-class TokenPair(StrictModel):
+class AccessToken(StrictModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"  # noqa: S105
     expires_in: int
 
@@ -98,7 +93,7 @@ class TokenPair(StrictModel):
 class AuthSession(StrictModel):
     user: UserOut
     organization: OrganizationOut
-    tokens: TokenPair
+    access: AccessToken
 
 
 class ForgotPasswordResponse(StrictModel):

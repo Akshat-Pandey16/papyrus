@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { refreshAccessToken } from "@/features/auth/api";
-import {
-  clearStoredRefreshToken,
-  getStoredRefreshToken,
-  useAuthStore,
-} from "@/features/auth/store";
+import { useEffect, useState, type ReactNode } from "react";
 import { apiClient } from "@/lib/api/client";
+import { fetchSession, refreshAccessOnly } from "@/features/auth/api";
+import { useAuthStore } from "@/features/auth/store";
+import {
+  isAccessTokenValid,
+  registerRefreshHandler,
+} from "@/lib/api/client";
 
 type ApiUser = {
   id: string;
@@ -15,57 +15,72 @@ type ApiUser = {
   email_verified_at: string | null;
   created_at: string;
 };
-
 type ApiOrg = { id: string; name: string; slug: string };
+type ApiMe = { user: ApiUser; organization: ApiOrg };
 
-export function SessionBootstrap({ children }: { children: ReactNode }) {
-  const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser = useAuthStore((s) => s.setUser);
-  const clear = useAuthStore((s) => s.clear);
-  const [ready, setReady] = useState(false);
-  const ran = useRef(false);
+let bootstrapPromise: Promise<void> | null = null;
 
-  useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
+async function loadCurrentUser(): Promise<boolean> {
+  const { setUser, clear } = useAuthStore.getState();
+  try {
+    const { data } = await apiClient.get<ApiMe>("/auth/me");
+    setUser(
+      {
+        id: data.user.id,
+        email: data.user.email,
+        fullName: data.user.full_name,
+        isActive: data.user.is_active,
+        emailVerifiedAt: data.user.email_verified_at,
+        createdAt: data.user.created_at,
+      },
+      data.organization,
+    );
+    return true;
+  } catch {
+    clear();
+    return false;
+  }
+}
 
-    const refresh = getStoredRefreshToken();
-    if (!refresh) {
-      setReady(true);
-      return;
+function bootstrapOnce(): Promise<void> {
+  if (bootstrapPromise) return bootstrapPromise;
+  bootstrapPromise = (async () => {
+    const { setSession, clear } = useAuthStore.getState();
+
+    if (isAccessTokenValid()) {
+      const ok = await loadCurrentUser();
+      if (ok) return;
     }
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const tokens = await refreshAccessToken(refresh);
-        if (cancelled) return;
-        setTokens(tokens);
-        const { data } = await apiClient.get<{ user: ApiUser; organization: ApiOrg }>("/auth/me");
-        if (cancelled) return;
-        setUser(
-          {
-            id: data.user.id,
-            email: data.user.email,
-            fullName: data.user.full_name,
-            isActive: data.user.is_active,
-            emailVerifiedAt: data.user.email_verified_at,
-            createdAt: data.user.created_at,
-          },
-          data.organization,
-        );
-      } catch {
-        clearStoredRefreshToken();
-        clear();
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
+    const session = await fetchSession();
+    if (session) setSession(session);
+    else clear();
+  })();
+  return bootstrapPromise;
+}
 
+registerRefreshHandler(async () => {
+  const access = await refreshAccessOnly();
+  if (!access) {
+    useAuthStore.getState().clear();
+    return null;
+  }
+  useAuthStore.getState().setAccess(access);
+  return access.accessToken;
+});
+
+export function SessionBootstrap({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    bootstrapOnce().finally(() => {
+      if (active) setReady(true);
+    });
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [setTokens, setUser, clear]);
+  }, []);
 
   if (!ready) {
     return (

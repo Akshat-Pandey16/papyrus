@@ -465,7 +465,68 @@ These are the rules every migration and model must satisfy. Reviewers reject PRs
 
 ---
 
-## 6. Cross-cutting concerns
+## 6. Engineering baseline (non-negotiable, applies to every change)
+
+These rules apply to **every** change going forward — auth, PDF pipeline, billing, settings, internal tools, anything. A change that violates them ships only with a written justification in the PR description and a follow-up issue to remove the exception.
+
+### Security baseline
+- **Secrets are tokens of trust, never values to ship.** No secret, password, JWT, API key, or session id is ever placed in a JSON response body, query string, log line, error message, exception trace, or commit. The only safe carriers are httpOnly cookies (browsers), `Authorization` headers (servers), and secret managers (operators).
+- **Refresh tokens belong in httpOnly, Secure, SameSite=Lax cookies** scoped to the auth path. They never appear in JS-readable storage. Access tokens may live in `sessionStorage` (short TTL, dies on tab close) and JS memory; never in `localStorage`.
+- **Token rotation on use.** Every refresh issues a new refresh token and invalidates the old one (logical rotation today; revocation list comes with the audit work). Never accept the same refresh token twice in a row.
+- **Authn vs authz.** `current_user` is who you are; `current_organization` is what you can see. Routes resolve both via dependencies; services accept both as required parameters. There is no service method that takes a user but no organization.
+- **Tenant scoping is the repository's job, not the route's.** Every read/write on a tenant-owned table goes through a method that takes `organization_id` and adds it to `WHERE`. There is no global helper that sees across tenants.
+- **Validate at the edge, trust inside.** Pydantic v2 strict on the way in; Zod on the browser; trust internal calls. Don't re-validate the same thing in three layers.
+- **Constant-time comparison** for any secret-equivalence check (`hmac.compare_digest`). Never use `==` for hashes, signatures, or shared-secret tokens.
+- **No PII or document content in logs.** The structlog redactor catches the common keys; new code adds new sensitive keys to the redact list rather than relying on luck.
+- **CORS is allow-list only**, driven by `API_CORS_ORIGINS`. Never `allow_origins=["*"]` when `allow_credentials=True`.
+- **CSP / HSTS / X-Content-Type-Options / Referrer-Policy / Permissions-Policy** must be set on the web bundle's nginx config. New static assets do not loosen them.
+- **No `dangerouslySetInnerHTML`, no `eval`, no `Function(...)`** on the web. Markdown is rendered through a vetted sanitizer.
+- **Uploaded bytes never touch the API container.** Presigned PUT to S3, then the client notifies the API. Worker containers run with no egress.
+- **Authorization on every authenticated route** — there is no "logged in implies allowed." Protected endpoints declare the principal dependency; ownership is checked in the service.
+
+### Performance baseline
+- **Every list endpoint paginates** (cursor pagination on `(created_at, id)`). No unbounded `SELECT`. No `OFFSET` in user-facing endpoints.
+- **Every foreign key column is indexed.** Every authenticated `WHERE` column is indexed. Composite indexes lead with `organization_id` for tenant-scoped queries. Partial indexes cover "active" subsets (`WHERE used_at IS NULL`, `WHERE deleted_at IS NULL`, `WHERE revoked_at IS NULL`).
+- **Single round-trip per logical step.** If a route needs N pieces of data, fetch them in one query (`select(...).join(...)` or `IN (...)`). N+1 queries are a defect, not a style issue.
+- **Sessions commit at the boundary.** Repos `flush()`, services `commit()`. Transactions are short. Never hold a session across an external HTTP call.
+- **Async all the way.** No sync HTTP, no sync DB, no `time.sleep`. If a sync lib is unavoidable, isolate it via `anyio.to_thread.run_sync`.
+- **Cache the right thing.** Redis caches read-heavy, low-cardinality lookups (settings, plan limits) with a TTL and a versioned key. Don't cache user-scoped data without a per-user namespace.
+- **No client-side fan-out.** When the UI needs N+1 things, the API exposes one endpoint that returns N+1 things — never make the browser stitch.
+- **Pre-warmed connection pools.** DB pool, Redis pool, S3 client are created in lifespan, never per-request.
+- **Bundle budget on the web.** Each route bundle stays under 50 kB gzipped on its own (pdf.js and similar heavy libs are lazy-loaded at usage time, not at app boot). Initial JS budget for first paint is < 150 kB gzipped.
+
+### Web auth & session contract
+- **Refresh = httpOnly cookie** named per `refresh_cookie_name`, scoped to `/api/v1/auth`, `Secure` in production, `SameSite=Lax`.
+- **Access = JWT in memory + sessionStorage**, attached as `Authorization: Bearer …` by the axios interceptor. The client decodes `exp` locally and skips refresh while the token is valid (with 30s skew).
+- **Bootstrap on app load:** if access is locally valid, call `/auth/me` once to repopulate the user; otherwise call `/auth/session` once to refresh + fetch user atomically. Never two round-trips when one will do.
+- **401 retry interceptor** on the client refreshes once, replays the request, and clears the session if refresh fails. Concurrent 401s share one in-flight refresh promise — never N parallel `/refresh` calls.
+- **Logout always works.** `POST /auth/logout` does not require a valid access token; it just clears the cookie. The client clears local state regardless of the response.
+
+### Observability baseline (for every new endpoint and worker task)
+- Bind `request_id`, `user_id`, `organization_id`, and (for jobs) `job_id` to structlog context at entry.
+- Emit one structured log event per significant outcome (`auth.login`, `documents.upload.completed`, `jobs.failed`) — not every line of code.
+- RED metrics (Rate, Errors, Duration) come for free from OTel auto-instrumentation; new code does not roll its own.
+- Every error response carries a `request_id` so support can find the trace.
+
+### Frontend correctness baseline
+- **Strict Mode safe.** Effects survive double-invoke in dev; "fire once on app boot" is module-level state, not `useRef`-gated effects (those break under cleanup).
+- **No data fetching in `useEffect`.** TanStack Query owns server state; effects only sync with non-React systems.
+- **No global mutable state outside Zustand stores or TanStack Query.** No reaching into `window.*` or `localStorage` from a component — wrap it in a hook or a store action.
+- **Subscribe narrowly to Zustand:** `useStore((s) => s.user)`, never object-destructured selects (they re-render every tick).
+- **Errors are typed.** `ApiError` from `lib/api/client`; UI switches on `error.code`, never `error.message.includes(...)`.
+- **Forms are RHF + Zod.** The Zod schema is the only source of truth; types are inferred. Submit is disabled while pending; aria/role wired for invalid fields.
+
+### Definition of Done (per PR)
+A change is not done until **all** of these are true:
+1. Backend: ruff clean, mypy clean, alembic check shows zero drift, e2e test for the new path passes.
+2. Database: every new FK is indexed, every tenant query is composite-indexed, every "active" filter has a partial index where the active subset is small.
+3. Frontend: typecheck clean, vite build clean, the page works at 360px wide, the page works on a hard refresh (no white screen, no double-load), no `console.error` on the happy path.
+4. Security: no secret in logs/responses; new authenticated routes declare the principal dep; new tenant tables go through repos that take `organization_id`.
+5. Observability: structured log at the boundary; bound context at entry; error envelope on failure.
+
+---
+
+## 7. Cross-cutting concerns
 
 ### Errors
 Single error envelope across the API:
@@ -528,7 +589,7 @@ Single error envelope across the API:
 
 ---
 
-## 7. Tooling commands (canonical)
+## 8. Tooling commands (canonical)
 
 The `Makefile` wraps these; agents and humans should prefer the underlying tools when debugging.
 
@@ -579,7 +640,7 @@ make web          # Vite dev server on :5173
 
 ---
 
-## 8. Decisions still open (resolve before scaffolding the relevant module)
+## 9. Decisions still open (resolve before scaffolding the relevant module)
 
 These are intentionally not pre-decided. When the user asks to scaffold a section that depends on one, surface the question first.
 
@@ -592,7 +653,7 @@ These are intentionally not pre-decided. When the user asks to scaffold a sectio
 
 ---
 
-## 9. Working with this codebase as an agent
+## 10. Working with this codebase as an agent
 
 - **Default to the structure above.** If a task seems to want a new top-level directory, push back — almost everything has a home already.
 - **Never scaffold code unless the user asks.** This document is the contract; code comes after explicit requests.

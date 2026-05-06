@@ -13,9 +13,8 @@ export type AuthOrganization = {
   slug: string;
 };
 
-export type TokenPair = {
+export type AccessToken = {
   accessToken: string;
-  refreshToken: string;
   tokenType: string;
   expiresIn: number;
 };
@@ -23,5 +22,5 @@ export type TokenPair = {
 export type AuthSession = {
   user: AuthUser;
   organization: AuthOrganization;
-  tokens: TokenPair;
+  access: AccessToken;
 };
