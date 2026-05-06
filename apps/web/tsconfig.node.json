@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "composite": true,
     "target": "ES2023",
     "lib": ["ES2023"],
     "module": "ESNext",
@@ -7,8 +8,10 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true,
-    "types": ["node"]
+    "emitDeclarationOnly": true,
+    "outDir": "./.tsbuild/node",
+    "tsBuildInfoFile": "./.tsbuild/node.tsbuildinfo",
+    "types": ["node", "vitest"]
   },
   "include": ["vite.config.ts"]
 }
