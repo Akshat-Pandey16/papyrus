@@ -19,6 +19,7 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname, "src") },
   },
   server: {
+    host: true,
     port: 5173,
     strictPort: true,
   },
