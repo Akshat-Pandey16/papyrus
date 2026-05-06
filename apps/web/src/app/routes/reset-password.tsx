@@ -66,14 +66,12 @@ function ResetPasswordPage() {
       title="Choose a new password"
       subtitle="Pick something memorable but unique. We'll keep your account safe."
       footer={
-        <>
-          <Link
-            to="/login"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Back to sign in
-          </Link>
-        </>
+        <Link
+          to="/login"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Back to sign in
+        </Link>
       }
     >
       {success ? (
