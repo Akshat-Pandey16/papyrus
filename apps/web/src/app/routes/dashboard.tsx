@@ -58,7 +58,11 @@ function DashboardPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { title: "Merge PDFs", desc: "Combine multiple PDFs into one.", to: null },
+              {
+                title: "Merge PDFs",
+                desc: "Combine multiple PDFs into one.",
+                to: "/tools/merge" as const,
+              },
               {
                 title: "Compress",
                 desc: "Reduce file size while preserving quality.",

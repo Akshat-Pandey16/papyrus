@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from papyrus_api.schemas.common import StrictModel
 
@@ -32,6 +32,18 @@ class CompressJobRequest(_MutableModel):
     document_id: UUID
     compression_level: CompressionLevelLiteral
     idempotency_key: UUID
+
+
+class MergeJobRequest(_MutableModel):
+    document_ids: list[UUID] = Field(min_length=2, max_length=50)
+    idempotency_key: UUID
+
+    @field_validator("document_ids")
+    @classmethod
+    def _no_duplicates(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("document_ids must not contain duplicates.")
+        return value
 
 
 class JobOut(StrictModel):

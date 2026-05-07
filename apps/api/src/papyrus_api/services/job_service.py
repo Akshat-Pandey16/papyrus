@@ -198,6 +198,123 @@ class JobService:
         except Exception:
             log.warning("jobs.enqueue_failed", job_id=str(job_id))
 
+    async def create_merge_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_ids: list[UUID],
+        idempotency_key: UUID,
+    ) -> CreateJobResult:
+        existing = await self.jobs.get_by_idempotency_key(
+            organization_id=organization_id,
+            idempotency_key=idempotency_key,
+        )
+        if existing is not None:
+            return CreateJobResult(job=existing, replay=True)
+
+        if len(document_ids) < 2:
+            raise AppError("At least two PDFs are required to merge.")
+
+        inputs: list[dict[str, Any]] = []
+        input_filenames: list[str] = []
+        total_input_bytes = 0
+        for index, document_id in enumerate(document_ids):
+            triple = await self.versions.get_with_storage(
+                organization_id=organization_id,
+                document_id=document_id,
+            )
+            if triple is None:
+                raise DocumentNotFoundError(
+                    "One of the documents was not found.",
+                    details={"document_id": str(document_id), "input_index": index},
+                )
+            document, version, storage_object = triple
+            if storage_object.size_bytes > settings.user_max_file_bytes:
+                raise QuotaExceededError(
+                    "One of the files exceeds the maximum allowed size.",
+                    details={
+                        "max_bytes": settings.user_max_file_bytes,
+                        "document_id": str(document_id),
+                    },
+                )
+            total_input_bytes += storage_object.size_bytes
+            input_filenames.append(document.name)
+            inputs.append(
+                {
+                    "document_id": str(document.id),
+                    "version_id": str(version.id),
+                    "input_storage_object_id": str(storage_object.id),
+                    "input_bucket": storage_object.bucket,
+                    "input_key": storage_object.key,
+                    "input_size_bytes": storage_object.size_bytes,
+                    "input_filename": document.name,
+                }
+            )
+
+        since = utc_now() - timedelta(days=1)
+        count = await self.jobs.count_jobs_today(
+            organization_id=organization_id,
+            since=since,
+        )
+        if count >= settings.user_daily_job_quota:
+            raise QuotaExceededError(
+                "Daily job quota exceeded.",
+                details={"quota": settings.user_daily_job_quota},
+            )
+
+        params: dict[str, Any] = {
+            "inputs": inputs,
+            "document_ids": [str(d) for d in document_ids],
+            "input_filenames": input_filenames,
+            "input_size_bytes": total_input_bytes,
+            "created_by_user_id": str(user_id),
+        }
+
+        job = await self.jobs.create(
+            organization_id=organization_id,
+            kind=JobKind.MERGE,
+            params=params,
+            idempotency_key=idempotency_key,
+            input_size_bytes=total_input_bytes,
+        )
+
+        await self.events.append(
+            job_id=job.id,
+            status=JobStatus.PENDING,
+            payload={"phase": "queued"},
+        )
+        await self.session.commit()
+
+        await self._publish(
+            job_id=job.id,
+            status=JobStatus.PENDING,
+            payload={"phase": "queued"},
+        )
+
+        self._enqueue_merge(job.id)
+
+        log.info(
+            "jobs.merge.created",
+            job_id=str(job.id),
+            input_count=len(document_ids),
+            replay=False,
+        )
+
+        return CreateJobResult(job=job, replay=False)
+
+    def _enqueue_merge(self, job_id: UUID) -> None:
+        try:
+            from papyrus_api.workers.celery_app import celery_app
+
+            celery_app.send_task(
+                "papyrus.pdf.merge",
+                args=[str(job_id)],
+                task_id=str(job_id),
+            )
+        except Exception:
+            log.warning("jobs.enqueue_failed", job_id=str(job_id))
+
     async def get(self, *, organization_id: UUID, job_id: UUID) -> JobOut:
         job = await self.jobs.get_for_org(
             organization_id=organization_id,
@@ -319,8 +436,7 @@ class JobService:
         if storage_object is None:
             raise JobOutputExpiredError("Output is no longer available.")
 
-        original_name = job.params.get("input_filename") if isinstance(job.params, dict) else None
-        suggested = _suggest_output_filename(original_name)
+        suggested = _suggest_output_filename_for(job)
 
         url = await self.storage.presign_download(
             bucket=storage_object.bucket,
@@ -406,6 +522,20 @@ def _suggest_output_filename(original: object) -> str:
         stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
         base = f"{stem}-compressed.pdf"
     return base[:200]
+
+
+def _suggest_output_filename_for(job: Job) -> str:
+    params = job.params if isinstance(job.params, dict) else {}
+    if job.kind == JobKind.MERGE:
+        names = params.get("input_filenames")
+        if isinstance(names, list) and names:
+            first = names[0] if isinstance(names[0], str) else None
+            if first:
+                clean = first.strip().replace("\\", "_").replace("/", "_")
+                stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
+                return f"{stem}-merged.pdf"[:200]
+        return "merged.pdf"
+    return _suggest_output_filename(params.get("input_filename"))
 
 
 def job_to_out(job: Job, *, phase: str | None) -> JobOut:

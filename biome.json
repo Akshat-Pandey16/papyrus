@@ -84,7 +84,10 @@
       "linter": { "rules": { "a11y": { "useValidAnchor": "off" } } }
     },
     {
-      "includes": ["apps/web/src/features/pdf-compress/components/file-dropzone.tsx"],
+      "includes": [
+        "apps/web/src/features/pdf-compress/components/file-dropzone.tsx",
+        "apps/web/src/features/pdf-merge/components/multi-file-dropzone.tsx"
+      ],
       "linter": {
         "rules": {
           "a11y": {

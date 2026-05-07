@@ -120,7 +120,7 @@ class JobRepository(AsyncRepository[Job]):
         job_id: UUID,
         output_object_id: UUID,
         output_size_bytes: int,
-        compression_ratio: float,
+        compression_ratio: float | None = None,
     ) -> Job | None:
         job = await self.session.get(Job, job_id)
         if job is None:

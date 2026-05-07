@@ -21,6 +21,7 @@ from papyrus_api.schemas.jobs import (
     JobOut,
     JobsListPage,
     JobStatusLiteral,
+    MergeJobRequest,
 )
 from papyrus_api.services.job_service import JobService, job_to_out
 
@@ -50,6 +51,30 @@ async def create_compression_job(
         user_id=user.id,
         document_id=payload.document_id,
         compression_level=payload.compression_level,
+        idempotency_key=payload.idempotency_key,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/merge",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_merge_job(
+    payload: MergeJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_merge_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_ids=payload.document_ids,
         idempotency_key=payload.idempotency_key,
     )
     if result.replay:
