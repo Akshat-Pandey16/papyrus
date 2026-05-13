@@ -20,6 +20,6 @@
     "upgrade": "pnpm -r update --latest && pnpm dedupe && pnpm install"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14"
+    "@biomejs/biome": "^2.4.15"
   }
 }
