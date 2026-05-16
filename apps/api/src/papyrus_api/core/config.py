@@ -76,9 +76,10 @@ class Settings(BaseSettings):
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_access_ttl_seconds: int = 900
     jwt_refresh_ttl_seconds: int = 2_592_000
-    argon2_time_cost: int = 3
-    argon2_memory_cost: int = 65536
-    argon2_parallelism: int = 4
+    refresh_absolute_ttl_seconds: int = 60 * 60 * 24 * 90
+    argon2_time_cost: int = 2
+    argon2_memory_cost: int = 19_456
+    argon2_parallelism: int = 1
 
     refresh_cookie_name: str = "papyrus_refresh"
     refresh_cookie_path: str = "/api/v1/auth"

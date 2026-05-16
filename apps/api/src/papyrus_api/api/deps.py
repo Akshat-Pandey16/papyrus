@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 import structlog
@@ -9,7 +9,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from papyrus_api.core.errors import AuthenticationError
+from papyrus_api.core.errors import AuthenticationError, RateLimitedError
+from papyrus_api.core.rate_limit import RateLimiter
 from papyrus_api.core.security import TokenType, decode_token
 from papyrus_api.db.session import get_session
 from papyrus_api.domain.identity.models import Organization, User
@@ -106,3 +107,38 @@ async def get_principal_for_sse(
 
 
 SsePrincipal = Annotated[tuple[User, Organization], Depends(get_principal_for_sse)]
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",", 1)[0].strip()
+    return request.client.host if request.client else "anonymous"
+
+
+def rate_limit(
+    scope: str,
+    *,
+    limit: int,
+    window_seconds: int,
+) -> Any:
+    async def _dep(request: Request, redis: RedisDep) -> None:
+        limiter = RateLimiter(redis)
+        principal_id = _client_ip(request)
+        decision = await limiter.hit(
+            scope=scope,
+            principal_id=principal_id,
+            limit=limit,
+            window_seconds=window_seconds,
+        )
+        if not decision.allowed:
+            raise RateLimitedError(
+                "Too many requests. Please try again shortly.",
+                details={
+                    "scope": scope,
+                    "retry_after_seconds": decision.retry_after_seconds,
+                    "limit": decision.limit,
+                },
+            )
+
+    return Depends(_dep)

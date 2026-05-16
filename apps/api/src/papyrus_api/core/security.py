@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 from datetime import timedelta
 from enum import StrEnum
 from typing import Any
@@ -19,6 +22,19 @@ _JWT_ALG = "HS256"
 class TokenType(StrEnum):
     ACCESS = "access"
     REFRESH = "refresh"
+
+
+def new_opaque_token(num_bytes: int = 48) -> str:
+    return secrets.token_urlsafe(num_bytes)
+
+
+def hash_opaque_token(token: str) -> str:
+    pepper = settings.jwt_secret.get_secret_value().encode("utf-8")
+    return hmac.new(pepper, token.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def secure_equals(a: str, b: str) -> bool:
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
 
 
 _password_hasher = PasswordHasher(
@@ -43,6 +59,25 @@ def needs_rehash(hashed: str) -> bool:
     return _password_hasher.check_needs_rehash(hashed)
 
 
+def issue_access_token(
+    *,
+    subject: UUID,
+    organization_id: UUID | None,
+    extra: dict[str, Any] | None = None,
+) -> str:
+    now = utc_now()
+    payload: dict[str, Any] = {
+        "sub": str(subject),
+        "org": str(organization_id) if organization_id else None,
+        "typ": TokenType.ACCESS.value,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=settings.jwt_access_ttl_seconds)).timestamp()),
+    }
+    if extra:
+        payload.update(extra)
+    return jwt.encode(payload, settings.jwt_secret.get_secret_value(), algorithm=_JWT_ALG)
+
+
 def issue_token(
     *,
     subject: UUID,
@@ -50,22 +85,13 @@ def issue_token(
     token_type: TokenType,
     extra: dict[str, Any] | None = None,
 ) -> str:
-    now = utc_now()
-    ttl = (
-        settings.jwt_access_ttl_seconds
-        if token_type is TokenType.ACCESS
-        else settings.jwt_refresh_ttl_seconds
+    if token_type is not TokenType.ACCESS:
+        raise ValueError("issue_token only mints access tokens. Use the refresh repo instead.")
+    return issue_access_token(
+        subject=subject,
+        organization_id=organization_id,
+        extra=extra,
     )
-    payload: dict[str, Any] = {
-        "sub": str(subject),
-        "org": str(organization_id) if organization_id else None,
-        "typ": token_type.value,
-        "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(seconds=ttl)).timestamp()),
-    }
-    if extra:
-        payload.update(extra)
-    return jwt.encode(payload, settings.jwt_secret.get_secret_value(), algorithm=_JWT_ALG)
 
 
 def decode_token(token: str, *, expected_type: TokenType) -> dict[str, Any]:

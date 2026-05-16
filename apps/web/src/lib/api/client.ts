@@ -136,7 +136,11 @@ function attachAuth(config: InternalAxiosRequestConfig): InternalAxiosRequestCon
   return config;
 }
 
-type RetriableConfig = AxiosRequestConfig & { _retry?: boolean; _skipAuthRetry?: boolean };
+type RetriableConfig = AxiosRequestConfig & {
+  _retry?: boolean;
+  _skipAuthRetry?: boolean;
+  _allowReplay?: boolean;
+};
 
 function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
   if (error.response?.data?.error) {
@@ -172,8 +176,16 @@ export function createApiClient(): AxiosInstance {
     async (error: AxiosError<ApiErrorBody>) => {
       const original = (error.config ?? {}) as RetriableConfig;
       const status = error.response?.status;
+      const method = (original.method ?? "get").toLowerCase();
+      const isSafe = method === "get" || method === "head" || method === "options";
 
-      if (status === 401 && !original._retry && !original._skipAuthRetry && refreshHandler) {
+      if (
+        status === 401 &&
+        !original._retry &&
+        !original._skipAuthRetry &&
+        refreshHandler &&
+        (isSafe || original._allowReplay !== false)
+      ) {
         original._retry = true;
         const newToken = await refreshAccess();
         if (newToken) {

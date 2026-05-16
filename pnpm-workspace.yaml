@@ -2,8 +2,11 @@ packages:
   - "apps/web"
   - "packages/*"
 
+allowBuilds:
+  msw: set this to true or false
+
 # Catalog: pin shared dependency versions across workspace packages.
 catalog:
-  react: ^19.2.5
-  react-dom: ^19.2.5
+  react: ^19.2.6
+  react-dom: ^19.2.6
   typescript: ~6.0.3

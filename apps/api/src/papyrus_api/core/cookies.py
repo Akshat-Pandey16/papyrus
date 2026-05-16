@@ -16,16 +16,21 @@ def _samesite() -> _SameSite:
     return value  # type: ignore[return-value]
 
 
+def _cookie_secure() -> bool:
+    return not settings.is_development
+
+
 def set_refresh_cookie(response: Response, token: str) -> None:
+    samesite = _samesite()
     response.set_cookie(
         key=settings.refresh_cookie_name,
         value=token,
         max_age=settings.jwt_refresh_ttl_seconds,
         path=settings.refresh_cookie_path,
         domain=settings.refresh_cookie_domain,
-        secure=settings.is_production,
+        secure=samesite == "none" or _cookie_secure(),
         httponly=True,
-        samesite=_samesite(),
+        samesite=samesite,
     )
 
 

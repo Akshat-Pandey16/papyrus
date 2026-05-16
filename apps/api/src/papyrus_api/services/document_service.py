@@ -56,6 +56,23 @@ class DocumentService:
         self.storage_objects = StorageObjectRepository(session)
         self.versions = DocumentVersionRepository(session)
 
+    async def delete(
+        self,
+        *,
+        organization_id: UUID,
+        document_id: UUID,
+    ) -> None:
+        document = await self.documents.get_for_org(
+            organization_id=organization_id,
+            document_id=document_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError("Document not found.")
+        document.deleted_at = utc_now()
+        await self.session.flush()
+        await self.session.commit()
+        log.info("documents.deleted", document_id=str(document.id))
+
     async def initiate_upload(
         self,
         *,
@@ -87,6 +104,7 @@ class DocumentService:
             size_bytes=size_bytes,
             content_type=content_type,
             purpose="upload",
+            document_id=document.id,
         )
 
         upload = await self.storage.presign_upload(
@@ -141,7 +159,9 @@ class DocumentService:
                 storage_object=storage_object,
             )
 
-        latest_object_stmt = await self._latest_unconfirmed_for_document(document.id)
+        latest_object_stmt = await self.storage_objects.get_latest_unconfirmed_for_document(
+            document_id=document.id,
+        )
         if latest_object_stmt is None:
             raise UploadNotFoundInStorageError(
                 "No upload slot found for this document.",
@@ -215,21 +235,3 @@ class DocumentService:
             version=version,
             storage_object=confirmed,
         )
-
-    async def _latest_unconfirmed_for_document(
-        self,
-        document_id: UUID,
-    ) -> StorageObject | None:
-        from sqlalchemy import select
-
-        stmt = (
-            select(StorageObject)
-            .where(
-                StorageObject.key.like(f"%/uploads/{document_id}/%"),
-                StorageObject.confirmed_at.is_(None),
-            )
-            .order_by(StorageObject.created_at.desc())
-            .limit(1)
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()

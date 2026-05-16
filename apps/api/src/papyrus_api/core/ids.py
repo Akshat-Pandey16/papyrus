@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from ulid import ULID
+from uuid_utils import uuid7
 
 
 def new_id() -> UUID:
-    return ULID().to_uuid()
+    return UUID(bytes=uuid7().bytes)
 
 
 def parse_id(raw: str) -> UUID:
-    try:
-        return ULID.from_str(raw).to_uuid()
-    except (ValueError, TypeError):
-        return UUID(raw)
+    return UUID(raw)

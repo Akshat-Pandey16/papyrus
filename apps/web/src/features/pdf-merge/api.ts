@@ -15,6 +15,7 @@ export {
   useDownloadUrlMutation,
   useInitiateUploadMutation,
   useJobQuery,
+  useRetryJobMutation,
 } from "@/features/pdf-compress/api";
 
 export const mergeKeys = {

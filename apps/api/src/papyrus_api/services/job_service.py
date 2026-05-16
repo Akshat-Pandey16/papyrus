@@ -12,18 +12,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
-    AppError,
     DocumentNotFoundError,
     JobNotFoundError,
     JobNotTerminalError,
     JobOutputExpiredError,
     QuotaExceededError,
+    ValidationError,
 )
 from papyrus_api.core.pagination import decode_cursor, encode_cursor
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job
+from papyrus_api.integrations.redis import reserve_daily_quota
 from papyrus_api.repositories.documents import (
     DocumentVersionRepository,
     StorageObjectRepository,
@@ -67,8 +68,8 @@ def _job_to_out(job: Job, *, phase: str | None) -> JobOut:
             document_id = None
     return JobOut(
         id=job.id,
-        kind=job.kind.value,  # type: ignore[arg-type]
-        status=job.status.value,  # type: ignore[arg-type]
+        kind=job.kind.value,
+        status=job.status.value,
         phase=phase,
         progress=None,
         params=dict(job.params or {}),
@@ -130,16 +131,7 @@ class JobService:
                 details={"max_bytes": settings.user_max_file_bytes},
             )
 
-        since = utc_now() - timedelta(days=1)
-        count = await self.jobs.count_jobs_today(
-            organization_id=organization_id,
-            since=since,
-        )
-        if count >= settings.user_daily_job_quota:
-            raise QuotaExceededError(
-                "Daily job quota exceeded.",
-                details={"quota": settings.user_daily_job_quota},
-            )
+        await self._reserve_quota(organization_id)
 
         params: dict[str, Any] = {
             "document_id": str(document.id),
@@ -214,16 +206,20 @@ class JobService:
             return CreateJobResult(job=existing, replay=True)
 
         if len(document_ids) < 2:
-            raise AppError("At least two PDFs are required to merge.")
+            raise ValidationError("At least two PDFs are required to merge.")
+        if len(document_ids) > 50:
+            raise ValidationError("At most 50 PDFs can be merged in one job.")
+
+        triples_by_id = await self.versions.get_many_with_storage(
+            organization_id=organization_id,
+            document_ids=document_ids,
+        )
 
         inputs: list[dict[str, Any]] = []
         input_filenames: list[str] = []
         total_input_bytes = 0
         for index, document_id in enumerate(document_ids):
-            triple = await self.versions.get_with_storage(
-                organization_id=organization_id,
-                document_id=document_id,
-            )
+            triple = triples_by_id.get(document_id)
             if triple is None:
                 raise DocumentNotFoundError(
                     "One of the documents was not found.",
@@ -252,16 +248,7 @@ class JobService:
                 }
             )
 
-        since = utc_now() - timedelta(days=1)
-        count = await self.jobs.count_jobs_today(
-            organization_id=organization_id,
-            since=since,
-        )
-        if count >= settings.user_daily_job_quota:
-            raise QuotaExceededError(
-                "Daily job quota exceeded.",
-                details={"quota": settings.user_daily_job_quota},
-            )
+        await self._reserve_quota(organization_id)
 
         params: dict[str, Any] = {
             "inputs": inputs,
@@ -352,7 +339,7 @@ class JobService:
                 cursor_created_at = datetime.fromisoformat(created_raw)
                 cursor_id = UUID(id_raw)
             except (ValueError, TypeError) as exc:
-                raise AppError("Invalid cursor.") from exc
+                raise ValidationError("Invalid cursor.") from exc
 
         jobs = await self.jobs.list_for_org(
             organization_id=organization_id,
@@ -369,6 +356,57 @@ class JobService:
             jobs = jobs[:limit]
         items = [_job_to_out(job, phase=None) for job in jobs]
         return items, next_cursor
+
+    async def retry(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        job_id: UUID,
+        idempotency_key: UUID,
+    ) -> CreateJobResult:
+        job = await self.jobs.get_for_org(
+            organization_id=organization_id,
+            job_id=job_id,
+        )
+        if job is None:
+            raise JobNotFoundError("Job not found.")
+        if job.status not in (JobStatus.FAILED, JobStatus.CANCELLED):
+            raise ValidationError(
+                "Only failed or cancelled jobs can be retried.",
+                details={"status": job.status.value},
+            )
+
+        if job.kind == JobKind.COMPRESS:
+            document_id_raw = job.params.get("document_id") if job.params else None
+            level = job.params.get("compression_level") if job.params else None
+            if not isinstance(document_id_raw, str) or not isinstance(level, str):
+                raise ValidationError("Job is missing the data needed to retry.")
+            return await self.create_compression_job(
+                organization_id=organization_id,
+                user_id=user_id,
+                document_id=UUID(document_id_raw),
+                compression_level=level,
+                idempotency_key=idempotency_key,
+            )
+
+        if job.kind == JobKind.MERGE:
+            doc_ids_raw = job.params.get("document_ids") if job.params else None
+            if not isinstance(doc_ids_raw, list) or not all(
+                isinstance(d, str) for d in doc_ids_raw
+            ):
+                raise ValidationError("Job is missing the data needed to retry.")
+            return await self.create_merge_job(
+                organization_id=organization_id,
+                user_id=user_id,
+                document_ids=[UUID(d) for d in doc_ids_raw],
+                idempotency_key=idempotency_key,
+            )
+
+        raise ValidationError(
+            f"Retry is not supported for {job.kind.value} jobs yet.",
+            details={"kind": job.kind.value},
+        )
 
     async def cancel(
         self,
@@ -493,6 +531,19 @@ class JobService:
             if isinstance(phase, str):
                 return phase
         return None
+
+    async def _reserve_quota(self, organization_id: UUID) -> None:
+        allowed, _count = await reserve_daily_quota(
+            self.redis,
+            namespace="jobs",
+            principal_id=str(organization_id),
+            limit=settings.user_daily_job_quota,
+        )
+        if not allowed:
+            raise QuotaExceededError(
+                "Daily job quota exceeded.",
+                details={"quota": settings.user_daily_job_quota},
+            )
 
     @staticmethod
     def event_payload(

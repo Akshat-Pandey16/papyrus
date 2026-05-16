@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
@@ -9,8 +9,14 @@ import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { type LoginInput, loginSchema } from "@/features/auth/schemas";
+import { useAuthStore } from "@/features/auth/store";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: () => {
+    if (useAuthStore.getState().hasAccess) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: LoginPage,
 });
 

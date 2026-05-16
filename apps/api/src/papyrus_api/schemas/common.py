@@ -14,6 +14,12 @@ class HealthResponse(StrictModel):
     version: str
 
 
+class ReadinessResponse(StrictModel):
+    status: str
+    version: str
+    checks: dict[str, str]
+
+
 class ErrorBody(StrictModel):
     code: str
     message: str

@@ -51,6 +51,12 @@ class StorageObject(Base, IdMixin, TimestampMixin):
             "created_at",
             postgresql_where=text("confirmed_at IS NULL"),
         ),
+        Index(
+            "ix_storage_objects_document_unconfirmed",
+            "document_id",
+            "created_at",
+            postgresql_where=text("confirmed_at IS NULL AND document_id IS NOT NULL"),
+        ),
     )
 
     bucket: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -64,3 +70,8 @@ class StorageObject(Base, IdMixin, TimestampMixin):
         server_default="upload",
     )
     confirmed_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
+    document_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        default=None,
+        nullable=True,
+    )

@@ -234,6 +234,24 @@ export function useCancelJobMutation() {
   });
 }
 
+export type RetryJobInput = { jobId: string; idempotencyKey: string };
+
+export function useRetryJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RetryJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>(`/jobs/${input.jobId}/retry`, {
+        idempotency_key: input.idempotencyKey,
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => {
+      qc.setQueryData(compressKeys.job(job.id), job);
+      qc.invalidateQueries({ queryKey: compressKeys.all });
+    },
+  });
+}
+
 export type JobsListFilters = { status?: JobStatus | "all" };
 
 export function useJobsInfiniteQuery(filters: JobsListFilters) {

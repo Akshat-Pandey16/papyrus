@@ -52,6 +52,11 @@ class QuotaExceededError(AppError):
     http_status = status.HTTP_429_TOO_MANY_REQUESTS
 
 
+class RateLimitedError(AppError):
+    code = "rate_limited"
+    http_status = status.HTTP_429_TOO_MANY_REQUESTS
+
+
 class GoneError(AppError):
     code = "gone"
     http_status = status.HTTP_410_GONE

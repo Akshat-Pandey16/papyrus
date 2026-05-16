@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep
 from papyrus_api.schemas.documents import (
@@ -79,3 +79,14 @@ async def confirm_upload(
         created_at=confirmed.document.created_at,
         current_version=version,
     )
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: UUID,
+    principal: CurrentPrincipal,
+    service: DocumentServiceDep,
+) -> Response:
+    _user, organization = principal
+    await service.delete(organization_id=organization.id, document_id=document_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

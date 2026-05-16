@@ -103,3 +103,52 @@ class ForgotPasswordResponse(StrictModel):
 
 class GenericMessage(StrictModel):
     detail: str
+
+
+class ChangePasswordRequest(_MutableModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    password: str = PasswordStr
+    confirm_password: str = PasswordStr
+
+    @field_validator("password")
+    @classmethod
+    def _password_strength(cls, value: str) -> str:
+        has_letter = any(c.isalpha() for c in value)
+        has_digit = any(c.isdigit() for c in value)
+        if not (has_letter and has_digit):
+            raise ValueError("Password must include at least one letter and one digit.")
+        return value
+
+    @model_validator(mode="after")
+    def _passwords_match(self) -> Self:
+        if self.password != self.confirm_password:
+            raise ValueError("Passwords do not match.")
+        if self.password == self.current_password:
+            raise ValueError("New password must differ from the current password.")
+        return self
+
+
+class UpdateProfileRequest(_MutableModel):
+    full_name: str | None = Field(default=None, max_length=200)
+
+
+class SessionOut(StrictModel):
+    id: UUID
+    created_at: datetime
+    expires_at: datetime
+    user_agent: str | None
+    ip_address: str | None
+    current: bool
+
+
+class SessionsList(StrictModel):
+    items: list[SessionOut]
+
+
+class VerifyEmailRequest(_MutableModel):
+    token: str = Field(min_length=10, max_length=512)
+
+
+class VerifyEmailResponse(StrictModel):
+    detail: str
+    debug_token: str | None = None

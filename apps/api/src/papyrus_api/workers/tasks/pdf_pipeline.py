@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -14,9 +13,9 @@ from redis.asyncio import Redis
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
-from papyrus_api.db.session import dispose_engine, get_sessionmaker, init_engine
+from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.jobs.enums import JobStatus
-from papyrus_api.integrations.redis import close_redis, get_redis, init_redis
+from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
@@ -24,6 +23,7 @@ from papyrus_api.services.pdf.compress import CompressionLevel, compress_pdf
 from papyrus_api.services.pdf.merge import merge_pdfs
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
+from papyrus_api.workers.runtime import run_async
 
 log = structlog.get_logger(__name__)
 
@@ -58,8 +58,6 @@ async def _check_cancelled(redis: Redis, job_id: UUID) -> None:
 
 
 async def _run_compress(task_id: str, job_id: UUID) -> None:
-    init_engine()
-    init_redis()
     redis = get_redis()
 
     lock_key = f"job:lock:{job_id}"
@@ -393,33 +391,11 @@ async def _publish(redis: Redis, job_id: UUID, status: JobStatus, payload: dict[
     reject_on_worker_lost=True,
 )
 def compress(self: Any, job_id: str) -> str:
-    async def _runner() -> None:
-        try:
-            await _run_compress(self.request.id or str(uuid4()), UUID(job_id))
-        finally:
-            try:
-                await close_redis()
-            except Exception:
-                log.warning("worker.close_redis_failed")
-            try:
-                await dispose_engine()
-            except Exception:
-                log.warning("worker.dispose_engine_failed")
-
-    asyncio.run(_runner())
+    run_async(_run_compress(self.request.id or str(uuid4()), UUID(job_id)))
     return job_id
 
 
-@celery_app.task(name="papyrus.pdf.run", bind=False, max_retries=3)
-def run_pdf_job(job_id: str) -> str:
-    parsed = UUID(job_id)
-    log.info("pdf.job.start", job_id=str(parsed))
-    return str(parsed)
-
-
 async def _run_merge(task_id: str, job_id: UUID) -> None:
-    init_engine()
-    init_redis()
     redis = get_redis()
 
     lock_key = f"job:lock:{job_id}"
@@ -718,18 +694,5 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
     reject_on_worker_lost=True,
 )
 def merge(self: Any, job_id: str) -> str:
-    async def _runner() -> None:
-        try:
-            await _run_merge(self.request.id or str(uuid4()), UUID(job_id))
-        finally:
-            try:
-                await close_redis()
-            except Exception:
-                log.warning("worker.close_redis_failed")
-            try:
-                await dispose_engine()
-            except Exception:
-                log.warning("worker.dispose_engine_failed")
-
-    asyncio.run(_runner())
+    run_async(_run_merge(self.request.id or str(uuid4()), UUID(job_id)))
     return job_id

@@ -11,6 +11,7 @@ celery_app = Celery(
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
     include=[
+        "papyrus_api.workers.runtime",
         "papyrus_api.workers.tasks.cleanup",
         "papyrus_api.workers.tasks.pdf_pipeline",
     ],

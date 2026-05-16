@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from papyrus_api.api.deps import CurrentPrincipal, JobServiceDep, RedisDep, SsePrincipal
 from papyrus_api.core.config import settings
-from papyrus_api.core.security import TokenType, issue_token
+from papyrus_api.core.security import issue_access_token
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.schemas.jobs import (
     CompressJobRequest,
@@ -22,6 +22,7 @@ from papyrus_api.schemas.jobs import (
     JobsListPage,
     JobStatusLiteral,
     MergeJobRequest,
+    RetryJobRequest,
 )
 from papyrus_api.services.job_service import JobService, job_to_out
 
@@ -142,6 +143,31 @@ async def cancel_job(
 
 
 @router.post(
+    "/{job_id}/retry",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def retry_job(
+    job_id: UUID,
+    payload: RetryJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.retry(
+        organization_id=organization.id,
+        user_id=user.id,
+        job_id=job_id,
+        idempotency_key=payload.idempotency_key,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
     "/{job_id}/events/ticket",
     status_code=status.HTTP_204_NO_CONTENT,
 )
@@ -153,10 +179,9 @@ async def issue_sse_ticket(
 ) -> Response:
     user, organization = principal
     await service.get(organization_id=organization.id, job_id=job_id)
-    token = issue_token(
+    token = issue_access_token(
         subject=user.id,
         organization_id=organization.id,
-        token_type=TokenType.ACCESS,
     )
     response.set_cookie(
         key="papyrus_sse",
@@ -164,7 +189,7 @@ async def issue_sse_ticket(
         max_age=60,
         path=f"/api/v1/jobs/{job_id}/events",
         httponly=True,
-        secure=settings.is_production,
+        secure=not settings.is_development,
         samesite="lax",
     )
     response.status_code = status.HTTP_204_NO_CONTENT

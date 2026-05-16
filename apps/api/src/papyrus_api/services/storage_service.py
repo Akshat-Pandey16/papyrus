@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -29,6 +32,9 @@ class HeadResult:
 
 
 _session = aioboto3.Session()
+_client_lock = asyncio.Lock()
+_client_cm: Any | None = None
+_client: Any | None = None
 
 
 def _client_config() -> Config:
@@ -36,6 +42,7 @@ def _client_config() -> Config:
         signature_version="s3v4",
         s3={"addressing_style": "path" if settings.s3_force_path_style else "auto"},
         retries={"max_attempts": 3, "mode": "standard"},
+        max_pool_connections=64,
     )
 
 
@@ -50,10 +57,38 @@ def _client_kwargs() -> dict[str, Any]:
     }
 
 
+async def _get_client() -> Any:
+    global _client_cm, _client
+    if _client is not None:
+        return _client
+    async with _client_lock:
+        if _client is None:
+            _client_cm = _session.client(**_client_kwargs())
+            _client = await _client_cm.__aenter__()
+    return _client
+
+
+async def close_storage() -> None:
+    global _client_cm, _client
+    if _client_cm is None:
+        return
+    try:
+        await _client_cm.__aexit__(None, None, None)
+    finally:
+        _client_cm = None
+        _client = None
+
+
+@asynccontextmanager
+async def _client_ctx() -> AsyncIterator[Any]:
+    client = await _get_client()
+    yield client
+
+
 class StorageService:
     @staticmethod
     async def ensure_bucket(bucket: str) -> bool:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             try:
                 await client.head_bucket(Bucket=bucket)
                 return False
@@ -72,7 +107,7 @@ class StorageService:
         content_type: str,
         max_bytes: int,
     ) -> PresignedUpload:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             post = await client.generate_presigned_post(
                 Bucket=bucket,
                 Key=key,
@@ -98,21 +133,22 @@ class StorageService:
         if filename:
             safe = filename.replace('"', "")
             params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'
-        async with _session.client(**_client_kwargs()) as client:
-            return await client.generate_presigned_url(
+        async with _client_ctx() as client:
+            url = await client.generate_presigned_url(
                 "get_object",
                 Params=params,
                 ExpiresIn=settings.s3_presign_expires_seconds,
             )
+        return str(url)
 
     @staticmethod
     async def delete(*, bucket: str, key: str) -> None:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             await client.delete_object(Bucket=bucket, Key=key)
 
     @staticmethod
     async def head_object(*, bucket: str, key: str) -> HeadResult | None:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             try:
                 response = await client.head_object(Bucket=bucket, Key=key)
             except client.exceptions.ClientError as exc:
@@ -130,7 +166,7 @@ class StorageService:
 
     @staticmethod
     async def read_range(*, bucket: str, key: str, start: int, end: int) -> bytes:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             response = await client.get_object(
                 Bucket=bucket,
                 Key=key,
@@ -149,7 +185,7 @@ class StorageService:
 
     @staticmethod
     async def download_to_path(*, bucket: str, key: str, dest: Path) -> int:
-        async with _session.client(**_client_kwargs()) as client:
+        async with _client_ctx() as client:
             response = await client.get_object(Bucket=bucket, Key=key)
             body = response["Body"]
             total = 0
@@ -177,7 +213,10 @@ class StorageService:
         src: Path,
         content_type: str,
     ) -> int:
-        async with _session.client(**_client_kwargs()) as client:
+        import anyio
+
+        size = await anyio.to_thread.run_sync(lambda: src.stat().st_size)
+        async with _client_ctx() as client:
             with src.open("rb") as fh:
                 await client.put_object(
                     Bucket=bucket,
@@ -185,4 +224,4 @@ class StorageService:
                     Body=fh,
                     ContentType=content_type,
                 )
-        return src.stat().st_size  # noqa: ASYNC240
+        return size

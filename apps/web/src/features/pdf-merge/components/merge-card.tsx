@@ -3,7 +3,11 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/features/pdf-compress/format";
 import { useJobStream } from "@/features/pdf-compress/hooks/use-job-stream";
-import { useCancelJobMutation, useDownloadUrlMutation } from "@/features/pdf-merge/api";
+import {
+  useCancelJobMutation,
+  useDownloadUrlMutation,
+  useRetryJobMutation,
+} from "@/features/pdf-merge/api";
 import { selectBatch, useMergeStore } from "@/features/pdf-merge/store";
 import type { Job, JobStatus } from "@/features/pdf-merge/types";
 import { cn } from "@/lib/utils";
@@ -53,6 +57,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
 
   const downloadMutation = useDownloadUrlMutation();
   const cancelMutation = useCancelJobMutation();
+  const retryMutation = useRetryJobMutation();
 
   useEffect(() => {
     if (!batch || !job) return;
@@ -244,16 +249,37 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
               </p>
             </div>
           </div>
-          {onRetry ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onRetry(clientBatchId)}
-              className="w-full sm:w-auto sm:self-start"
-            >
-              Try again
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {job ? (
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const next = await retryMutation.mutateAsync({
+                    jobId: job.id,
+                    idempotencyKey: crypto.randomUUID(),
+                  });
+                  updateBatch(clientBatchId, {
+                    jobId: next.id,
+                    phase: "queued",
+                  });
+                }}
+                disabled={retryMutation.isPending}
+                className="w-full sm:w-auto sm:self-start"
+              >
+                {retryMutation.isPending ? "Retrying…" : "Retry"}
+              </Button>
+            ) : null}
+            {onRetry ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRetry(clientBatchId)}
+                className="w-full sm:w-auto sm:self-start"
+              >
+                Dismiss and start over
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

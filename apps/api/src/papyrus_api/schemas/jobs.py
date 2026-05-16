@@ -34,6 +34,10 @@ class CompressJobRequest(_MutableModel):
     idempotency_key: UUID
 
 
+class RetryJobRequest(_MutableModel):
+    idempotency_key: UUID
+
+
 class MergeJobRequest(_MutableModel):
     document_ids: list[UUID] = Field(min_length=2, max_length=50)
     idempotency_key: UUID

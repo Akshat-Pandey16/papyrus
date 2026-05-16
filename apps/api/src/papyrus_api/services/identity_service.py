@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import secrets
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import structlog
@@ -18,20 +17,21 @@ from papyrus_api.core.errors import (
     ValidationError,
 )
 from papyrus_api.core.security import (
-    TokenType,
-    decode_token,
+    hash_opaque_token,
     hash_password,
-    issue_token,
+    issue_access_token,
     needs_rehash,
+    new_opaque_token,
     verify_password,
 )
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
-from papyrus_api.domain.identity.models import Organization, User
+from papyrus_api.domain.identity.models import Organization, RefreshToken, User
 from papyrus_api.repositories.users import (
     MembershipRepository,
     OrganizationRepository,
     PasswordResetTokenRepository,
+    RefreshTokenRepository,
     UserRepository,
 )
 
@@ -47,10 +47,6 @@ def _slugify(value: str) -> str:
     return base or "workspace"
 
 
-def _hash_token(raw: str) -> str:
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
 @dataclass(slots=True)
 class AuthResult:
     user: User
@@ -60,6 +56,12 @@ class AuthResult:
     expires_in: int
 
 
+@dataclass(slots=True, frozen=True)
+class ClientContext:
+    user_agent: str | None = None
+    ip_address: str | None = None
+
+
 class IdentityService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -67,6 +69,7 @@ class IdentityService:
         self.organizations = OrganizationRepository(session)
         self.memberships = MembershipRepository(session)
         self.reset_tokens = PasswordResetTokenRepository(session)
+        self.refresh_tokens = RefreshTokenRepository(session)
 
     async def signup(
         self,
@@ -74,6 +77,7 @@ class IdentityService:
         email: str,
         password: str,
         full_name: str | None,
+        client: ClientContext | None = None,
     ) -> AuthResult:
         email_norm = email.strip().lower()
         existing = await self.users.get_by_email(email_norm)
@@ -101,11 +105,18 @@ class IdentityService:
             role=MembershipRole.OWNER,
         )
 
+        result = await self._issue_tokens(user, organization, client=client, parent=None)
         await self.session.commit()
         log.info("auth.signup", user_id=str(user.id), organization_id=str(organization.id))
-        return self._issue_tokens(user, organization)
+        return result
 
-    async def login(self, *, email: str, password: str) -> AuthResult:
+    async def login(
+        self,
+        *,
+        email: str,
+        password: str,
+        client: ClientContext | None = None,
+    ) -> AuthResult:
         email_norm = email.strip().lower()
         user = await self.users.get_by_email(email_norm)
         if user is None or not user.is_active:
@@ -120,20 +131,71 @@ class IdentityService:
         if organization is None:
             raise AuthenticationError("Account is missing a workspace. Contact support.")
 
+        result = await self._issue_tokens(user, organization, client=client, parent=None)
         await self.session.commit()
         log.info("auth.login", user_id=str(user.id))
-        return self._issue_tokens(user, organization)
+        return result
 
-    async def refresh(self, *, refresh_token: str) -> AuthResult:
-        claims = decode_token(refresh_token, expected_type=TokenType.REFRESH)
-        user_id = UUID(claims["sub"])
-        user = await self.users.get(user_id)
+    async def refresh(
+        self,
+        *,
+        refresh_token: str,
+        client: ClientContext | None = None,
+    ) -> AuthResult:
+        if not refresh_token:
+            raise AuthenticationError("Missing refresh token.")
+        record = await self.refresh_tokens.get_by_hash(hash_opaque_token(refresh_token))
+        if record is None:
+            raise AuthenticationError("Invalid refresh token.")
+
+        now = utc_now()
+        absolute_cutoff = now - timedelta(seconds=settings.refresh_absolute_ttl_seconds)
+        if record.created_at < absolute_cutoff:
+            await self.refresh_tokens.revoke_all_for_user(record.user_id)
+            await self.session.commit()
+            raise AuthenticationError("Session expired. Please sign in again.")
+
+        if record.revoked_at is not None:
+            root_id = await self.refresh_tokens.find_root_ancestor(record)
+            await self.refresh_tokens.revoke_chain(root_id)
+            await self.session.commit()
+            log.warning(
+                "auth.refresh.reuse_detected",
+                user_id=str(record.user_id),
+                token_id=str(record.id),
+            )
+            raise AuthenticationError("Refresh token replay detected. Please sign in again.")
+
+        if record.expires_at <= now:
+            await self.refresh_tokens.revoke(record)
+            await self.session.commit()
+            raise AuthenticationError("Session expired. Please sign in again.")
+
+        user = await self.users.get(record.user_id)
         if user is None or not user.is_active:
+            await self.refresh_tokens.revoke_all_for_user(record.user_id)
+            await self.session.commit()
             raise AuthenticationError("Account is no longer active.")
-        organization = await self.organizations.get_primary_for_user(user.id)
+
+        organization = await self.organizations.get(record.organization_id)
         if organization is None:
+            await self.refresh_tokens.revoke_all_for_user(user.id)
+            await self.session.commit()
             raise AuthenticationError("Account is missing a workspace.")
-        return self._issue_tokens(user, organization)
+
+        await self.refresh_tokens.revoke(record)
+        result = await self._issue_tokens(user, organization, client=client, parent=record.id)
+        await self.session.commit()
+        return result
+
+    async def logout(self, *, refresh_token: str | None) -> None:
+        if not refresh_token:
+            return
+        record = await self.refresh_tokens.get_by_hash(hash_opaque_token(refresh_token))
+        if record is None:
+            return
+        await self.refresh_tokens.revoke(record)
+        await self.session.commit()
 
     async def forgot_password(self, *, email: str) -> str | None:
         email_norm = email.strip().lower()
@@ -142,10 +204,11 @@ class IdentityService:
             log.info("auth.forgot.unknown_email")
             return None
 
+        await self.reset_tokens.revoke_all_for_user(user.id)
         raw_token = secrets.token_urlsafe(48)
         await self.reset_tokens.create(
             user_id=user.id,
-            token_hash=_hash_token(raw_token),
+            token_hash=hash_opaque_token(raw_token),
             expires_at=utc_now() + _RESET_TOKEN_TTL,
         )
         await self.session.commit()
@@ -153,7 +216,7 @@ class IdentityService:
         return raw_token if settings.is_development else None
 
     async def reset_password(self, *, token: str, new_password: str) -> None:
-        record = await self.reset_tokens.get_active_by_hash(_hash_token(token))
+        record = await self.reset_tokens.get_active_by_hash(hash_opaque_token(token))
         if record is None:
             raise ValidationError(
                 "This reset link is invalid or has expired.",
@@ -164,8 +227,122 @@ class IdentityService:
             raise NotFoundError("User no longer exists.")
         await self.users.update_password(user, password_hash=hash_password(new_password))
         await self.reset_tokens.mark_used(record)
+        await self.refresh_tokens.revoke_all_for_user(user.id)
         await self.session.commit()
         log.info("auth.reset_password", user_id=str(user.id))
+
+    async def change_password(
+        self,
+        *,
+        user: User,
+        current_password: str,
+        new_password: str,
+        keep_refresh_token: str | None,
+    ) -> None:
+        if not verify_password(current_password, user.password_hash):
+            raise AuthenticationError("Current password is incorrect.")
+        await self.users.update_password(user, password_hash=hash_password(new_password))
+
+        keep_id: UUID | None = None
+        if keep_refresh_token:
+            record = await self.refresh_tokens.get_by_hash(hash_opaque_token(keep_refresh_token))
+            if record is not None and record.revoked_at is None:
+                keep_id = record.id
+        await self._revoke_other_sessions(user_id=user.id, keep_id=keep_id)
+        await self.session.commit()
+        log.info("auth.password_changed", user_id=str(user.id))
+
+    async def update_profile(self, *, user: User, full_name: str | None) -> User:
+        user.full_name = full_name.strip() if full_name else None
+        await self.session.flush()
+        await self.session.commit()
+        return user
+
+    async def list_sessions(
+        self,
+        *,
+        user_id: UUID,
+        current_refresh_token: str | None,
+    ) -> list[tuple[UUID, datetime, datetime, str | None, str | None, bool]]:
+        records = await self.refresh_tokens.list_active_for_user(user_id=user_id)
+        current_id: UUID | None = None
+        if current_refresh_token:
+            record = await self.refresh_tokens.get_by_hash(
+                hash_opaque_token(current_refresh_token),
+            )
+            if record is not None and record.revoked_at is None:
+                current_id = record.id
+        return [
+            (
+                r.id,
+                r.created_at,
+                r.expires_at,
+                r.user_agent,
+                r.ip_address,
+                r.id == current_id,
+            )
+            for r in records
+        ]
+
+    async def revoke_session(self, *, user_id: UUID, session_id: UUID) -> None:
+        record = await self.refresh_tokens.get(session_id)
+        if record is None or record.user_id != user_id:
+            raise NotFoundError("Session not found.")
+        await self.refresh_tokens.revoke(record)
+        await self.session.commit()
+
+    async def revoke_other_sessions(
+        self,
+        *,
+        user_id: UUID,
+        keep_refresh_token: str | None,
+    ) -> int:
+        keep_id: UUID | None = None
+        if keep_refresh_token:
+            record = await self.refresh_tokens.get_by_hash(hash_opaque_token(keep_refresh_token))
+            if record is not None and record.revoked_at is None:
+                keep_id = record.id
+        revoked = await self._revoke_other_sessions(user_id=user_id, keep_id=keep_id)
+        await self.session.commit()
+        return revoked
+
+    async def _revoke_other_sessions(self, *, user_id: UUID, keep_id: UUID | None) -> int:
+        return await self.refresh_tokens.revoke_others_for_user(
+            user_id=user_id,
+            keep_id=keep_id,
+        )
+
+    async def request_email_verification(self, *, user: User) -> str | None:
+        if user.email_verified_at is not None:
+            return None
+        await self.reset_tokens.revoke_all_for_user(user.id)
+        raw_token = secrets.token_urlsafe(48)
+        await self.reset_tokens.create(
+            user_id=user.id,
+            token_hash=hash_opaque_token(raw_token),
+            expires_at=utc_now() + timedelta(hours=24),
+        )
+        await self.session.commit()
+        log.info("auth.verify_email.token_issued", user_id=str(user.id))
+        return raw_token if settings.is_development else None
+
+    async def confirm_email_verification(self, *, token: str) -> User:
+        record = await self.reset_tokens.get_active_by_hash(hash_opaque_token(token))
+        if record is None:
+            raise ValidationError(
+                "This verification link is invalid or has expired.",
+                details={"field": "token"},
+            )
+        user = await self.users.get(record.user_id)
+        if user is None:
+            raise NotFoundError("User no longer exists.")
+        if user.email_verified_at is None:
+            user.email_verified_at = utc_now()
+            await self.session.flush()
+        await self.reset_tokens.mark_used(record)
+        await self.session.commit()
+        log.info("auth.verify_email.confirmed", user_id=str(user.id))
+        return user
 
     async def get_session(self, *, user_id: UUID) -> tuple[User, Organization]:
         user = await self.users.get(user_id)
@@ -187,21 +364,33 @@ class IdentityService:
                 break
         return candidate
 
-    def _issue_tokens(self, user: User, organization: Organization) -> AuthResult:
-        access = issue_token(
+    async def _issue_tokens(
+        self,
+        user: User,
+        organization: Organization,
+        *,
+        client: ClientContext | None,
+        parent: UUID | None,
+    ) -> AuthResult:
+        access = issue_access_token(
             subject=user.id,
             organization_id=organization.id,
-            token_type=TokenType.ACCESS,
         )
-        refresh = issue_token(
-            subject=user.id,
+        raw_refresh = new_opaque_token(48)
+        record: RefreshToken = await self.refresh_tokens.create(
+            user_id=user.id,
             organization_id=organization.id,
-            token_type=TokenType.REFRESH,
+            token_hash=hash_opaque_token(raw_refresh),
+            expires_at=utc_now() + timedelta(seconds=settings.jwt_refresh_ttl_seconds),
+            parent_id=parent,
+            user_agent=(client.user_agent if client else None),
+            ip_address=(client.ip_address if client else None),
         )
+        _ = record  # bound for future use (auditing handles below)
         return AuthResult(
             user=user,
             organization=organization,
             access_token=access,
-            refresh_token=refresh,
+            refresh_token=raw_refresh,
             expires_in=settings.jwt_access_ttl_seconds,
         )

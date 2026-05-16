@@ -1,25 +1,26 @@
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
 
 import structlog
+from sqlalchemy import select
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.time import utc_now
-from papyrus_api.db.session import get_sessionmaker, init_engine
+from papyrus_api.db.session import get_sessionmaker
+from papyrus_api.domain.documents.models import StorageObject
 from papyrus_api.repositories.documents import (
     DocumentRepository,
     StorageObjectRepository,
 )
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
+from papyrus_api.workers.runtime import run_async
 
 log = structlog.get_logger(__name__)
 
 
 async def _cleanup_orphans() -> int:
-    init_engine()
     sessionmaker = get_sessionmaker()
     storage = StorageService()
     cutoff = utc_now() - timedelta(hours=1)
@@ -52,16 +53,11 @@ async def _cleanup_orphans() -> int:
 
 
 async def _purge_expired_outputs() -> int:
-    init_engine()
     sessionmaker = get_sessionmaker()
     storage = StorageService()
     cutoff = utc_now() - timedelta(seconds=settings.job_result_ttl_seconds)
     deleted = 0
     async with sessionmaker() as session:
-        from sqlalchemy import select
-
-        from papyrus_api.domain.documents.models import StorageObject
-
         stmt = (
             select(StorageObject)
             .where(
@@ -92,10 +88,10 @@ async def _purge_expired_outputs() -> int:
 @celery_app.task(name="papyrus.cleanup.purge_expired")
 def purge_expired() -> int:
     log.info("cleanup.purge_expired.start")
-    return asyncio.run(_purge_expired_outputs())
+    return run_async(_purge_expired_outputs())
 
 
 @celery_app.task(name="papyrus.cleanup.orphaned_uploads")
 def cleanup_orphaned_uploads() -> int:
     log.info("cleanup.orphaned_uploads.start")
-    return asyncio.run(_cleanup_orphans())
+    return run_async(_cleanup_orphans())

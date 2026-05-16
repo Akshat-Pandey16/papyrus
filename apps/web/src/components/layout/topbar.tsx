@@ -58,6 +58,12 @@ export function Topbar() {
               >
                 Dashboard
               </Link>
+              <Link
+                to="/settings"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Settings
+              </Link>
               <span className="mx-2 h-5 w-px bg-border" />
               <div className="flex items-center gap-3">
                 <div className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background text-xs font-semibold">
@@ -122,6 +128,13 @@ export function Topbar() {
                 className="rounded-md px-2 py-2 text-sm font-medium text-foreground hover:bg-accent"
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/settings"
+                onClick={() => setOpen(false)}
+                className="rounded-md px-2 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                Settings
               </Link>
               <button
                 type="button"

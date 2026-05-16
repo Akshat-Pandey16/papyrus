@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.repositories.base import AsyncRepository
@@ -73,6 +73,7 @@ class StorageObjectRepository(AsyncRepository[StorageObject]):
         size_bytes: int,
         content_type: str,
         purpose: str,
+        document_id: UUID | None = None,
     ) -> StorageObject:
         obj = StorageObject(
             bucket=bucket,
@@ -80,10 +81,28 @@ class StorageObjectRepository(AsyncRepository[StorageObject]):
             size_bytes=size_bytes,
             content_type=content_type,
             purpose=purpose,
+            document_id=document_id,
         )
         self.session.add(obj)
         await self.session.flush()
         return obj
+
+    async def get_latest_unconfirmed_for_document(
+        self,
+        *,
+        document_id: UUID,
+    ) -> StorageObject | None:
+        stmt = (
+            select(StorageObject)
+            .where(
+                StorageObject.document_id == document_id,
+                StorageObject.confirmed_at.is_(None),
+            )
+            .order_by(StorageObject.created_at.desc())
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get(self, id_: UUID) -> StorageObject | None:
         return await self.session.get(StorageObject, id_)
@@ -181,3 +200,46 @@ class DocumentVersionRepository(AsyncRepository[DocumentVersion]):
         if row is None:
             return None
         return (row[0], row[1], row[2])
+
+    async def get_many_with_storage(
+        self,
+        *,
+        organization_id: UUID,
+        document_ids: list[UUID],
+    ) -> dict[UUID, tuple[Document, DocumentVersion, StorageObject]]:
+        if not document_ids:
+            return {}
+        subq = (
+            select(
+                DocumentVersion.document_id,
+                func.max(DocumentVersion.version).label("max_version"),
+            )
+            .where(DocumentVersion.document_id.in_(document_ids))
+            .group_by(DocumentVersion.document_id)
+            .subquery()
+        )
+        stmt = (
+            select(Document, DocumentVersion, StorageObject)
+            .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+            .join(
+                subq,
+                and_(
+                    subq.c.document_id == DocumentVersion.document_id,
+                    subq.c.max_version == DocumentVersion.version,
+                ),
+            )
+            .join(StorageObject, StorageObject.id == DocumentVersion.storage_object_id)
+            .where(
+                Document.id.in_(document_ids),
+                Document.organization_id == organization_id,
+                Document.deleted_at.is_(None),
+            )
+        )
+        result = await self.session.execute(stmt)
+        out: dict[UUID, tuple[Document, DocumentVersion, StorageObject]] = {}
+        for row in result.all():
+            doc: Document = row[0]
+            ver: DocumentVersion = row[1]
+            obj: StorageObject = row[2]
+            out[doc.id] = (doc, ver, obj)
+        return out

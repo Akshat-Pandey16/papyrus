@@ -1,7 +1,11 @@
 import { AlertCircle, CheckCircle2, CircleX, Download, FileText, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useCancelJobMutation, useDownloadUrlMutation } from "@/features/pdf-compress/api";
+import {
+  useCancelJobMutation,
+  useDownloadUrlMutation,
+  useRetryJobMutation,
+} from "@/features/pdf-compress/api";
 import {
   formatBytes,
   formatEta,
@@ -62,6 +66,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
 
   const downloadMutation = useDownloadUrlMutation();
   const cancelMutation = useCancelJobMutation();
+  const retryMutation = useRetryJobMutation();
 
   useEffect(() => {
     if (!entry || !job) return;
@@ -259,16 +264,37 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
               </p>
             </div>
           </div>
-          {onRetry ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onRetry(clientUploadId)}
-              className="w-full sm:w-auto sm:self-start"
-            >
-              Try again
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {job ? (
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const next = await retryMutation.mutateAsync({
+                    jobId: job.id,
+                    idempotencyKey: crypto.randomUUID(),
+                  });
+                  updateEntry(clientUploadId, {
+                    jobId: next.id,
+                    phase: "queued",
+                  });
+                }}
+                disabled={retryMutation.isPending}
+                className="w-full sm:w-auto sm:self-start"
+              >
+                {retryMutation.isPending ? "Retrying…" : "Retry"}
+              </Button>
+            ) : null}
+            {onRetry ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRetry(clientUploadId)}
+                className="w-full sm:w-auto sm:self-start"
+              >
+                Dismiss and start over
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
