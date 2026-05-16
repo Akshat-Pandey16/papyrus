@@ -140,15 +140,31 @@ class OcrJobRequest(_MutableModel):
     idempotency_key: UUID
 
 
+class MergeInputSpec(_MutableModel):
+    document_id: UUID
+    page_ranges: str | None = Field(default=None, max_length=512)
+
+
+class MergeOptionsIn(_MutableModel):
+    add_filename_bookmarks: bool | None = None
+    blank_pages_between: int | None = Field(default=None, ge=0, le=2)
+    strip_metadata: bool | None = None
+    linearize: bool | None = None
+    pdf_version: PdfVersionLiteral | None = None
+    compress: CompressOptionsIn | None = None
+
+
 class MergeJobRequest(_MutableModel):
-    document_ids: list[UUID] = Field(min_length=2, max_length=50)
+    inputs: list[MergeInputSpec] = Field(min_length=2, max_length=50)
+    options: MergeOptionsIn | None = None
     idempotency_key: UUID
 
-    @field_validator("document_ids")
+    @field_validator("inputs")
     @classmethod
-    def _no_duplicates(cls, value: list[UUID]) -> list[UUID]:
-        if len(set(value)) != len(value):
-            raise ValueError("document_ids must not contain duplicates.")
+    def _no_duplicate_documents(cls, value: list[MergeInputSpec]) -> list[MergeInputSpec]:
+        ids = [item.document_id for item in value]
+        if len(set(ids)) != len(ids):
+            raise ValueError("inputs must not contain duplicate document_ids.")
         return value
 
 

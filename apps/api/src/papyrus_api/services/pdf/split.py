@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pikepdf
 
-from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError, ValidationError
+from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
+from papyrus_api.services.pdf.page_ranges import parse_groups
 
 
 @dataclass(slots=True, frozen=True)
@@ -17,37 +18,6 @@ class SplitResult:
     input_size_bytes: int
     parts: int
     page_count: int
-
-
-def _parse_ranges(spec: str, page_count: int) -> list[list[int]]:
-    parts: list[list[int]] = []
-    raw_parts = [p.strip() for p in spec.split(",") if p.strip()]
-    if not raw_parts:
-        raise ValidationError("Split spec must contain at least one range.")
-    for raw in raw_parts:
-        if "-" in raw:
-            lo_raw, hi_raw = raw.split("-", 1)
-            try:
-                lo = int(lo_raw)
-                hi = int(hi_raw)
-            except ValueError as exc:
-                raise ValidationError(f"Invalid range '{raw}'.") from exc
-            if lo < 1 or hi < lo or hi > page_count:
-                raise ValidationError(
-                    f"Range '{raw}' is out of bounds for {page_count}-page document.",
-                )
-            parts.append(list(range(lo - 1, hi)))
-        else:
-            try:
-                page = int(raw)
-            except ValueError as exc:
-                raise ValidationError(f"Invalid page '{raw}'.") from exc
-            if page < 1 or page > page_count:
-                raise ValidationError(
-                    f"Page '{raw}' is out of bounds for {page_count}-page document.",
-                )
-            parts.append([page - 1])
-    return parts
 
 
 def split_pdf(
@@ -75,7 +45,7 @@ def split_pdf(
 
     try:
         page_count = len(src.pages)
-        groups = _parse_ranges(ranges, page_count)
+        groups = parse_groups(ranges, page_count=page_count)
 
         with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for idx, group in enumerate(groups, start=1):

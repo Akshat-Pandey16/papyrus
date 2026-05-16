@@ -201,7 +201,8 @@ class JobService:
         *,
         organization_id: UUID,
         user_id: UUID,
-        document_ids: list[UUID],
+        input_specs: list[dict[str, Any]],
+        options: dict[str, Any] | None = None,
         idempotency_key: UUID,
         is_anonymous: bool = False,
     ) -> CreateJobResult:
@@ -212,10 +213,29 @@ class JobService:
         if existing is not None:
             return CreateJobResult(job=existing, replay=True)
 
-        if len(document_ids) < 2:
+        if len(input_specs) < 2:
             raise ValidationError("At least two PDFs are required to merge.")
-        if len(document_ids) > 50:
+        if len(input_specs) > 50:
             raise ValidationError("At most 50 PDFs can be merged in one job.")
+
+        document_ids: list[UUID] = []
+        for index, spec in enumerate(input_specs):
+            raw_id = spec.get("document_id")
+            if not isinstance(raw_id, str):
+                raise ValidationError(
+                    "Each input must include a document_id.",
+                    details={"input_index": index},
+                )
+            try:
+                document_ids.append(UUID(raw_id))
+            except ValueError as exc:
+                raise ValidationError(
+                    "Invalid document_id.",
+                    details={"input_index": index, "value": raw_id},
+                ) from exc
+
+        if len(set(document_ids)) != len(document_ids):
+            raise ValidationError("inputs must not contain duplicate document_ids.")
 
         triples_by_id = await self.versions.get_many_with_storage(
             organization_id=organization_id,
@@ -225,7 +245,10 @@ class JobService:
         inputs: list[dict[str, Any]] = []
         input_filenames: list[str] = []
         total_input_bytes = 0
-        for index, document_id in enumerate(document_ids):
+        max_bytes = (
+            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+        )
+        for index, (spec, document_id) in enumerate(zip(input_specs, document_ids, strict=True)):
             triple = triples_by_id.get(document_id)
             if triple is None:
                 raise DocumentNotFoundError(
@@ -233,9 +256,6 @@ class JobService:
                     details={"document_id": str(document_id), "input_index": index},
                 )
             document, version, storage_object = triple
-            max_bytes = (
-                settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
-            )
             if storage_object.size_bytes > max_bytes:
                 raise QuotaExceededError(
                     "One of the files exceeds the maximum allowed size.",
@@ -247,6 +267,12 @@ class JobService:
                 )
             total_input_bytes += storage_object.size_bytes
             input_filenames.append(document.name)
+            page_ranges_raw = spec.get("page_ranges")
+            page_ranges = (
+                page_ranges_raw.strip()
+                if isinstance(page_ranges_raw, str) and page_ranges_raw.strip()
+                else None
+            )
             inputs.append(
                 {
                     "document_id": str(document.id),
@@ -256,6 +282,7 @@ class JobService:
                     "input_key": storage_object.key,
                     "input_size_bytes": storage_object.size_bytes,
                     "input_filename": document.name,
+                    "page_ranges": page_ranges,
                 }
             )
 
@@ -263,9 +290,9 @@ class JobService:
 
         params: dict[str, Any] = {
             "inputs": inputs,
-            "document_ids": [str(d) for d in document_ids],
             "input_filenames": input_filenames,
             "input_size_bytes": total_input_bytes,
+            "merge_options": options or {},
             "created_by_user_id": str(user_id),
         }
 
@@ -578,15 +605,28 @@ class JobService:
             )
 
         if job.kind == JobKind.MERGE:
-            doc_ids_raw = job.params.get("document_ids") if job.params else None
-            if not isinstance(doc_ids_raw, list) or not all(
-                isinstance(d, str) for d in doc_ids_raw
-            ):
+            inputs_raw = job.params.get("inputs") if job.params else None
+            if not isinstance(inputs_raw, list) or not inputs_raw:
                 raise ValidationError("Job is missing the data needed to retry.")
+            input_specs: list[dict[str, Any]] = []
+            for item in inputs_raw:
+                if not isinstance(item, dict):
+                    raise ValidationError("Job inputs are malformed.")
+                doc_id = item.get("document_id")
+                if not isinstance(doc_id, str):
+                    raise ValidationError("Job inputs are missing a document_id.")
+                spec: dict[str, Any] = {"document_id": doc_id}
+                pr = item.get("page_ranges")
+                if isinstance(pr, str):
+                    spec["page_ranges"] = pr
+                input_specs.append(spec)
+            options_raw = job.params.get("merge_options") if job.params else None
+            options = options_raw if isinstance(options_raw, dict) else None
             return await self.create_merge_job(
                 organization_id=organization_id,
                 user_id=user_id,
-                document_ids=[UUID(d) for d in doc_ids_raw],
+                input_specs=input_specs,
+                options=options,
                 idempotency_key=idempotency_key,
             )
 

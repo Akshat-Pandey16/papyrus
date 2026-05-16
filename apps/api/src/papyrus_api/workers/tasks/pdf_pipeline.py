@@ -24,7 +24,7 @@ from papyrus_api.services.pdf.compress import (
     compress_pdf,
     options_from_payload,
 )
-from papyrus_api.services.pdf.merge import merge_pdfs
+from papyrus_api.services.pdf.merge import MergeInput, MergeOptions, merge_pdfs
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
@@ -59,6 +59,32 @@ async def _check_cancelled(redis: Redis, job_id: UUID) -> None:
         flag = None
     if flag:
         raise _JobCancelledError()
+
+
+def _build_merge_options(params: dict[str, Any]) -> MergeOptions:
+    raw = params.get("merge_options") or {}
+    if not isinstance(raw, dict):
+        return MergeOptions()
+    blank = raw.get("blank_pages_between")
+    if isinstance(blank, bool) or not isinstance(blank, int):
+        blank = 0
+    pdf_version_raw = raw.get("pdf_version")
+    pdf_version = pdf_version_raw if isinstance(pdf_version_raw, str) else None
+    compress_raw = raw.get("compress")
+    compress_options = None
+    if isinstance(compress_raw, dict) and compress_raw:
+        compress_options = options_from_payload(
+            level=CompressionLevel.CUSTOM,
+            overrides=compress_raw,
+        )
+    return MergeOptions(
+        add_filename_bookmarks=bool(raw.get("add_filename_bookmarks", False)),
+        blank_pages_between=max(0, min(2, blank)),
+        strip_metadata=bool(raw.get("strip_metadata", False)),
+        linearize=bool(raw.get("linearize", False)),
+        pdf_version=pdf_version,
+        compress=compress_options,
+    )
 
 
 async def _run_compress(task_id: str, job_id: UUID) -> None:
@@ -497,7 +523,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
     try:
         with tempfile.TemporaryDirectory(prefix="papyrus-merge-") as tmp_root:
             tmp_dir = Path(tmp_root)
-            input_paths: list[Path] = []
+            merge_inputs: list[MergeInput] = []
             for index, item in enumerate(inputs):
                 dest = tmp_dir / f"input-{index:04d}.pdf"
                 try:
@@ -510,7 +536,19 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     if _classify_storage_error(exc):
                         raise _TransientStorageError(str(exc)) from exc
                     raise
-                input_paths.append(dest)
+                page_ranges_raw = item.get("page_ranges")
+                page_ranges = (
+                    page_ranges_raw
+                    if isinstance(page_ranges_raw, str) and page_ranges_raw.strip()
+                    else None
+                )
+                merge_inputs.append(
+                    MergeInput(
+                        path=dest,
+                        label=str(item.get("input_filename") or f"Document {index + 1}"),
+                        page_ranges=page_ranges,
+                    )
+                )
 
             await _check_cancelled(redis, job_id)
 
@@ -528,11 +566,13 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
             def _on_progress(_label: str) -> None:
                 pass
 
-            paths_for_thread = list(input_paths)
+            merge_options = _build_merge_options(params)
+            inputs_for_thread = list(merge_inputs)
             result = await anyio.to_thread.run_sync(
                 lambda: merge_pdfs(
-                    input_paths=paths_for_thread,
+                    inputs=inputs_for_thread,
                     output_path=output_path,
+                    options=merge_options,
                     progress=_on_progress,
                 )
             )
@@ -594,6 +634,9 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     "input_size_bytes": result.input_size_bytes,
                     "page_count": result.page_count,
                     "input_count": result.input_count,
+                    "bookmarks_added": result.bookmarks_added,
+                    "blank_pages_added": result.blank_pages_added,
+                    "compressed": result.compressed,
                 }
                 await JobEventRepository(session).append(
                     job_id=job_id,

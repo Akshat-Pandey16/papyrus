@@ -126,10 +126,21 @@ async def create_merge_job(
     response: Response,
 ) -> JobOut:
     user, organization = principal
+    input_specs = [
+        {
+            "document_id": str(spec.document_id),
+            "page_ranges": spec.page_ranges,
+        }
+        for spec in payload.inputs
+    ]
+    options_dict: dict[str, object] | None = None
+    if payload.options is not None:
+        options_dict = payload.options.model_dump(exclude_none=True)
     result = await service.create_merge_job(
         organization_id=organization.id,
         user_id=user.id,
-        document_ids=payload.document_ids,
+        input_specs=input_specs,
+        options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
     )

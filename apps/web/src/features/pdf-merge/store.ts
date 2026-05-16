@@ -24,6 +24,7 @@ export type MergeFileEntry = {
   fileSize: number;
   fileType: string;
   documentId?: string;
+  pageRanges?: string | null;
   phase: MergeFilePhase;
   bytesUploaded: number;
   bytesTotal: number;

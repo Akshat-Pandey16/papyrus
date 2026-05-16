@@ -8,10 +8,16 @@ import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { type CreateMergeJobInput, useCreateMergeJobMutation } from "@/features/pdf-merge/api";
 import { MergeCard } from "@/features/pdf-merge/components/merge-card";
 import { MergeHistoryList } from "@/features/pdf-merge/components/merge-history-list";
-import { MultiFileDropzone } from "@/features/pdf-merge/components/multi-file-dropzone";
+import { MergeOptionsPanel } from "@/features/pdf-merge/components/merge-options-panel";
+import {
+  type MergeFileSpec,
+  MultiFileDropzone,
+} from "@/features/pdf-merge/components/multi-file-dropzone";
 import { useMergeUpload } from "@/features/pdf-merge/hooks/use-merge-upload";
 import { useRecoverMerges } from "@/features/pdf-merge/hooks/use-recover-merges";
+import { DEFAULT_MERGE_OPTIONS, isValidPageRangeSpec } from "@/features/pdf-merge/presets";
 import { type MergeFileEntry, useMergeStore } from "@/features/pdf-merge/store";
+import type { MergeInput, MergeOptions } from "@/features/pdf-merge/types";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/tools/merge")({
@@ -28,7 +34,8 @@ function newId(): string {
 function MergePage() {
   useRecoverMerges();
 
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<MergeFileSpec[]>([]);
+  const [options, setOptions] = useState<MergeOptions>(DEFAULT_MERGE_OPTIONS);
   const [submitting, setSubmitting] = useState(false);
   const startBatch = useMergeStore((s) => s.start);
   const updateBatch = useMergeStore((s) => s.updateBatch);
@@ -38,7 +45,7 @@ function MergePage() {
   const createJob = useCreateMergeJobMutation();
 
   const onAdd = useCallback((incoming: File[]) => {
-    setPendingFiles((prev) => [...prev, ...incoming]);
+    setPendingFiles((prev) => [...prev, ...incoming.map((file) => ({ file, pageRanges: "" }))]);
   }, []);
 
   const onRemove = useCallback((index: number) => {
@@ -56,22 +63,34 @@ function MergePage() {
     });
   }, []);
 
+  const onPageRangesChange = useCallback((index: number, value: string) => {
+    setPendingFiles((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, pageRanges: value } : entry)),
+    );
+  }, []);
+
   const onClearAll = useCallback(() => setPendingFiles([]), []);
 
+  const rangesAllValid = useMemo(
+    () => pendingFiles.every((entry) => isValidPageRangeSpec(entry.pageRanges)),
+    [pendingFiles],
+  );
+
   const onSubmit = useCallback(async () => {
-    if (pendingFiles.length < 2 || submitting) return;
+    if (pendingFiles.length < 2 || submitting || !rangesAllValid) return;
     setSubmitting(true);
 
     const clientBatchId = newId();
     const idempotencyKey = newId();
-    const fileEntries: MergeFileEntry[] = pendingFiles.map((f) => ({
+    const fileEntries: MergeFileEntry[] = pendingFiles.map((entry) => ({
       clientFileId: newId(),
-      fileName: f.name,
-      fileSize: f.size,
-      fileType: f.type,
+      fileName: entry.file.name,
+      fileSize: entry.file.size,
+      fileType: entry.file.type,
+      pageRanges: entry.pageRanges.trim() === "" ? null : entry.pageRanges.trim(),
       phase: "pending",
       bytesUploaded: 0,
-      bytesTotal: f.size,
+      bytesTotal: entry.file.size,
     }));
 
     startBatch({
@@ -84,15 +103,21 @@ function MergePage() {
 
     const uploadInputs = fileEntries.map((entry, idx) => ({
       clientFileId: entry.clientFileId,
-      file: pendingFiles[idx] as File,
+      file: pendingFiles[idx]?.file as File,
     }));
 
     try {
       const { documentIds } = await start({ clientBatchId, files: uploadInputs });
 
+      const inputs: MergeInput[] = documentIds.map((documentId, idx) => ({
+        documentId,
+        pageRanges: fileEntries[idx]?.pageRanges ?? null,
+      }));
+
       const input: CreateMergeJobInput = {
-        documentIds,
+        inputs,
         idempotencyKey,
+        options,
       };
       const job = await createJob.mutateAsync(input);
       updateBatch(clientBatchId, { jobId: job.id, phase: "queued" });
@@ -122,7 +147,17 @@ function MergePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [pendingFiles, submitting, startBatch, start, updateBatch, createJob, cancel]);
+  }, [
+    pendingFiles,
+    submitting,
+    rangesAllValid,
+    options,
+    startBatch,
+    start,
+    updateBatch,
+    createJob,
+    cancel,
+  ]);
 
   const onRetry = useCallback(
     (id: string) => {
@@ -137,9 +172,8 @@ function MergePage() {
       .map((batch) => batch.clientBatchId);
   }, [batchesMap]);
 
-  const canSubmit = pendingFiles.length >= 2 && !submitting;
-
-  const totalSize = pendingFiles.reduce((s, f) => s + f.size, 0);
+  const canSubmit = pendingFiles.length >= 2 && !submitting && rangesAllValid;
+  const totalSize = pendingFiles.reduce((s, entry) => s + entry.file.size, 0);
 
   return (
     <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
@@ -147,8 +181,8 @@ function MergePage() {
         <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Drop two or more PDFs, drag to reorder, and we&apos;ll stitch them into one. Files are
-            deleted after 24 hours.
+            Drop two or more PDFs, drag to reorder, pick page ranges per file, and we&apos;ll stitch
+            them into one. Files are deleted after 24 hours.
           </p>
         </header>
 
@@ -160,6 +194,7 @@ function MergePage() {
               onRemove={onRemove}
               onMove={onMove}
               onClearAll={onClearAll}
+              onPageRangesChange={onPageRangesChange}
               disabled={submitting}
             />
           </div>
@@ -175,13 +210,16 @@ function MergePage() {
               <SummaryRow label="Files">{pendingFiles.length}</SummaryRow>
               <SummaryRow label="Total size">{formatBytesShort(totalSize)}</SummaryRow>
             </dl>
+            <MergeOptionsPanel value={options} onChange={setOptions} disabled={submitting} />
             <Button size="lg" onClick={onSubmit} disabled={!canSubmit} className="h-11">
               <Files className="mr-2 h-4 w-4" aria-hidden />
               {submitting
                 ? "Starting…"
                 : pendingFiles.length < 2
                   ? "Add at least 2 PDFs"
-                  : `Merge ${pendingFiles.length} PDFs`}
+                  : !rangesAllValid
+                    ? "Fix page ranges"
+                    : `Merge ${pendingFiles.length} PDFs`}
             </Button>
           </aside>
         </section>
