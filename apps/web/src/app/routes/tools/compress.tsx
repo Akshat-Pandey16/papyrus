@@ -118,20 +118,16 @@ function CompressPage() {
   }, [uploadsMap]);
 
   return (
-    <div className="w-full px-6 py-10 sm:px-10 lg:px-14">
-      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-10">
+    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Tools / Compress
-          </span>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Compress a PDF</h1>
-          <p className="max-w-2xl text-[0.95rem] text-muted-foreground">
-            Make PDFs smaller while keeping them readable. Pick a level, drop your file, and we
-            handle the rest. Files stay private and are deleted after 24 hours.
+          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
+            Drop a PDF, pick how aggressively to compress, and we&apos;ll save you 20–50% on file
+            size. Files are deleted after 24 hours.
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_auto]">
+        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="flex flex-col gap-5">
             <FileDropzone
               onFile={(f) => setPendingFile(f)}
@@ -139,24 +135,31 @@ function CompressPage() {
               onClear={() => setPendingFile(null)}
               disabled={submitting}
             />
+          </div>
+
+          <aside className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-semibold">Options</h2>
+              <p className="text-xs text-muted-foreground">
+                Pick a balance between file size and visual fidelity.
+              </p>
+            </div>
             <CompressionLevelSelector value={level} onChange={setLevel} disabled={submitting} />
             <Button
               size="lg"
               onClick={onSubmit}
               disabled={!pendingFile || submitting}
-              className="self-start"
+              className="h-11"
             >
               <Sparkles className="mr-2 h-4 w-4" aria-hidden />
               {submitting ? "Starting…" : "Compress PDF"}
             </Button>
-          </div>
+          </aside>
         </section>
 
         {sortedIds.length > 0 ? (
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Active
-            </h2>
+            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
             <div className="flex flex-col gap-3">
               {sortedIds.map((id) => (
                 <CompressionCard key={id} clientUploadId={id} onRetry={onRetry} />
@@ -166,9 +169,7 @@ function CompressPage() {
         ) : null}
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Recent jobs
-          </h2>
+          <h2 className="text-sm font-semibold tracking-tight">Recent jobs</h2>
           <JobHistoryList />
         </section>
       </div>

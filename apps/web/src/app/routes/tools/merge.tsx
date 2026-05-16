@@ -143,21 +143,19 @@ function MergePage() {
 
   const canSubmit = pendingFiles.length >= 2 && !submitting;
 
+  const totalSize = pendingFiles.reduce((s, f) => s + f.size, 0);
+
   return (
-    <div className="w-full px-6 py-10 sm:px-10 lg:px-14">
-      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-10">
+    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Tools / Merge
-          </span>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Merge PDFs</h1>
-          <p className="max-w-2xl text-[0.95rem] text-muted-foreground">
-            Combine multiple PDFs into a single file. Drop your files, arrange the order, and we'll
-            stitch them together. Files stay private and are deleted after 24 hours.
+          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
+            Drop two or more PDFs, drag to reorder, and we&apos;ll stitch them into one. Files are
+            deleted after 24 hours.
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_auto]">
+        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="flex flex-col gap-5">
             <MultiFileDropzone
               files={pendingFiles}
@@ -167,7 +165,20 @@ function MergePage() {
               onClearAll={onClearAll}
               disabled={submitting}
             />
-            <Button size="lg" onClick={onSubmit} disabled={!canSubmit} className="self-start">
+          </div>
+
+          <aside className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-semibold">Summary</h2>
+              <p className="text-xs text-muted-foreground">
+                Files merge in the order shown on the left.
+              </p>
+            </div>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <SummaryRow label="Files">{pendingFiles.length}</SummaryRow>
+              <SummaryRow label="Total size">{formatBytesShort(totalSize)}</SummaryRow>
+            </dl>
+            <Button size="lg" onClick={onSubmit} disabled={!canSubmit} className="h-11">
               <Files className="mr-2 h-4 w-4" aria-hidden />
               {submitting
                 ? "Starting…"
@@ -175,14 +186,12 @@ function MergePage() {
                   ? "Add at least 2 PDFs"
                   : `Merge ${pendingFiles.length} PDFs`}
             </Button>
-          </div>
+          </aside>
         </section>
 
         {sortedIds.length > 0 ? (
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Active
-            </h2>
+            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
             <div className="flex flex-col gap-3">
               {sortedIds.map((id) => (
                 <MergeCard key={id} clientBatchId={id} onRetry={onRetry} />
@@ -192,12 +201,28 @@ function MergePage() {
         ) : null}
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Recent jobs
-          </h2>
+          <h2 className="text-sm font-semibold tracking-tight">Recent jobs</h2>
           <MergeHistoryList />
         </section>
       </div>
     </div>
   );
+}
+
+function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-background p-3">
+      <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="text-base font-semibold">{children}</dd>
+    </div>
+  );
+}
+
+function formatBytesShort(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }

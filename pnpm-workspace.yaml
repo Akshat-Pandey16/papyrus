@@ -2,8 +2,11 @@ packages:
   - "apps/web"
   - "packages/*"
 
-allowBuilds:
-  msw: set this to true or false
+# Approve install/postinstall scripts for these packages. msw needs its
+# postinstall to populate the dev service worker. Anything not listed here is
+# silently skipped, which pnpm@11 treats as a failure under verify-deps-before-run.
+onlyBuiltDependencies:
+  - msw
 
 # Catalog: pin shared dependency versions across workspace packages.
 catalog:

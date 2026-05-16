@@ -46,6 +46,10 @@ beat:  ## Run the Celery beat scheduler
 web:  ## Run the Vite dev server
 	pnpm --filter @papyrus/web dev
 
+web-fresh:
+	rm -rf apps/web/node_modules/.vite
+	pnpm --filter @papyrus/web dev
+
 # ---- Database --------------------------------------------------------
 db-upgrade:  ## Apply migrations to head
 	$(ALEMBIC) upgrade head

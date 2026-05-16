@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, type ReactNode, Suspense } from "react";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { SessionBootstrap } from "@/features/auth/session-bootstrap";
 import { queryClient } from "@/lib/api/query-client";
 
@@ -18,14 +19,27 @@ const ReactQueryDevtools = import.meta.env.DEV
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SessionBootstrap>{children}</SessionBootstrap>
-      <Toaster position="top-right" richColors closeButton />
-      {ReactQueryDevtools ? (
-        <Suspense fallback={null}>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </Suspense>
-      ) : null}
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <SessionBootstrap>{children}</SessionBootstrap>
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          theme="system"
+          toastOptions={{
+            classNames: {
+              toast:
+                "group toast group-[.toaster]:bg-card group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+            },
+          }}
+        />
+        {ReactQueryDevtools ? (
+          <Suspense fallback={null}>
+            <ReactQueryDevtools initialIsOpen={false} />
+          </Suspense>
+        ) : null}
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
