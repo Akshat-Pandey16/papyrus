@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { RotateCcw, RotateCw, Shuffle } from "lucide-react";
 import { useMemo, useState } from "react";
-import { AnonymousBanner } from "@/components/shared/anonymous-banner";
+import { ToolOptionsHeader, ToolPageShell } from "@/components/layout/tool-page-shell";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { FileDropzone } from "@/features/pdf-compress/components/file-dropzone";
@@ -79,138 +79,129 @@ function RotatePage() {
     setRotations({});
   };
 
-  return (
-    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <AnonymousBanner />
-        <header className="flex flex-col gap-2">
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Click a page to rotate it 90° at a time, or use the apply-to-all buttons. Unchanged
-            pages stay as-is.
-          </p>
-        </header>
+  const hint =
+    Object.keys(rotations).length === 0
+      ? pageCount
+        ? `${pageCount} page${pageCount === 1 ? "" : "s"} in this PDF.`
+        : "Click any page on the left to rotate it."
+      : `${Object.keys(rotations).length} of ${pageCount ?? "?"} page(s) will be rotated.`;
 
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <FileDropzone
-              onFile={(f) => {
-                setFile(f);
-                setRotations({});
-              }}
-              selectedFile={file}
-              onClear={() => {
-                setFile(null);
-                setRotations({});
-              }}
-              disabled={submitting}
+  return (
+    <ToolPageShell
+      tag="Rotate"
+      title="Rotate pages"
+      description="Click a page to rotate it 90° at a time, or apply to all. Untouched pages stay as-is."
+      icon={Shuffle}
+      workspace={
+        <>
+          <FileDropzone
+            onFile={(f) => {
+              setFile(f);
+              setRotations({});
+            }}
+            selectedFile={file}
+            onClear={() => {
+              setFile(null);
+              setRotations({});
+            }}
+            disabled={submitting}
+          />
+          {file ? (
+            <PageThumbnails
+              file={file}
+              onPageClick={cyclePage}
+              rotations={rotations}
+              maxPages={pageCount ?? 200}
             />
-            {file ? (
-              <PageThumbnails
-                file={file}
-                onPageClick={cyclePage}
-                rotations={rotations}
-                maxPages={pageCount ?? 200}
-              />
+          ) : null}
+        </>
+      }
+      options={
+        <>
+          <ToolOptionsHeader title="Rotation plan" hint={hint} />
+
+          <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Apply to all pages
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyToAll(90)}
+                disabled={!pageCount || submitting}
+                className="h-9"
+              >
+                <RotateCw className="mr-1.5 h-3.5 w-3.5" /> 90°
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyToAll(180)}
+                disabled={!pageCount || submitting}
+                className="h-9"
+              >
+                180°
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => applyToAll(270)}
+                disabled={!pageCount || submitting}
+                className="h-9"
+              >
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> 270°
+              </Button>
+            </div>
+            {Object.keys(rotations).length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={clearRotations}
+                disabled={submitting}
+                className="h-8 self-start text-muted-foreground hover:text-foreground"
+              >
+                Clear all
+              </Button>
             ) : null}
           </div>
 
-          <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Rotation plan</h2>
-              <p className="text-xs text-muted-foreground">
-                {Object.keys(rotations).length === 0
-                  ? pageCount
-                    ? `${pageCount} page${pageCount === 1 ? "" : "s"} in this PDF.`
-                    : "Click any page on the left to rotate it."
-                  : `${Object.keys(rotations).length} of ${pageCount ?? "?"} page(s) will be rotated.`}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Apply to all pages
-              </p>
-              <div className="grid grid-cols-3 gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => applyToAll(90)}
-                  disabled={!pageCount || submitting}
-                  className="h-9"
-                >
-                  <RotateCw className="mr-1.5 h-3.5 w-3.5" /> 90°
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => applyToAll(180)}
-                  disabled={!pageCount || submitting}
-                  className="h-9"
-                >
-                  180°
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => applyToAll(270)}
-                  disabled={!pageCount || submitting}
-                  className="h-9"
-                >
-                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> 270°
-                </Button>
-              </div>
-              {Object.keys(rotations).length > 0 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={clearRotations}
-                  disabled={submitting}
-                  className="h-8 self-start text-muted-foreground hover:text-foreground"
-                >
-                  Clear all
-                </Button>
-              ) : null}
-            </div>
-
-            {Object.keys(rotations).length > 0 ? (
-              <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-xs">
-                {Object.entries(rotations)
-                  .sort((a, b) => Number(a[0]) - Number(b[0]))
-                  .map(([page, deg]) => (
-                    <li key={page} className="flex items-center justify-between gap-3">
-                      <span>Page {page}</span>
-                      <span className="font-medium">{deg}°</span>
-                    </li>
-                  ))}
-              </ul>
-            ) : null}
-            <Button
-              size="lg"
-              onClick={onSubmit}
-              disabled={!file || submitting || Object.keys(rotations).length === 0}
-              className="h-11"
-            >
-              <RotateCw className="mr-2 h-4 w-4" />
-              {submitting ? "Starting…" : "Rotate pages"}
-            </Button>
-          </aside>
-        </section>
-
-        {sortedIds.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
-            <div className="flex flex-col gap-3">
-              {sortedIds.map((id) => (
-                <ToolJobCard key={id} clientUploadId={id} successLabel="Rotation complete" />
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </div>
-    </div>
+          {Object.keys(rotations).length > 0 ? (
+            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-xs">
+              {Object.entries(rotations)
+                .sort((a, b) => Number(a[0]) - Number(b[0]))
+                .map(([page, deg]) => (
+                  <li key={page} className="flex items-center justify-between gap-3">
+                    <span>Page {page}</span>
+                    <span className="font-medium">{deg}°</span>
+                  </li>
+                ))}
+            </ul>
+          ) : null}
+          <Button
+            size="lg"
+            onClick={onSubmit}
+            disabled={!file || submitting || Object.keys(rotations).length === 0}
+            className="h-11"
+          >
+            <RotateCw className="mr-2 h-4 w-4" />
+            {submitting ? "Starting…" : "Rotate pages"}
+          </Button>
+        </>
+      }
+      active={
+        sortedIds.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {sortedIds.map((id) => (
+              <ToolJobCard key={id} clientUploadId={id} successLabel="Rotation complete" />
+            ))}
+          </div>
+        ) : null
+      }
+    />
   );
 }

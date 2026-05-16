@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Files } from "lucide-react";
+import { Files, Layers } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AnonymousBanner } from "@/components/shared/anonymous-banner";
+import { ToolOptionsHeader, ToolPageShell } from "@/components/layout/tool-page-shell";
 import type { PageRange } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { type CreateMergeJobInput, useCreateMergeJobMutation } from "@/features/pdf-merge/api";
 import { MergeCard } from "@/features/pdf-merge/components/merge-card";
-import { MergeHistoryList } from "@/features/pdf-merge/components/merge-history-list";
 import { MergeOptionsPanel } from "@/features/pdf-merge/components/merge-options-panel";
 import {
   type MergeFileSpec,
@@ -165,69 +164,50 @@ function MergePage() {
   const totalSize = pendingFiles.reduce((s, entry) => s + entry.file.size, 0);
 
   return (
-    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <AnonymousBanner />
-        <header className="flex flex-col gap-2">
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Drop two or more PDFs, drag to reorder, optionally pick pages per file, and we&apos;ll
-            stitch them into one. Files are deleted after 24 hours.
-          </p>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="flex min-w-0 flex-col gap-5">
-            <MultiFileDropzone
-              files={pendingFiles}
-              onAdd={onAdd}
-              onRemove={onRemove}
-              onMove={onMove}
-              onClearAll={onClearAll}
-              onRangesChange={onRangesChange}
-              disabled={submitting}
-            />
+    <ToolPageShell
+      tag="Merge"
+      title="Merge PDFs"
+      description="Drop two or more PDFs, drag to reorder, optionally pick pages per file — get one tidy file."
+      icon={Layers}
+      workspace={
+        <MultiFileDropzone
+          files={pendingFiles}
+          onAdd={onAdd}
+          onRemove={onRemove}
+          onMove={onMove}
+          onClearAll={onClearAll}
+          onRangesChange={onRangesChange}
+          disabled={submitting}
+        />
+      }
+      options={
+        <>
+          <ToolOptionsHeader title="Summary" hint="Files merge in the order shown." />
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <SummaryRow label="Files">{pendingFiles.length}</SummaryRow>
+            <SummaryRow label="Total size">{formatBytesShort(totalSize)}</SummaryRow>
+          </dl>
+          <MergeOptionsPanel value={options} onChange={setOptions} disabled={submitting} />
+          <Button size="lg" onClick={onSubmit} disabled={!canSubmit} className="h-11">
+            <Files className="mr-2 h-4 w-4" aria-hidden />
+            {submitting
+              ? "Starting…"
+              : pendingFiles.length < 2
+                ? "Add at least 2 PDFs"
+                : `Merge ${pendingFiles.length} PDFs`}
+          </Button>
+        </>
+      }
+      active={
+        sortedIds.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {sortedIds.map((id) => (
+              <MergeCard key={id} clientBatchId={id} onRetry={onRetry} />
+            ))}
           </div>
-
-          <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Summary</h2>
-              <p className="text-xs text-muted-foreground">
-                Files merge in the order shown on the left.
-              </p>
-            </div>
-            <dl className="grid grid-cols-2 gap-3 text-sm">
-              <SummaryRow label="Files">{pendingFiles.length}</SummaryRow>
-              <SummaryRow label="Total size">{formatBytesShort(totalSize)}</SummaryRow>
-            </dl>
-            <MergeOptionsPanel value={options} onChange={setOptions} disabled={submitting} />
-            <Button size="lg" onClick={onSubmit} disabled={!canSubmit} className="h-11">
-              <Files className="mr-2 h-4 w-4" aria-hidden />
-              {submitting
-                ? "Starting…"
-                : pendingFiles.length < 2
-                  ? "Add at least 2 PDFs"
-                  : `Merge ${pendingFiles.length} PDFs`}
-            </Button>
-          </aside>
-        </section>
-
-        {sortedIds.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
-            <div className="flex flex-col gap-3">
-              {sortedIds.map((id) => (
-                <MergeCard key={id} clientBatchId={id} onRetry={onRetry} />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold tracking-tight">Recent jobs</h2>
-          <MergeHistoryList />
-        </section>
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
 }
 

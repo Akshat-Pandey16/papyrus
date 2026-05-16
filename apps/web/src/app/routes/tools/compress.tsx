@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Sparkles, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AnonymousBanner } from "@/components/shared/anonymous-banner";
+import { ToolOptionsHeader, ToolPageShell } from "@/components/layout/tool-page-shell";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import {
@@ -15,7 +15,6 @@ import { CompressionLevelSelector } from "@/features/pdf-compress/components/com
 import { CompressionOptionsPanel } from "@/features/pdf-compress/components/compression-options-panel";
 import { EstimateResult } from "@/features/pdf-compress/components/estimate-result";
 import { FileDropzone } from "@/features/pdf-compress/components/file-dropzone";
-import { JobHistoryList } from "@/features/pdf-compress/components/job-history-list";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { useRecoverUploads } from "@/features/pdf-compress/hooks/use-recover-uploads";
 import { DEFAULT_LEVEL, detectLevel, optionsForLevel } from "@/features/pdf-compress/presets";
@@ -205,87 +204,64 @@ function CompressPage() {
   }, [uploadsMap]);
 
   return (
-    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <AnonymousBanner />
-        <header className="flex flex-col gap-2">
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Drop a PDF, pick how aggressively to compress, and we&apos;ll save you 20–80% on file
-            size. Files are deleted after 24 hours.
-          </p>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="flex min-w-0 flex-col gap-5">
-            <FileDropzone
-              onFile={onFile}
-              selectedFile={pendingFile}
-              onClear={onClearFile}
-              disabled={submitting}
-            />
-            {pendingFile ? <PageThumbnails file={pendingFile} /> : null}
+    <ToolPageShell
+      tag="Compress"
+      title="Compress PDF"
+      description="Drop a PDF, pick how hard to squeeze, save 20–80% on size. Files auto-delete in 24h."
+      icon={Wand2}
+      workspace={
+        <>
+          <FileDropzone
+            onFile={onFile}
+            selectedFile={pendingFile}
+            onClear={onClearFile}
+            disabled={submitting}
+          />
+          {pendingFile ? <PageThumbnails file={pendingFile} /> : null}
+        </>
+      }
+      options={
+        <>
+          <ToolOptionsHeader title="Options" hint="Start with a preset, tune below." />
+          <CompressionLevelSelector value={level} onChange={onLevelChange} disabled={submitting} />
+          <CompressionOptionsPanel
+            value={options}
+            onChange={onOptionsChange}
+            disabled={submitting}
+          />
+          {estimate ? <EstimateResult estimate={estimate} /> : null}
+          <div className="flex flex-col gap-2">
+            <Button
+              size="lg"
+              onClick={onSubmit}
+              disabled={!pendingFile || submitting}
+              className="h-11"
+            >
+              <Sparkles className="mr-2 h-4 w-4" aria-hidden />
+              {submitting ? "Starting…" : "Compress PDF"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onEstimate}
+              disabled={!pendingFile || submitting || estimateMutation.isPending}
+              className="h-9"
+            >
+              <Wand2 className="mr-2 h-3.5 w-3.5" aria-hidden />
+              {estimateMutation.isPending ? "Estimating…" : "Preview savings"}
+            </Button>
           </div>
-
-          <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Options</h2>
-              <p className="text-xs text-muted-foreground">
-                Start with a preset, tune the details below.
-              </p>
-            </div>
-            <CompressionLevelSelector
-              value={level}
-              onChange={onLevelChange}
-              disabled={submitting}
-            />
-            <CompressionOptionsPanel
-              value={options}
-              onChange={onOptionsChange}
-              disabled={submitting}
-            />
-
-            {estimate ? <EstimateResult estimate={estimate} /> : null}
-
-            <div className="flex flex-col gap-2">
-              <Button
-                size="lg"
-                onClick={onSubmit}
-                disabled={!pendingFile || submitting}
-                className="h-11"
-              >
-                <Sparkles className="mr-2 h-4 w-4" aria-hidden />
-                {submitting ? "Starting…" : "Compress PDF"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onEstimate}
-                disabled={!pendingFile || submitting || estimateMutation.isPending}
-                className="h-9"
-              >
-                <Wand2 className="mr-2 h-3.5 w-3.5" aria-hidden />
-                {estimateMutation.isPending ? "Estimating…" : "Preview savings"}
-              </Button>
-            </div>
-          </aside>
-        </section>
-
-        {sortedIds.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
-            <div className="flex flex-col gap-3">
-              {sortedIds.map((id) => (
-                <CompressionCard key={id} clientUploadId={id} onRetry={onRetry} />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold tracking-tight">Recent jobs</h2>
-          <JobHistoryList />
-        </section>
-      </div>
-    </div>
+        </>
+      }
+      active={
+        sortedIds.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {sortedIds.map((id) => (
+              <CompressionCard key={id} clientUploadId={id} onRetry={onRetry} />
+            ))}
+          </div>
+        ) : null
+      }
+    />
   );
 }

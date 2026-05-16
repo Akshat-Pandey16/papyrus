@@ -82,7 +82,7 @@ function Hero() {
     <section className="relative isolate w-full overflow-hidden">
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(120,120,255,0.20),transparent_60%)]"
+        className="absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(31,121,137,0.18),transparent_60%)]"
       />
       <div
         aria-hidden
@@ -96,8 +96,8 @@ function Hero() {
       />
       <div className="w-full px-6 py-20 sm:px-10 sm:py-28 lg:px-14 lg:py-36">
         <div className="mx-auto flex w-full max-w-screen-2xl flex-col items-center text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/50 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             Open-source · Self-hostable · Free forever
           </span>
           <h1 className="mt-6 max-w-4xl text-balance text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
@@ -148,16 +148,16 @@ function ToolsSection() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {tools.map((tool) => {
               const className =
-                "group relative flex flex-col items-start gap-3 rounded-xl border border-border bg-background p-5 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-lg";
+                "group relative flex flex-col items-start gap-3 rounded-xl border border-border bg-background p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5";
               const inner = (
                 <>
-                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-foreground/5 text-foreground transition-colors group-hover:bg-foreground group-hover:text-background">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                     <tool.icon className="h-5 w-5" />
                   </span>
                   <span className="text-base font-semibold">{tool.title}</span>
                   <span className="text-xs text-muted-foreground">{tool.desc}</span>
                   {!tool.to ? (
-                    <span className="absolute right-3 top-3 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <span className="absolute right-3 top-3 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                       Soon
                     </span>
                   ) : null}
@@ -187,7 +187,7 @@ function FeaturesSection() {
         <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-3">
           {features.map((f) => (
             <div key={f.title} className="flex flex-col gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-lg bg-foreground/5 text-foreground">
+              <span className="grid h-11 w-11 place-items-center rounded-lg bg-primary/10 text-primary">
                 <f.icon className="h-5 w-5" />
               </span>
               <h3 className="text-xl font-semibold tracking-tight">{f.title}</h3>
@@ -204,10 +204,10 @@ function CTASection() {
   return (
     <section className="w-full px-6 pb-24 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-screen-2xl">
-        <div className="relative overflow-hidden rounded-3xl bg-foreground p-10 text-background sm:p-16">
+        <div className="relative overflow-hidden rounded-3xl bg-primary p-10 text-primary-foreground sm:p-16">
           <div
             aria-hidden
-            className="absolute inset-0 opacity-30"
+            className="absolute inset-0 opacity-25"
             style={{
               backgroundImage:
                 "radial-gradient(circle at 20% 0%, rgba(255,255,255,0.4) 0, transparent 40%), radial-gradient(circle at 100% 100%, rgba(255,255,255,0.25) 0, transparent 35%)",
@@ -218,7 +218,7 @@ function CTASection() {
               <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
                 Ready to wrangle your PDFs the right way?
               </h2>
-              <p className="mt-3 text-[0.95rem] text-background/70">
+              <p className="mt-3 text-[0.95rem] text-primary-foreground/80">
                 Sign up in seconds. No credit card. Cancel any time — there's nothing to cancel,
                 because everything is free.
               </p>
@@ -234,7 +234,7 @@ function CTASection() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-12 border-white/20 bg-transparent px-6 text-background hover:bg-white/10 hover:text-background"
+                className="h-12 border-white/20 bg-transparent px-6 text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
               >
                 <Link to="/login">Sign in</Link>
               </Button>
@@ -252,7 +252,7 @@ function SiteFooter() {
       <div className="w-full px-6 py-10 sm:px-10 lg:px-14">
         <div className="mx-auto flex max-w-screen-2xl flex-col items-start justify-between gap-6 text-sm text-muted-foreground sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-foreground text-background">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground">
               <FileSignature className="h-3.5 w-3.5" />
             </span>
             <span className="font-semibold text-foreground">Papyrus</span>

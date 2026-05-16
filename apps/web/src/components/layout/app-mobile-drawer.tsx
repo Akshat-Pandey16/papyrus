@@ -8,32 +8,44 @@ import {
   Lock,
   ScanLine,
   Settings,
+  Shuffle,
   Split,
+  TextSelect,
   Wand2,
   X,
 } from "lucide-react";
 import { useEffect } from "react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 
-const ITEMS = [
-  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
-  { label: "Compress", to: "/tools/compress", icon: Wand2 },
-  { label: "Merge", to: "/tools/merge", icon: Layers },
-  { label: "Split", to: "/tools/split", icon: Split },
-  { label: "Rotate", to: "/tools/rotate", icon: Layers },
-  { label: "Reorder", to: "/tools/reorder", icon: Split },
-  { label: "OCR", to: "/tools/ocr", icon: ScanLine },
-  { label: "Settings", to: "/settings", icon: Settings },
-  { label: "Jobs · soon", to: null, icon: History },
-  { label: "Sign · soon", to: null, icon: FileSignature },
-  { label: "Redact · soon", to: null, icon: Lock },
-] as const;
+type NavItem = {
+  label: string;
+  to: string | null;
+  icon: typeof Wand2;
+  group: "workspace" | "tools" | "more";
+  soon?: boolean;
+};
+
+const ITEMS: NavItem[] = [
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, group: "workspace" },
+  { label: "All jobs", to: "/jobs", icon: History, group: "workspace" },
+  { label: "Compress", to: "/tools/compress", icon: Wand2, group: "tools" },
+  { label: "Merge", to: "/tools/merge", icon: Layers, group: "tools" },
+  { label: "Split", to: "/tools/split", icon: Split, group: "tools" },
+  { label: "Rotate", to: "/tools/rotate", icon: Shuffle, group: "tools" },
+  { label: "Reorder", to: "/tools/reorder", icon: TextSelect, group: "tools" },
+  { label: "OCR", to: "/tools/ocr", icon: ScanLine, group: "tools" },
+  { label: "Sign", to: null, icon: FileSignature, group: "tools", soon: true },
+  { label: "Redact", to: null, icon: Lock, group: "tools", soon: true },
+  { label: "Settings", to: "/settings", icon: Settings, group: "more" },
+];
 
 export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
+  const isAnonymous = !!user?.isAnonymous;
 
   useEffect(() => {
     if (!open) return;
@@ -43,6 +55,12 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  const visible = ITEMS.filter((item) => {
+    if (item.group === "workspace" && isAnonymous) return false;
+    if (item.group === "more" && isAnonymous) return false;
+    return true;
+  });
 
   return (
     <div
@@ -54,7 +72,7 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
     >
       <div
         className={cn(
-          "absolute inset-0 bg-foreground/50 transition-opacity",
+          "absolute inset-0 bg-foreground/50 backdrop-blur-sm transition-opacity",
           open ? "opacity-100" : "opacity-0",
         )}
         onClick={onClose}
@@ -62,17 +80,17 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
       />
       <aside
         className={cn(
-          "absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-background shadow-2xl transition-transform",
+          "absolute inset-y-0 left-0 flex w-80 max-w-[88vw] flex-col bg-background shadow-2xl transition-transform",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <header className="flex items-center justify-between border-b border-border px-4 py-4">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-foreground text-background">
+          <Link to="/" onClick={onClose} className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary text-primary-foreground">
               <FileText className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className="text-sm font-semibold">Papyrus</span>
-          </div>
+          </Link>
           <button
             type="button"
             onClick={onClose}
@@ -82,46 +100,79 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
             <X className="h-5 w-5" />
           </button>
         </header>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {ITEMS.map((item) => {
-            const active = item.to ? location.pathname === item.to : false;
-            const Icon = item.icon;
-            const className = cn(
-              "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm",
-              active
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              !item.to && "cursor-not-allowed opacity-50",
-            );
-            if (item.to) {
-              return (
-                <Link key={item.label} to={item.to} onClick={onClose} className={className}>
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            }
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
+          {(["workspace", "tools", "more"] as const).map((group) => {
+            const items = visible.filter((item) => item.group === group);
+            if (items.length === 0) return null;
+            const label =
+              group === "workspace" ? "Workspace" : group === "tools" ? "Tools" : "More";
             return (
-              <span key={item.label} className={className}>
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </span>
+              <div key={group} className="flex flex-col gap-1">
+                <span className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/80">
+                  {label}
+                </span>
+                {items.map((item) => {
+                  const active = item.to ? location.pathname === item.to : false;
+                  const Icon = item.icon;
+                  const className = cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    active
+                      ? "bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    !item.to && "cursor-not-allowed opacity-50",
+                  );
+                  if (item.to) {
+                    return (
+                      <Link key={item.label} to={item.to} onClick={onClose} className={className}>
+                        <Icon className={cn("h-[18px] w-[18px]", active && "text-primary")} />
+                        <span className={cn(active && "font-medium")}>{item.label}</span>
+                      </Link>
+                    );
+                  }
+                  return (
+                    <span key={item.label} className={className}>
+                      <Icon className="h-[18px] w-[18px]" />
+                      <span>{item.label}</span>
+                      {item.soon ? (
+                        <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wider">
+                          Soon
+                        </span>
+                      ) : null}
+                    </span>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
         <div className="flex flex-col gap-3 border-t border-border p-4">
           <ThemeToggle />
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-foreground text-background text-xs font-semibold">
-              {(user?.fullName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
+          {isAnonymous ? (
+            <div className="flex gap-2">
+              <Button asChild variant="outline" className="flex-1" size="sm">
+                <Link to="/login" onClick={onClose}>
+                  Sign in
+                </Link>
+              </Button>
+              <Button asChild className="flex-1" size="sm">
+                <Link to="/signup" onClick={onClose}>
+                  Sign up
+                </Link>
+              </Button>
             </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">
-                {user?.fullName ?? user?.email ?? "Anonymous"}
-              </span>
-              <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                {(user?.fullName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
+              </div>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium">
+                  {user?.fullName ?? user?.email ?? "—"}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </div>

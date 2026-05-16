@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Split } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AnonymousBanner } from "@/components/shared/anonymous-banner";
+import { ToolOptionsHeader, ToolPageShell } from "@/components/layout/tool-page-shell";
 import { type PageRange, PageRangeBuilder } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
 import { NumberInput } from "@/components/ui/number-input";
@@ -113,101 +113,90 @@ function SplitPage() {
     setFile(null);
   };
 
+  const hint = pageCountLoading
+    ? "Reading file…"
+    : pageCountError
+      ? "We couldn't read the page count — try another file."
+      : pageCount != null
+        ? `${pageCount} page${pageCount === 1 ? "" : "s"} in this PDF.`
+        : "Drop a PDF to begin.";
+
   return (
-    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <AnonymousBanner />
-        <header className="flex flex-col gap-2">
-          <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Pick how you want to split, point to the pages, and we&apos;ll do the rest. Files are
-            deleted after 24 hours.
-          </p>
-        </header>
+    <ToolPageShell
+      tag="Split"
+      title="Split PDF"
+      description="Pull pages, every-N chunks, or single-page exports — all in one go."
+      icon={Split}
+      workspace={
+        <>
+          <FileDropzone
+            onFile={setFile}
+            selectedFile={file}
+            onClear={() => setFile(null)}
+            disabled={submitting}
+          />
+          {file ? <PageThumbnails file={file} /> : null}
+        </>
+      }
+      options={
+        <>
+          <ToolOptionsHeader title="Split options" hint={hint} />
+          <SplitModeSelector value={mode} onChange={setMode} disabled={submitting} />
 
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="flex min-w-0 flex-col gap-4">
-            <FileDropzone
-              onFile={setFile}
-              selectedFile={file}
-              onClear={() => setFile(null)}
-              disabled={submitting}
-            />
-            {file ? <PageThumbnails file={file} /> : null}
+          {mode === "ranges" ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium">Ranges</p>
+              <PageRangeBuilder
+                pageCount={pageCount}
+                ranges={ranges}
+                onChange={setRanges}
+                disabled={submitting}
+              />
+            </div>
+          ) : null}
+
+          {mode === "every_n" ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium">Pages per file</p>
+              <NumberInput
+                value={everyN}
+                onChange={setEveryN}
+                min={1}
+                max={pageCount ?? 10_000}
+                disabled={submitting || pageCount == null}
+                ariaLabel="Pages per file"
+              />
+            </div>
+          ) : null}
+
+          <SplitOptionsPanel
+            value={options}
+            onChange={setOptions}
+            mode={mode}
+            disabled={submitting}
+          />
+
+          {outputPreview ? (
+            <div className="rounded-lg border border-border/60 bg-background/40 p-3 text-[11px] text-muted-foreground">
+              <span className="font-medium text-foreground">Output:</span> {outputPreview}
+            </div>
+          ) : null}
+
+          <Button size="lg" onClick={onSubmit} disabled={!ready} className="h-11">
+            <Split className="mr-2 h-4 w-4" aria-hidden />
+            {submitting ? "Starting…" : "Split PDF"}
+          </Button>
+        </>
+      }
+      active={
+        sortedIds.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {sortedIds.map((id) => (
+              <ToolJobCard key={id} clientUploadId={id} successLabel="Split complete" />
+            ))}
           </div>
-
-          <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">Split options</h2>
-              <p className="text-xs text-muted-foreground">
-                {pageCountLoading
-                  ? "Reading file…"
-                  : pageCountError
-                    ? "We couldn't read the page count — try another file."
-                    : pageCount != null
-                      ? `${pageCount} page${pageCount === 1 ? "" : "s"} in this PDF.`
-                      : "Drop a PDF to begin."}
-              </p>
-            </div>
-
-            <SplitModeSelector value={mode} onChange={setMode} disabled={submitting} />
-
-            {mode === "ranges" ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium">Ranges</p>
-                <PageRangeBuilder
-                  pageCount={pageCount}
-                  ranges={ranges}
-                  onChange={setRanges}
-                  disabled={submitting}
-                />
-              </div>
-            ) : null}
-
-            {mode === "every_n" ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium">Pages per file</p>
-                <NumberInput
-                  value={everyN}
-                  onChange={setEveryN}
-                  min={1}
-                  max={pageCount ?? 10_000}
-                  disabled={submitting || pageCount == null}
-                  ariaLabel="Pages per file"
-                />
-              </div>
-            ) : null}
-
-            <SplitOptionsPanel
-              value={options}
-              onChange={setOptions}
-              mode={mode}
-              disabled={submitting}
-            />
-
-            {outputPreview ? (
-              <div className="rounded-lg border border-border/60 bg-background/40 p-3 text-[11px] text-muted-foreground">
-                <span className="font-medium text-foreground">Output:</span> {outputPreview}
-              </div>
-            ) : null}
-
-            <Button size="lg" onClick={onSubmit} disabled={!ready} className="h-11">
-              <Split className="mr-2 h-4 w-4" aria-hidden />
-              {submitting ? "Starting…" : "Split PDF"}
-            </Button>
-          </aside>
-        </section>
-
-        {sortedIds.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold tracking-tight">Active</h2>
-            <div className="flex flex-col gap-3">
-              {sortedIds.map((id) => (
-                <ToolJobCard key={id} clientUploadId={id} successLabel="Split complete" />
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
 }

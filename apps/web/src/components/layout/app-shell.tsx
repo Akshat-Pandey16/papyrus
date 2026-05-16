@@ -6,7 +6,6 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuthStore } from "@/features/auth/store";
 
-const PUBLIC_PREFIXES = ["/", "/login", "/signup", "/forgot-password", "/reset-password"];
 const AUTH_FORM_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 const APP_PREFIXES = ["/dashboard", "/tools", "/settings", "/jobs"];
 
@@ -42,12 +41,10 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const isPublicLanding = PUBLIC_PREFIXES.includes(location.pathname);
   return (
     <div className="flex min-h-svh w-full flex-col bg-background text-foreground antialiased">
       <Topbar />
       <main className="flex-1">{children}</main>
-      {!isPublicLanding ? null : null}
     </div>
   );
 }

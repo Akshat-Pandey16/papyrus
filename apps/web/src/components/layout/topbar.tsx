@@ -33,7 +33,7 @@ export function Topbar() {
             to="/"
             className="inline-flex items-center gap-2 text-base font-semibold tracking-tight"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-foreground text-background">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
               <FileText className="h-4 w-4" strokeWidth={2.25} />
             </span>
             Papyrus
@@ -69,7 +69,7 @@ export function Topbar() {
               </Link>
               <span className="mx-2 h-5 w-px bg-border" />
               <div className="flex items-center gap-3">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background text-xs font-semibold">
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
                   {(user.fullName?.[0] ?? user.email[0] ?? "?").toUpperCase()}
                 </div>
                 <span className="hidden text-sm text-foreground lg:inline">

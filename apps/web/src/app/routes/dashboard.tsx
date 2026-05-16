@@ -17,9 +17,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
-import { useJobsInfiniteQuery } from "@/features/pdf-compress/api";
 import { formatBytes } from "@/features/pdf-compress/format";
 import type { Job } from "@/features/pdf-compress/types";
+import { useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -92,7 +92,7 @@ function DashboardPage() {
   const organization = useAuthStore((s) => s.organization);
   const greeting = user?.fullName?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "there";
 
-  const recent = useJobsInfiniteQuery({ status: "all" });
+  const recent = useJobsFeedQuery({ status: "all" });
   const recentJobs = recent.data?.pages.flatMap((p) => p.items).slice(0, 5) ?? [];
 
   const succeeded = recentJobs.filter((j) => j.status === "succeeded").length;
@@ -100,10 +100,10 @@ function DashboardPage() {
   const totalBytes = recentJobs.reduce((sum, j) => sum + (j.outputSizeBytes ?? 0), 0);
 
   return (
-    <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+    <div className="w-full">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-4 pb-12 pt-6 sm:px-6 lg:px-8 xl:px-10">
         <header className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
             {organization?.name ?? "Workspace"}
           </span>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -132,7 +132,7 @@ function DashboardPage() {
 
         <section className="flex flex-col gap-4">
           <SectionHeader title="Tools" subtitle="Everything you can run right now." />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {TOOLS.map((tool) => (
               <ToolTile key={tool.title} tool={tool} />
             ))}
@@ -145,7 +145,7 @@ function DashboardPage() {
             subtitle="Your most recent jobs across every tool."
             action={
               <Button asChild variant="ghost" size="sm" className="text-xs">
-                <Link to="/tools/compress">
+                <Link to="/jobs">
                   View all <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Link>
               </Button>
@@ -245,22 +245,17 @@ function ToolTile({ tool }: { tool: ToolCard }) {
   const className = cn(
     "group relative overflow-hidden flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all",
     tool.to
-      ? "hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-lg"
+      ? "hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
       : "cursor-not-allowed opacity-60",
   );
   const Icon = tool.icon;
   const inner = (
     <>
-      {tool.accent ? (
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-0 -z-0 bg-gradient-to-br opacity-0 transition-opacity group-hover:opacity-100",
-            tool.accent,
-          )}
-        />
-      ) : null}
-      <span className="relative grid h-9 w-9 place-items-center rounded-lg bg-foreground/5 text-foreground/80 transition-colors group-hover:bg-foreground group-hover:text-background">
+      <span
+        aria-hidden
+        className="absolute inset-0 -z-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
+      />
+      <span className="relative grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
         <Icon className="h-4.5 w-4.5" />
       </span>
       <div className="relative flex flex-col gap-1">
@@ -268,11 +263,11 @@ function ToolTile({ tool }: { tool: ToolCard }) {
         <span className="text-sm text-muted-foreground">{tool.desc}</span>
       </div>
       {tool.to ? (
-        <span className="relative mt-1 inline-flex items-center text-xs font-medium text-foreground/70 transition-colors group-hover:text-foreground">
+        <span className="relative mt-1 inline-flex items-center text-xs font-medium text-primary/80 transition-colors group-hover:text-primary">
           Open <ArrowUpRight className="ml-1 h-3 w-3" />
         </span>
       ) : (
-        <span className="relative mt-1 inline-block w-fit rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="relative mt-1 inline-block w-fit rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           Coming soon
         </span>
       )}
@@ -292,8 +287,8 @@ function ToolTile({ tool }: { tool: ToolCard }) {
 function StatusBadge({ status }: { status: Job["status"] }) {
   const styles: Record<Job["status"], string> = {
     pending: "bg-muted text-muted-foreground",
-    running: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-    succeeded: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    running: "bg-primary/10 text-primary",
+    succeeded: "bg-success/15 text-success",
     failed: "bg-destructive/15 text-destructive",
     cancelled: "bg-muted text-muted-foreground",
   };
