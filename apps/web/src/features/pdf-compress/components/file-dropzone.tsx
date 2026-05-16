@@ -75,7 +75,7 @@ export function FileDropzone({
         onDragLeave={() => setIsOver(false)}
         onDrop={onDrop}
         className={cn(
-          "group relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed bg-card/40 p-8 text-center transition-all",
+          "group relative flex min-h-[180px] w-full cursor-pointer flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border-2 border-dashed bg-card/40 p-8 text-center transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           selectedFile
             ? "border-foreground/40 bg-foreground/5"
@@ -87,11 +87,13 @@ export function FileDropzone({
       >
         {selectedFile ? (
           <>
-            <div className="grid h-12 w-12 place-items-center rounded-full bg-foreground/10 text-foreground">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-foreground/10 text-foreground">
               <FileText className="h-6 w-6" aria-hidden />
             </div>
-            <div className="flex max-w-full flex-col gap-1">
-              <p className="max-w-full truncate text-base font-semibold">{selectedFile.name}</p>
+            <div className="flex w-full min-w-0 flex-col items-center gap-1 px-2">
+              <p className="w-full truncate text-base font-semibold" title={selectedFile.name}>
+                {selectedFile.name}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {formatBytes(selectedFile.size)} · ready to compress
               </p>

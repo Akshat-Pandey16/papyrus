@@ -85,7 +85,9 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
           <FileText className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{entry.fileName}</p>
+          <p className="truncate text-sm font-semibold" title={entry.fileName}>
+            {entry.fileName}
+          </p>
           <p className="text-xs text-muted-foreground">{formatBytes(entry.fileSize)}</p>
         </div>
         {isTerminal ? (

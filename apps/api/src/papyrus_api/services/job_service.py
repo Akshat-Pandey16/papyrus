@@ -19,6 +19,7 @@ from papyrus_api.core.errors import (
     QuotaExceededError,
     ValidationError,
 )
+from papyrus_api.core.filenames import compose_output_filename, safe_filename_stem
 from papyrus_api.core.pagination import decode_cursor, encode_cursor
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
@@ -908,35 +909,59 @@ def _split_combined_into_single(params: dict[str, Any]) -> bool:
     return bool(options.get("combine_into_single"))
 
 
+def _merge_stem_from_inputs(names: list[str], suffix: str) -> str:
+    cleaned = [safe_filename_stem(n, fallback="") for n in names if isinstance(n, str)]
+    cleaned = [c for c in cleaned if c]
+    if not cleaned:
+        return suffix
+    if len(cleaned) == 1:
+        return cleaned[0]
+    head = cleaned[0]
+    extra = len(cleaned) - 1
+    return safe_filename_stem(
+        f"{head}-and-{extra}-more",
+        fallback=suffix,
+    )
+
+
 def _suggest_output_filename_for(job: Job) -> str:
     params = job.params if isinstance(job.params, dict) else {}
-    suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
+
     if job.kind == JobKind.SPLIT:
         if _split_combined_into_single(params):
             suffix = "extracted"
             ext = "pdf"
         else:
+            suffix = "split"
             ext = "zip"
+    elif job.kind == JobKind.MERGE:
+        suffix = "merged"
+        ext = "pdf"
     else:
+        suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
         ext = "pdf"
 
     if job.kind == JobKind.MERGE:
         names = params.get("input_filenames")
+        stem: str | None = None
         if isinstance(names, list) and names:
-            first = names[0] if isinstance(names[0], str) else None
-            if first:
-                clean = first.strip().replace("\\", "_").replace("/", "_")
-                stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
-                return f"{stem}-{suffix}.{ext}"[:200]
-        return f"{suffix}.{ext}"
+            stem = _merge_stem_from_inputs(
+                [n for n in names if isinstance(n, str)],
+                suffix=suffix,
+            )
+        return compose_output_filename(
+            stem=stem,
+            suffix=suffix,
+            extension=ext,
+            fallback_stem=suffix,
+        )
 
     original = params.get("input_filename")
-    base = f"output.{ext}"
-    if isinstance(original, str) and original.strip():
-        clean = original.strip().replace("\\", "_").replace("/", "_")
-        stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
-        base = f"{stem}-{suffix}.{ext}"
-    return base[:200]
+    return compose_output_filename(
+        stem=original if isinstance(original, str) else None,
+        suffix=suffix,
+        extension=ext,
+    )
 
 
 def job_to_out(job: Job, *, phase: str | None) -> JobOut:

@@ -65,7 +65,9 @@ export function JobHistoryList() {
               className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{filename}</p>
+                <p className="truncate text-sm font-medium" title={filename}>
+                  {filename}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(job.createdAt).toLocaleString()} · {formatBytes(job.inputSizeBytes)}
                   {job.outputSizeBytes != null

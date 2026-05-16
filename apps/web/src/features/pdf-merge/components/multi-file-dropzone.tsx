@@ -221,11 +221,20 @@ function FileRow({
       </span>
       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{file.name}</p>
+        <p className="truncate text-sm font-medium" title={file.name}>
+          {file.name}
+        </p>
         <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
       </div>
-      <FilePagesPopover file={file} ranges={ranges} onChange={onRangesChange} disabled={disabled} />
-      <div className="flex items-center gap-1">
+      <div className="shrink-0">
+        <FilePagesPopover
+          file={file}
+          ranges={ranges}
+          onChange={onRangesChange}
+          disabled={disabled}
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           type="button"
           variant="ghost"

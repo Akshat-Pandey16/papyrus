@@ -159,7 +159,9 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
           <FileText className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{entry.fileName}</p>
+          <p className="truncate text-sm font-semibold" title={entry.fileName}>
+            {entry.fileName}
+          </p>
           <p className="text-xs text-muted-foreground">
             {formatBytes(entry.fileSize)} · {entry.level} compression
           </p>

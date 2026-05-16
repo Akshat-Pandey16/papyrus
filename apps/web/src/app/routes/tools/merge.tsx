@@ -176,7 +176,7 @@ function MergePage() {
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="flex flex-col gap-5">
+          <div className="flex min-w-0 flex-col gap-5">
             <MultiFileDropzone
               files={pendingFiles}
               onAdd={onAdd}
@@ -188,7 +188,7 @@ function MergePage() {
             />
           </div>
 
-          <aside className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+          <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
             <div className="flex flex-col gap-1">
               <h2 className="text-sm font-semibold">Summary</h2>
               <p className="text-xs text-muted-foreground">

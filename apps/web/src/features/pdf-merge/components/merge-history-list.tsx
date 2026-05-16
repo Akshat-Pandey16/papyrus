@@ -77,7 +77,7 @@ export function MergeHistoryList() {
               className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
+                <p className="truncate text-sm font-medium" title={first}>
                   {first}
                   {count > 1 ? ` + ${count - 1} more` : ""}
                 </p>
