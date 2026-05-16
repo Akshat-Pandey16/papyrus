@@ -12,18 +12,39 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 const tools = [
-  { icon: Layers, title: "Merge", desc: "Combine PDFs into one tidy file." },
-  { icon: Split, title: "Split", desc: "Pull pages or split into chunks." },
-  { icon: Wand2, title: "Compress", desc: "Smaller files, same fidelity." },
-  { icon: ScanLine, title: "OCR", desc: "Make scans searchable and selectable." },
-  { icon: FileSignature, title: "Sign", desc: "Add legally binding signatures." },
-  { icon: Lock, title: "Redact", desc: "Permanently remove sensitive data." },
+  {
+    icon: Wand2,
+    title: "Compress",
+    desc: "Smaller files, same fidelity.",
+    to: "/tools/compress" as const,
+  },
+  {
+    icon: Layers,
+    title: "Merge",
+    desc: "Combine PDFs into one tidy file.",
+    to: "/tools/merge" as const,
+  },
+  {
+    icon: Split,
+    title: "Split",
+    desc: "Pull pages or split into chunks.",
+    to: "/tools/split" as const,
+  },
+  {
+    icon: ScanLine,
+    title: "OCR",
+    desc: "Make scans searchable and selectable.",
+    to: "/tools/ocr" as const,
+  },
+  { icon: FileSignature, title: "Sign", desc: "Add legally binding signatures.", to: null },
+  { icon: Lock, title: "Redact", desc: "Permanently remove sensitive data.", to: null },
 ];
 
 const features = [
@@ -89,17 +110,17 @@ function Hero() {
           </p>
           <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 px-7 text-[0.95rem]">
-              <Link to="/signup">
-                Get started — it's free
+              <Link to="/tools/compress">
+                Try it without signing up
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="h-12 px-6 text-[0.95rem]">
-              <Link to="/login">I already have an account</Link>
+              <Link to="/signup">Create a free account</Link>
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            No credit card needed · 25 MB free uploads · Instant signup
+            No credit card · No signup needed · 25 MB anon uploads · 500 MB with a free account
           </p>
         </div>
       </div>
@@ -122,19 +143,33 @@ function ToolsSection() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {tools.map((tool) => (
-              <button
-                key={tool.title}
-                type="button"
-                className="group relative flex flex-col items-start gap-3 rounded-xl border border-border bg-background p-5 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-lg"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-foreground/5 text-foreground transition-colors group-hover:bg-foreground group-hover:text-background">
-                  <tool.icon className="h-5 w-5" />
-                </span>
-                <span className="text-base font-semibold">{tool.title}</span>
-                <span className="text-xs text-muted-foreground">{tool.desc}</span>
-              </button>
-            ))}
+            {tools.map((tool) => {
+              const className =
+                "group relative flex flex-col items-start gap-3 rounded-xl border border-border bg-background p-5 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-lg";
+              const inner = (
+                <>
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-foreground/5 text-foreground transition-colors group-hover:bg-foreground group-hover:text-background">
+                    <tool.icon className="h-5 w-5" />
+                  </span>
+                  <span className="text-base font-semibold">{tool.title}</span>
+                  <span className="text-xs text-muted-foreground">{tool.desc}</span>
+                  {!tool.to ? (
+                    <span className="absolute right-3 top-3 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Soon
+                    </span>
+                  ) : null}
+                </>
+              );
+              return tool.to ? (
+                <Link key={tool.title} to={tool.to} className={className}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={tool.title} className={cn(className, "cursor-not-allowed opacity-70")}>
+                  {inner}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

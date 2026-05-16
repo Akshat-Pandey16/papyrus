@@ -80,6 +80,7 @@ class UserOut(StrictModel):
     email: EmailStr
     full_name: str | None
     is_active: bool
+    is_anonymous: bool
     email_verified_at: datetime | None
     created_at: datetime
 

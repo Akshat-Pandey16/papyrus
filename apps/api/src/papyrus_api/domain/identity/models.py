@@ -13,18 +13,34 @@ from papyrus_api.domain.identity.enums import MembershipRole
 
 class Organization(Base, IdMixin, TimestampMixin):
     __tablename__ = "organizations"
+    __table_args__ = (
+        Index(
+            "ix_organizations_anonymous_created_at",
+            "created_at",
+            postgresql_where=text("is_anonymous = true"),
+        ),
+    )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    is_anonymous: Mapped[bool] = mapped_column(default=False, nullable=False)
 
 
 class User(Base, IdMixin, TimestampMixin):
     __tablename__ = "users"
+    __table_args__ = (
+        Index(
+            "ix_users_anonymous_created_at",
+            "created_at",
+            postgresql_where=text("is_anonymous = true"),
+        ),
+    )
 
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(200), default=None, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_anonymous: Mapped[bool] = mapped_column(default=False, nullable=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
 
 

@@ -27,9 +27,9 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   const isAppRoute = APP_PREFIXES.some((p) => location.pathname.startsWith(p));
-  const isPublicLanding = PUBLIC_PREFIXES.includes(location.pathname);
+  const isToolRoute = location.pathname.startsWith("/tools");
 
-  if (isAppRoute && hasAccess) {
+  if ((isAppRoute && hasAccess) || (isToolRoute && hasAccess)) {
     return (
       <div className="flex min-h-svh w-full bg-background text-foreground antialiased">
         <AppSidebar />
@@ -42,6 +42,7 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
+  const isPublicLanding = PUBLIC_PREFIXES.includes(location.pathname);
   return (
     <div className="flex min-h-svh w-full flex-col bg-background text-foreground antialiased">
       <Topbar />

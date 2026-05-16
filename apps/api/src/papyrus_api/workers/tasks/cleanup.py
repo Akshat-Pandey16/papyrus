@@ -9,6 +9,7 @@ from papyrus_api.core.config import settings
 from papyrus_api.core.time import utc_now
 from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.documents.models import StorageObject
+from papyrus_api.domain.identity.models import Organization, User
 from papyrus_api.repositories.documents import (
     DocumentRepository,
     StorageObjectRepository,
@@ -85,6 +86,33 @@ async def _purge_expired_outputs() -> int:
     return deleted
 
 
+async def _purge_anonymous_accounts() -> int:
+    sessionmaker = get_sessionmaker()
+    cutoff = utc_now() - timedelta(hours=24)
+    purged = 0
+    async with sessionmaker() as session:
+        org_stmt = (
+            select(Organization)
+            .where(Organization.is_anonymous.is_(True), Organization.created_at < cutoff)
+            .limit(200)
+        )
+        orgs = list((await session.execute(org_stmt)).scalars().all())
+        for org in orgs:
+            await session.delete(org)
+            purged += 1
+        user_stmt = (
+            select(User)
+            .where(User.is_anonymous.is_(True), User.created_at < cutoff)
+            .limit(200)
+        )
+        users = list((await session.execute(user_stmt)).scalars().all())
+        for user in users:
+            await session.delete(user)
+        await session.commit()
+    log.info("cleanup.anonymous.run", purged=purged)
+    return purged
+
+
 @celery_app.task(name="papyrus.cleanup.purge_expired")
 def purge_expired() -> int:
     log.info("cleanup.purge_expired.start")
@@ -95,3 +123,9 @@ def purge_expired() -> int:
 def cleanup_orphaned_uploads() -> int:
     log.info("cleanup.orphaned_uploads.start")
     return run_async(_cleanup_orphans())
+
+
+@celery_app.task(name="papyrus.cleanup.purge_anonymous")
+def purge_anonymous_accounts() -> int:
+    log.info("cleanup.purge_anonymous.start")
+    return run_async(_purge_anonymous_accounts())

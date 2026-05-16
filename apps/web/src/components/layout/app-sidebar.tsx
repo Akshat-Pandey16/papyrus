@@ -12,7 +12,9 @@ import {
   type LucideIcon,
   ScanLine,
   Settings,
+  Shuffle,
   Split,
+  TextSelect,
   Wand2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -37,8 +39,10 @@ const PRIMARY_NAV: NavItem[] = [
 const TOOLS_NAV: NavItem[] = [
   { label: "Compress", to: "/tools/compress", icon: Wand2 },
   { label: "Merge", to: "/tools/merge", icon: Layers },
-  { label: "Split", icon: Split, disabled: true },
-  { label: "OCR", icon: ScanLine, disabled: true },
+  { label: "Split", to: "/tools/split", icon: Split },
+  { label: "Rotate", to: "/tools/rotate", icon: Shuffle },
+  { label: "Reorder", to: "/tools/reorder", icon: TextSelect },
+  { label: "OCR", to: "/tools/ocr", icon: ScanLine },
   { label: "Sign", icon: FileSignature, disabled: true },
   { label: "Redact", icon: Lock, disabled: true },
 ];
@@ -85,12 +89,16 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5">
-        <NavSection label="Workspace" collapsed={collapsed} items={PRIMARY_NAV} />
+        {!user?.isAnonymous ? (
+          <NavSection label="Workspace" collapsed={collapsed} items={PRIMARY_NAV} />
+        ) : null}
         <NavSection label="Tools" collapsed={collapsed} items={TOOLS_NAV} />
       </nav>
 
       <div className="flex flex-col gap-3 border-t border-border px-3 py-4">
-        <NavSection label={null} collapsed={collapsed} items={FOOTER_NAV} compact />
+        {!user?.isAnonymous ? (
+          <NavSection label={null} collapsed={collapsed} items={FOOTER_NAV} compact />
+        ) : null}
         {!collapsed ? <ThemeToggle /> : null}
         <div
           className={cn(
@@ -104,14 +112,16 @@ export function AppSidebar() {
           {!collapsed ? (
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-sm font-medium">
-                {user?.fullName ?? user?.email ?? "Anonymous"}
+                {user?.isAnonymous ? "Anonymous" : (user?.fullName ?? user?.email ?? "Anonymous")}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {organization?.name ?? "Workspace"}
+                {user?.isAnonymous
+                  ? "Sign up to keep history"
+                  : (organization?.name ?? "Workspace")}
               </span>
             </div>
           ) : null}
-          {!collapsed ? (
+          {!collapsed && !user?.isAnonymous ? (
             <Button
               variant="ghost"
               size="sm"
@@ -121,6 +131,11 @@ export function AppSidebar() {
               className="h-8 w-8 p-0"
             >
               <LogOut className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {!collapsed && user?.isAnonymous ? (
+            <Button asChild size="sm" className="h-8 px-3 text-xs">
+              <Link to="/signup">Sign up</Link>
             </Button>
           ) : null}
         </div>

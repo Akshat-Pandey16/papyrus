@@ -1,9 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Files } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AnonymousBanner } from "@/components/shared/anonymous-banner";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/features/auth/store";
+import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { type CreateMergeJobInput, useCreateMergeJobMutation } from "@/features/pdf-merge/api";
 import { MergeCard } from "@/features/pdf-merge/components/merge-card";
 import { MergeHistoryList } from "@/features/pdf-merge/components/merge-history-list";
@@ -14,13 +15,8 @@ import { type MergeFileEntry, useMergeStore } from "@/features/pdf-merge/store";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/tools/merge")({
-  beforeLoad: ({ location }) => {
-    if (!useAuthStore.getState().hasAccess) {
-      throw redirect({
-        to: "/login",
-        search: { next: location.pathname } as never,
-      });
-    }
+  beforeLoad: async () => {
+    await ensureAnonymousSession();
   },
   component: MergePage,
 });
@@ -148,6 +144,7 @@ function MergePage() {
   return (
     <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
             Drop two or more PDFs, drag to reorder, and we&apos;ll stitch them into one. Files are

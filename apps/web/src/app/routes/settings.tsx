@@ -27,7 +27,8 @@ import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: ({ location }) => {
-    if (!useAuthStore.getState().hasAccess) {
+    const state = useAuthStore.getState();
+    if (!state.hasAccess || state.user?.isAnonymous) {
       throw redirect({
         to: "/login",
         search: { next: location.pathname } as never,

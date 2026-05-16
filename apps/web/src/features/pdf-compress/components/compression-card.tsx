@@ -72,6 +72,19 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     if (!entry || !job) return;
     if (job.status === "succeeded" && entry.phase !== "succeeded") {
       updateEntry(clientUploadId, { phase: "succeeded" });
+      void downloadMutation
+        .mutateAsync({ jobId: job.id })
+        .then((res) => {
+          const a = document.createElement("a");
+          a.href = res.url;
+          a.rel = "noopener noreferrer";
+          a.target = "_blank";
+          a.download = res.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        })
+        .catch(() => undefined);
     } else if (job.status === "failed" && entry.phase !== "failed") {
       updateEntry(clientUploadId, {
         phase: "failed",
@@ -91,7 +104,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     ) {
       updateEntry(clientUploadId, { phase: "queued" });
     }
-  }, [job, entry, clientUploadId, updateEntry]);
+  }, [job, entry, clientUploadId, updateEntry, downloadMutation]);
 
   const isUploading = entry?.phase === "uploading" || entry?.phase === "preparing";
   const throughput = useThroughput(entry?.bytesUploaded ?? 0, !!isUploading);

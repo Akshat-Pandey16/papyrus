@@ -63,6 +63,19 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
     if (!batch || !job) return;
     if (job.status === "succeeded" && batch.phase !== "succeeded") {
       updateBatch(clientBatchId, { phase: "succeeded" });
+      void downloadMutation
+        .mutateAsync({ jobId: job.id })
+        .then((res) => {
+          const a = document.createElement("a");
+          a.href = res.url;
+          a.rel = "noopener noreferrer";
+          a.target = "_blank";
+          a.download = res.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        })
+        .catch(() => undefined);
     } else if (job.status === "failed" && batch.phase !== "failed") {
       updateBatch(clientBatchId, {
         phase: "failed",
@@ -80,7 +93,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
     ) {
       updateBatch(clientBatchId, { phase: "queued" });
     }
-  }, [job, batch, clientBatchId, updateBatch]);
+  }, [job, batch, clientBatchId, updateBatch, downloadMutation]);
 
   if (!batch) return null;
 

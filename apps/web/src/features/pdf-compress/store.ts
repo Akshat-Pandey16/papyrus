@@ -13,8 +13,11 @@ export type UploadPhase =
   | "failed"
   | "cancelled";
 
+export type UploadKind = "compress" | "split" | "rotate" | "reorder" | "ocr";
+
 export type UploadEntry = {
   clientUploadId: string;
+  kind: UploadKind;
   fileName: string;
   fileSize: number;
   fileType: string;
@@ -75,9 +78,9 @@ export const useUploadStore = create<UploadState>()(
       },
     }),
     {
-      name: "papyrus.uploads.v1",
+      name: "papyrus.uploads.v2",
       partialize: (s) => ({ uploads: s.uploads }),
-      version: 1,
+      version: 2,
     },
   ),
 );

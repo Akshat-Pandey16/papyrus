@@ -6,7 +6,9 @@ Merge, split, compress, convert, OCR, sign, redact, edit metadata, reorder/rotat
 
 ## Status
 
-Pre-alpha. Boilerplate scaffolding only — no features implemented yet.
+Alpha. **Anonymous mode is live** — visit a tool page, drop a PDF, get a result, no signup
+required. Implemented tools: compress, merge, split, rotate, reorder, OCR. Sign and redact
+are next.
 
 ## Stack
 
@@ -27,8 +29,75 @@ Install these natively on your dev machine — Docker is **not** used in develop
 - PostgreSQL 17 — running locally on `:5432` with a `papyrus` role and database
 - Redis 7 — running locally on `:6379`
 - MinIO (or another S3-compatible store) — running locally on `:9000`
+- **For OCR**: `ocrmypdf`, `tesseract-ocr`, and `ghostscript` on PATH (optional — OCR is the only
+  tool that needs these; everything else uses pikepdf). See [OCR setup](#ocr-setup) below.
 
 Docker / Kubernetes are only used for deployment. See [`infra/`](./infra/) for production images and manifests.
+
+## OCR setup
+
+OCR shells out to `ocrmypdf`, which depends on Tesseract and Ghostscript. Without them, the OCR
+endpoint returns `HTTP 503` with `code: "ocr_not_configured"` — every other tool keeps working.
+
+### Ubuntu / Debian
+
+```bash
+sudo apt update
+sudo apt install -y ocrmypdf tesseract-ocr tesseract-ocr-eng ghostscript
+```
+
+Add language packs as needed (the UI exposes English, French, German, Spanish, Italian,
+Portuguese, Dutch, Chinese Simplified, Japanese, Korean, Hindi, Arabic):
+
+```bash
+sudo apt install -y \
+  tesseract-ocr-fra \
+  tesseract-ocr-deu \
+  tesseract-ocr-spa \
+  tesseract-ocr-ita \
+  tesseract-ocr-por \
+  tesseract-ocr-nld \
+  tesseract-ocr-chi-sim \
+  tesseract-ocr-jpn \
+  tesseract-ocr-kor \
+  tesseract-ocr-hin \
+  tesseract-ocr-ara
+```
+
+### macOS (Homebrew)
+
+```bash
+brew install ocrmypdf tesseract ghostscript
+brew install tesseract-lang   # all extra language packs in one go
+```
+
+### Fedora / RHEL
+
+```bash
+sudo dnf install -y ocrmypdf tesseract tesseract-langpack-eng ghostscript
+```
+
+### Arch / Manjaro
+
+```bash
+sudo pacman -S --needed ocrmypdf tesseract tesseract-data-eng ghostscript
+```
+
+### Verify
+
+```bash
+which ocrmypdf tesseract gs && tesseract --list-langs
+```
+
+You should see paths for all three and at least `eng` in the language list. Restart the Celery
+worker after installing (the OCR runtime check runs on every job, but a worker restart is the
+cleanest way to surface the change).
+
+### Docker / Helm deploys
+
+The worker image in [`infra/docker/worker.Dockerfile`](./infra/docker/worker.Dockerfile) should
+include `RUN apt-get install -y ocrmypdf tesseract-ocr-* ghostscript`. The OCR pipeline runs in
+the worker container only, so the API image does not need it.
 
 ## Quick start
 

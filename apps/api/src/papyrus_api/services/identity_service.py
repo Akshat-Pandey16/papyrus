@@ -71,6 +71,35 @@ class IdentityService:
         self.reset_tokens = PasswordResetTokenRepository(session)
         self.refresh_tokens = RefreshTokenRepository(session)
 
+    async def create_anonymous(self, *, client: ClientContext | None = None) -> AuthResult:
+        anon_id = secrets.token_hex(12)
+        email = f"anon+{anon_id}@papyrus.local"
+        user = await self.users.create(
+            email=email,
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            full_name=None,
+        )
+        user.is_anonymous = True
+        organization = await self.organizations.create(
+            name="Anonymous workspace",
+            slug=f"anon-{anon_id}",
+        )
+        organization.is_anonymous = True
+        await self.memberships.create(
+            user_id=user.id,
+            organization_id=organization.id,
+            role=MembershipRole.OWNER,
+        )
+        await self.session.flush()
+        result = await self._issue_tokens(user, organization, client=client, parent=None)
+        await self.session.commit()
+        log.info(
+            "auth.anonymous.created",
+            user_id=str(user.id),
+            organization_id=str(organization.id),
+        )
+        return result
+
     async def signup(
         self,
         *,

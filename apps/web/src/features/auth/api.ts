@@ -14,6 +14,7 @@ type ApiUser = {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  is_anonymous: boolean;
   email_verified_at: string | null;
   created_at: string;
 };
@@ -34,6 +35,7 @@ function mapUser(u: ApiUser): AuthUser {
     email: u.email,
     fullName: u.full_name,
     isActive: u.is_active,
+    isAnonymous: u.is_anonymous,
     emailVerifiedAt: u.email_verified_at,
     createdAt: u.created_at,
   };
@@ -126,6 +128,17 @@ export function useResetPasswordMutation() {
       return data;
     },
   });
+}
+
+export async function createAnonymousSession(): Promise<AuthSession | null> {
+  try {
+    const { data } = await apiClient.post<ApiSession>("/auth/anonymous", undefined, {
+      _skipAuthRetry: true,
+    } as never);
+    return mapSession(data);
+  } catch {
+    return null;
+  }
 }
 
 export function useLogoutMutation() {

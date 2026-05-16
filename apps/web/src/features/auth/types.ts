@@ -3,6 +3,7 @@ export type AuthUser = {
   email: string;
   fullName: string | null;
   isActive: boolean;
+  isAnonymous: boolean;
   emailVerifiedAt: string | null;
   createdAt: string;
 };

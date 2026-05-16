@@ -38,6 +38,52 @@ class RetryJobRequest(_MutableModel):
     idempotency_key: UUID
 
 
+class SplitJobRequest(_MutableModel):
+    document_id: UUID
+    ranges: str = Field(min_length=1, max_length=512)
+    idempotency_key: UUID
+
+
+class RotateJobRequest(_MutableModel):
+    document_id: UUID
+    rotations: dict[str, int]
+    idempotency_key: UUID
+
+    @field_validator("rotations")
+    @classmethod
+    def _validate_rotations(cls, value: dict[str, int]) -> dict[str, int]:
+        if not value:
+            raise ValueError("Provide at least one page rotation.")
+        for k, v in value.items():
+            try:
+                int(k)
+            except ValueError as exc:
+                raise ValueError(f"Invalid page number '{k}'.") from exc
+            if v not in {0, 90, 180, 270, -90, -180, -270}:
+                raise ValueError(f"Invalid rotation '{v}' for page {k}.")
+        return value
+
+
+class ReorderJobRequest(_MutableModel):
+    document_id: UUID
+    order: list[int] = Field(min_length=1, max_length=10_000)
+    idempotency_key: UUID
+
+    @field_validator("order")
+    @classmethod
+    def _validate_order(cls, value: list[int]) -> list[int]:
+        for p in value:
+            if p < 1:
+                raise ValueError("Page numbers must be 1-indexed.")
+        return value
+
+
+class OcrJobRequest(_MutableModel):
+    document_id: UUID
+    language: str = Field(default="eng", min_length=2, max_length=32)
+    idempotency_key: UUID
+
+
 class MergeJobRequest(_MutableModel):
     document_ids: list[UUID] = Field(min_length=2, max_length=50)
     idempotency_key: UUID

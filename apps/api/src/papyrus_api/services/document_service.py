@@ -81,12 +81,19 @@ class DocumentService:
         name: str,
         content_type: str,
         size_bytes: int,
+        is_anonymous: bool = False,
     ) -> InitiateResult:
-        max_bytes = settings.user_max_file_bytes
+        max_bytes = (
+            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+        )
         if size_bytes > max_bytes:
             raise QuotaExceededError(
                 "File exceeds the maximum allowed size.",
-                details={"max_bytes": max_bytes, "size_bytes": size_bytes},
+                details={
+                    "max_bytes": max_bytes,
+                    "size_bytes": size_bytes,
+                    "anonymous": is_anonymous,
+                },
             )
 
         document = await self.documents.create(

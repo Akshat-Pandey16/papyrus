@@ -22,7 +22,11 @@ from papyrus_api.schemas.jobs import (
     JobsListPage,
     JobStatusLiteral,
     MergeJobRequest,
+    OcrJobRequest,
+    ReorderJobRequest,
     RetryJobRequest,
+    RotateJobRequest,
+    SplitJobRequest,
 )
 from papyrus_api.services.job_service import JobService, job_to_out
 
@@ -53,6 +57,7 @@ async def create_compression_job(
         document_id=payload.document_id,
         compression_level=payload.compression_level,
         idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -77,6 +82,111 @@ async def create_merge_job(
         user_id=user.id,
         document_ids=payload.document_ids,
         idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/split",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_split_job(
+    payload: SplitJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_split_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        ranges=payload.ranges,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/rotate",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_rotate_job(
+    payload: RotateJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_rotate_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        rotations=payload.rotations,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/reorder",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_reorder_job(
+    payload: ReorderJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_reorder_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        order=payload.order,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/ocr",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_ocr_job(
+    payload: OcrJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_ocr_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        language=payload.language,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK

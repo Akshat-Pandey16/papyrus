@@ -14,6 +14,7 @@ celery_app = Celery(
         "papyrus_api.workers.runtime",
         "papyrus_api.workers.tasks.cleanup",
         "papyrus_api.workers.tasks.pdf_pipeline",
+        "papyrus_api.workers.tasks.pdf_tools",
     ],
 )
 

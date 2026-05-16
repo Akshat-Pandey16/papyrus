@@ -61,6 +61,21 @@ def _to_session(result: AuthResult, response: Response) -> AuthSession:
 
 
 @router.post(
+    "/anonymous",
+    response_model=AuthSession,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[rate_limit("auth.anonymous", limit=30, window_seconds=3600)],
+)
+async def anonymous_session(
+    request: Request,
+    response: Response,
+    service: IdentityServiceDep,
+) -> AuthSession:
+    result = await service.create_anonymous(client=_client(request))
+    return _to_session(result, response)
+
+
+@router.post(
     "/signup",
     response_model=AuthSession,
     status_code=status.HTTP_201_CREATED,

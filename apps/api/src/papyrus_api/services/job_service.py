@@ -109,6 +109,7 @@ class JobService:
         document_id: UUID,
         compression_level: str,
         idempotency_key: UUID,
+        is_anonymous: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
             organization_id=organization_id,
@@ -125,13 +126,16 @@ class JobService:
             raise DocumentNotFoundError("Document not found.")
         document, version, storage_object = triple
 
-        if storage_object.size_bytes > settings.user_max_file_bytes:
+        max_bytes = (
+            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+        )
+        if storage_object.size_bytes > max_bytes:
             raise QuotaExceededError(
                 "File exceeds the maximum allowed size.",
-                details={"max_bytes": settings.user_max_file_bytes},
+                details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )
 
-        await self._reserve_quota(organization_id)
+        await self._reserve_quota(organization_id, is_anonymous=is_anonymous)
 
         params: dict[str, Any] = {
             "document_id": str(document.id),
@@ -197,6 +201,7 @@ class JobService:
         user_id: UUID,
         document_ids: list[UUID],
         idempotency_key: UUID,
+        is_anonymous: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
             organization_id=organization_id,
@@ -226,12 +231,16 @@ class JobService:
                     details={"document_id": str(document_id), "input_index": index},
                 )
             document, version, storage_object = triple
-            if storage_object.size_bytes > settings.user_max_file_bytes:
+            max_bytes = (
+                settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+            )
+            if storage_object.size_bytes > max_bytes:
                 raise QuotaExceededError(
                     "One of the files exceeds the maximum allowed size.",
                     details={
-                        "max_bytes": settings.user_max_file_bytes,
+                        "max_bytes": max_bytes,
                         "document_id": str(document_id),
+                        "anonymous": is_anonymous,
                     },
                 )
             total_input_bytes += storage_object.size_bytes
@@ -248,7 +257,7 @@ class JobService:
                 }
             )
 
-        await self._reserve_quota(organization_id)
+        await self._reserve_quota(organization_id, is_anonymous=is_anonymous)
 
         params: dict[str, Any] = {
             "inputs": inputs,
@@ -288,6 +297,179 @@ class JobService:
             replay=False,
         )
 
+        return CreateJobResult(job=job, replay=False)
+
+    async def create_split_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        ranges: str,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            kind=JobKind.SPLIT,
+            extra_params={"ranges": ranges},
+            task_name="papyrus.pdf.split",
+        )
+
+    async def create_rotate_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        rotations: dict[str, int],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            kind=JobKind.ROTATE,
+            extra_params={"rotations": rotations},
+            task_name="papyrus.pdf.rotate",
+        )
+
+    async def create_reorder_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        order: list[int],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            kind=JobKind.REORDER,
+            extra_params={"order": order},
+            task_name="papyrus.pdf.reorder",
+        )
+
+    async def create_ocr_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        language: str,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            kind=JobKind.OCR,
+            extra_params={"language": language},
+            task_name="papyrus.pdf.ocr",
+        )
+
+    async def _create_simple_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool,
+        kind: JobKind,
+        extra_params: dict[str, Any],
+        task_name: str,
+    ) -> CreateJobResult:
+        existing = await self.jobs.get_by_idempotency_key(
+            organization_id=organization_id,
+            idempotency_key=idempotency_key,
+        )
+        if existing is not None:
+            return CreateJobResult(job=existing, replay=True)
+
+        triple = await self.versions.get_with_storage(
+            organization_id=organization_id,
+            document_id=document_id,
+        )
+        if triple is None:
+            raise DocumentNotFoundError("Document not found.")
+        document, version, storage_object = triple
+
+        max_bytes = (
+            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+        )
+        if storage_object.size_bytes > max_bytes:
+            raise QuotaExceededError(
+                "File exceeds the maximum allowed size.",
+                details={"max_bytes": max_bytes, "anonymous": is_anonymous},
+            )
+
+        await self._reserve_quota(organization_id, is_anonymous=is_anonymous)
+
+        params: dict[str, Any] = {
+            "document_id": str(document.id),
+            "input_storage_object_id": str(storage_object.id),
+            "input_bucket": storage_object.bucket,
+            "input_key": storage_object.key,
+            "input_size_bytes": storage_object.size_bytes,
+            "input_filename": document.name,
+            "created_by_user_id": str(user_id),
+            "version_id": str(version.id),
+            **extra_params,
+        }
+
+        job = await self.jobs.create(
+            organization_id=organization_id,
+            kind=kind,
+            params=params,
+            idempotency_key=idempotency_key,
+            input_size_bytes=storage_object.size_bytes,
+        )
+        await self.events.append(
+            job_id=job.id,
+            status=JobStatus.PENDING,
+            payload={"phase": "queued"},
+        )
+        await self.session.commit()
+        await self._publish(
+            job_id=job.id,
+            status=JobStatus.PENDING,
+            payload={"phase": "queued"},
+        )
+
+        try:
+            from papyrus_api.workers.celery_app import celery_app
+
+            celery_app.send_task(
+                task_name,
+                args=[str(job.id)],
+                task_id=str(job.id),
+            )
+        except Exception:
+            log.warning("jobs.enqueue_failed", job_id=str(job.id), task=task_name)
+
+        log.info(
+            "jobs.simple.created",
+            job_id=str(job.id),
+            kind=kind.value,
+            document_id=str(document.id),
+            replay=False,
+        )
         return CreateJobResult(job=job, replay=False)
 
     def _enqueue_merge(self, job_id: UUID) -> None:
@@ -400,6 +582,53 @@ class JobService:
                 organization_id=organization_id,
                 user_id=user_id,
                 document_ids=[UUID(d) for d in doc_ids_raw],
+                idempotency_key=idempotency_key,
+            )
+
+        if job.kind in (JobKind.SPLIT, JobKind.ROTATE, JobKind.REORDER, JobKind.OCR):
+            document_id_raw = job.params.get("document_id") if job.params else None
+            if not isinstance(document_id_raw, str):
+                raise ValidationError("Job is missing the data needed to retry.")
+            document_id = UUID(document_id_raw)
+            if job.kind == JobKind.SPLIT:
+                ranges = job.params.get("ranges")
+                if not isinstance(ranges, str):
+                    raise ValidationError("Job is missing split spec.")
+                return await self.create_split_job(
+                    organization_id=organization_id,
+                    user_id=user_id,
+                    document_id=document_id,
+                    ranges=ranges,
+                    idempotency_key=idempotency_key,
+                )
+            if job.kind == JobKind.ROTATE:
+                rotations = job.params.get("rotations")
+                if not isinstance(rotations, dict):
+                    raise ValidationError("Job is missing rotation map.")
+                return await self.create_rotate_job(
+                    organization_id=organization_id,
+                    user_id=user_id,
+                    document_id=document_id,
+                    rotations={str(k): int(v) for k, v in rotations.items()},
+                    idempotency_key=idempotency_key,
+                )
+            if job.kind == JobKind.REORDER:
+                order_raw = job.params.get("order")
+                if not isinstance(order_raw, list):
+                    raise ValidationError("Job is missing page order.")
+                return await self.create_reorder_job(
+                    organization_id=organization_id,
+                    user_id=user_id,
+                    document_id=document_id,
+                    order=[int(p) for p in order_raw],
+                    idempotency_key=idempotency_key,
+                )
+            language = job.params.get("language", "eng")
+            return await self.create_ocr_job(
+                organization_id=organization_id,
+                user_id=user_id,
+                document_id=document_id,
+                language=str(language),
                 idempotency_key=idempotency_key,
             )
 
@@ -532,17 +761,28 @@ class JobService:
                 return phase
         return None
 
-    async def _reserve_quota(self, organization_id: UUID) -> None:
+    async def _reserve_quota(
+        self,
+        organization_id: UUID,
+        *,
+        is_anonymous: bool = False,
+    ) -> None:
+        limit = settings.anon_daily_job_quota if is_anonymous else settings.user_daily_job_quota
         allowed, _count = await reserve_daily_quota(
             self.redis,
             namespace="jobs",
             principal_id=str(organization_id),
-            limit=settings.user_daily_job_quota,
+            limit=limit,
         )
         if not allowed:
+            message = (
+                "Daily job quota exceeded. Sign up for a higher limit."
+                if is_anonymous
+                else "Daily job quota exceeded."
+            )
             raise QuotaExceededError(
-                "Daily job quota exceeded.",
-                details={"quota": settings.user_daily_job_quota},
+                message,
+                details={"quota": limit, "anonymous": is_anonymous},
             )
 
     @staticmethod
@@ -566,17 +806,21 @@ class JobService:
         return _channel(job_id)
 
 
-def _suggest_output_filename(original: object) -> str:
-    base = "compressed.pdf"
-    if isinstance(original, str) and original.strip():
-        clean = original.strip().replace("\\", "_").replace("/", "_")
-        stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
-        base = f"{stem}-compressed.pdf"
-    return base[:200]
+_SUFFIX_BY_KIND: dict[JobKind, str] = {
+    JobKind.COMPRESS: "compressed",
+    JobKind.MERGE: "merged",
+    JobKind.SPLIT: "split",
+    JobKind.ROTATE: "rotated",
+    JobKind.REORDER: "reordered",
+    JobKind.OCR: "ocr",
+}
 
 
 def _suggest_output_filename_for(job: Job) -> str:
     params = job.params if isinstance(job.params, dict) else {}
+    suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
+    ext = "zip" if job.kind == JobKind.SPLIT else "pdf"
+
     if job.kind == JobKind.MERGE:
         names = params.get("input_filenames")
         if isinstance(names, list) and names:
@@ -584,9 +828,16 @@ def _suggest_output_filename_for(job: Job) -> str:
             if first:
                 clean = first.strip().replace("\\", "_").replace("/", "_")
                 stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
-                return f"{stem}-merged.pdf"[:200]
-        return "merged.pdf"
-    return _suggest_output_filename(params.get("input_filename"))
+                return f"{stem}-{suffix}.{ext}"[:200]
+        return f"{suffix}.{ext}"
+
+    original = params.get("input_filename")
+    base = f"output.{ext}"
+    if isinstance(original, str) and original.strip():
+        clean = original.strip().replace("\\", "_").replace("/", "_")
+        stem = clean[:-4] if clean.lower().endswith(".pdf") else clean
+        base = f"{stem}-{suffix}.{ext}"
+    return base[:200]
 
 
 def job_to_out(job: Job, *, phase: str | None) -> JobOut:

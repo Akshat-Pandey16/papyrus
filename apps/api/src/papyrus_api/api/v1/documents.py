@@ -34,6 +34,7 @@ async def initiate_upload(
         name=payload.name,
         content_type=payload.content_type,
         size_bytes=payload.size_bytes,
+        is_anonymous=user.is_anonymous,
     )
     return UploadInitiateResponse(
         document_id=result.document.id,

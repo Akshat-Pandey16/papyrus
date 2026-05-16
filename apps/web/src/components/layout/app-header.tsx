@@ -9,6 +9,10 @@ const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/tools/compress": "Compress PDF",
   "/tools/merge": "Merge PDFs",
+  "/tools/split": "Split PDF",
+  "/tools/rotate": "Rotate pages",
+  "/tools/reorder": "Reorder pages",
+  "/tools/ocr": "OCR a PDF",
   "/settings": "Settings",
 };
 

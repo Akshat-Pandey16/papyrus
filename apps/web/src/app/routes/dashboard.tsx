@@ -7,8 +7,10 @@ import {
   FileSignature,
   Files,
   Layers,
+  ListOrdered,
   Lock,
   type LucideIcon,
+  RotateCw,
   ScanLine,
   Split,
   Wand2,
@@ -22,7 +24,8 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: () => {
-    if (!useAuthStore.getState().hasAccess) {
+    const state = useAuthStore.getState();
+    if (!state.hasAccess || state.user?.isAnonymous) {
       throw redirect({ to: "/login" });
     }
   },
@@ -52,8 +55,34 @@ const TOOLS: ToolCard[] = [
     to: "/tools/merge",
     accent: "from-emerald-500/15 to-emerald-500/0",
   },
-  { title: "Split", desc: "Pull or split pages out.", icon: Split },
-  { title: "OCR", desc: "Make scans searchable.", icon: ScanLine },
+  {
+    title: "Split",
+    desc: "Pull or split pages out.",
+    icon: Split,
+    to: "/tools/split",
+    accent: "from-sky-500/15 to-sky-500/0",
+  },
+  {
+    title: "Rotate",
+    desc: "Rotate any page 90°.",
+    icon: RotateCw,
+    to: "/tools/rotate",
+    accent: "from-amber-500/15 to-amber-500/0",
+  },
+  {
+    title: "Reorder",
+    desc: "Shuffle the page order.",
+    icon: ListOrdered,
+    to: "/tools/reorder",
+    accent: "from-pink-500/15 to-pink-500/0",
+  },
+  {
+    title: "OCR",
+    desc: "Make scans searchable.",
+    icon: ScanLine,
+    to: "/tools/ocr",
+    accent: "from-cyan-500/15 to-cyan-500/0",
+  },
   { title: "Sign", desc: "Add signatures and seals.", icon: FileSignature },
   { title: "Redact", desc: "Permanently remove data.", icon: Lock },
 ];

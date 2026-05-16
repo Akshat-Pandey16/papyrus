@@ -13,4 +13,8 @@ celery_app.conf.beat_schedule = {
         "task": "papyrus.cleanup.orphaned_uploads",
         "schedule": crontab(minute="*/30"),
     },
+    "cleanup-anonymous-accounts": {
+        "task": "papyrus.cleanup.purge_anonymous",
+        "schedule": crontab(minute="0", hour="*"),
+    },
 }

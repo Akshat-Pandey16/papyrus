@@ -1,9 +1,10 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AnonymousBanner } from "@/components/shared/anonymous-banner";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/features/auth/store";
+import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import {
   type CreateCompressionJobInput,
   useCreateCompressionJobMutation,
@@ -19,13 +20,8 @@ import type { CompressionLevel } from "@/features/pdf-compress/types";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/tools/compress")({
-  beforeLoad: ({ location }) => {
-    if (!useAuthStore.getState().hasAccess) {
-      throw redirect({
-        to: "/login",
-        search: { next: location.pathname } as never,
-      });
-    }
+  beforeLoad: async () => {
+    await ensureAnonymousSession();
   },
   component: CompressPage,
 });
@@ -54,6 +50,7 @@ function CompressPage() {
     const idempotencyKey = crypto.randomUUID();
     startUpload({
       clientUploadId,
+      kind: "compress",
       fileName: pendingFile.name,
       fileSize: pendingFile.size,
       fileType: pendingFile.type,
@@ -113,6 +110,7 @@ function CompressPage() {
 
   const sortedIds = useMemo(() => {
     return Object.values(uploadsMap)
+      .filter((entry) => entry.kind === "compress")
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((entry) => entry.clientUploadId);
   }, [uploadsMap]);
@@ -120,6 +118,7 @@ function CompressPage() {
   return (
     <div className="w-full px-4 py-8 sm:px-8 lg:px-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
             Drop a PDF, pick how aggressively to compress, and we&apos;ll save you 20–50% on file

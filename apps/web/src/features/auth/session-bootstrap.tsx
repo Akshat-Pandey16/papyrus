@@ -8,6 +8,7 @@ type ApiUser = {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  is_anonymous: boolean;
   email_verified_at: string | null;
   created_at: string;
 };
@@ -26,6 +27,7 @@ async function loadCurrentUser(): Promise<boolean> {
         email: data.user.email,
         fullName: data.user.full_name,
         isActive: data.user.is_active,
+        isAnonymous: data.user.is_anonymous,
         emailVerifiedAt: data.user.email_verified_at,
         createdAt: data.user.created_at,
       },
