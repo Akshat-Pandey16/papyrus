@@ -1,4 +1,45 @@
-export type CompressionLevel = "low" | "medium" | "high";
+export type CompressionLevel = "low" | "medium" | "high" | "extreme" | "custom";
+
+export type ColorMode = "preserve" | "grayscale";
+
+export type ObjectStreamMode = "preserve" | "generate" | "disable";
+
+export type CompressionEngine = "pikepdf" | "ghostscript";
+
+export type PdfVersion = "1.4" | "1.5" | "1.6" | "1.7";
+
+export type CompressionOptions = {
+  engine: CompressionEngine;
+  recompressImages: boolean;
+  imageQuality: number;
+  imageMaxDimension: number | null;
+  colorMode: ColorMode;
+  recompressStreams: boolean;
+  objectStreamMode: ObjectStreamMode;
+  stripMetadata: boolean;
+  discardJavascript: boolean;
+  discardForms: boolean;
+  discardAnnotations: boolean;
+  discardBookmarks: boolean;
+  discardAttachments: boolean;
+  discardThumbnails: boolean;
+  linearize: boolean;
+  pdfVersion: PdfVersion | null;
+};
+
+export type CompressEstimate = {
+  inputSizeBytes: number;
+  projectedOutputSizeBytes: number;
+  projectedRatio: number;
+  projectedSavingsBytes: number;
+  totalPageCount: number;
+  samplePageCount: number;
+  sampleInputSizeBytes: number;
+  sampleOutputSizeBytes: number;
+  engine: CompressionEngine;
+  gsVersion: string | null;
+  elapsedMs: number;
+};
 
 export type JobStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
 

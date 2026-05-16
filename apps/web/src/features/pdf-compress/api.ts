@@ -6,7 +6,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type {
+  CompressEstimate,
   CompressionLevel,
+  CompressionOptions,
   Document,
   DownloadUrl,
   Job,
@@ -173,18 +175,92 @@ export function useConfirmUploadMutation() {
 export type CreateCompressionJobInput = {
   documentId: string;
   compressionLevel: CompressionLevel;
+  options?: CompressionOptions;
   idempotencyKey: string;
 };
+
+function optionsToApi(options: CompressionOptions) {
+  return {
+    engine: options.engine,
+    recompress_images: options.recompressImages,
+    image_quality: options.imageQuality,
+    image_max_dimension: options.imageMaxDimension,
+    color_mode: options.colorMode,
+    recompress_streams: options.recompressStreams,
+    object_stream_mode: options.objectStreamMode,
+    strip_metadata: options.stripMetadata,
+    discard_javascript: options.discardJavascript,
+    discard_forms: options.discardForms,
+    discard_annotations: options.discardAnnotations,
+    discard_bookmarks: options.discardBookmarks,
+    discard_attachments: options.discardAttachments,
+    discard_thumbnails: options.discardThumbnails,
+    linearize: options.linearize,
+    pdf_version: options.pdfVersion,
+  };
+}
+
+type ApiCompressEstimate = {
+  input_size_bytes: number;
+  projected_output_size_bytes: number;
+  projected_ratio: number;
+  projected_savings_bytes: number;
+  total_page_count: number;
+  sample_page_count: number;
+  sample_input_size_bytes: number;
+  sample_output_size_bytes: number;
+  engine: "pikepdf" | "ghostscript";
+  gs_version: string | null;
+  elapsed_ms: number;
+};
+
+export type EstimateCompressionInput = {
+  documentId: string;
+  compressionLevel: CompressionLevel;
+  options?: CompressionOptions;
+};
+
+export function useEstimateCompressionMutation() {
+  return useMutation({
+    mutationFn: async (input: EstimateCompressionInput): Promise<CompressEstimate> => {
+      const body: Record<string, unknown> = {
+        document_id: input.documentId,
+        compression_level: input.compressionLevel,
+      };
+      if (input.options !== undefined) {
+        body.options = optionsToApi(input.options);
+      }
+      const { data } = await apiClient.post<ApiCompressEstimate>("/jobs/compress/estimate", body);
+      return {
+        inputSizeBytes: data.input_size_bytes,
+        projectedOutputSizeBytes: data.projected_output_size_bytes,
+        projectedRatio: data.projected_ratio,
+        projectedSavingsBytes: data.projected_savings_bytes,
+        totalPageCount: data.total_page_count,
+        samplePageCount: data.sample_page_count,
+        sampleInputSizeBytes: data.sample_input_size_bytes,
+        sampleOutputSizeBytes: data.sample_output_size_bytes,
+        engine: data.engine,
+        gsVersion: data.gs_version,
+        elapsedMs: data.elapsed_ms,
+      };
+    },
+  });
+}
 
 export function useCreateCompressionJobMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateCompressionJobInput): Promise<Job> => {
-      const { data } = await apiClient.post<ApiJob>("/jobs/compress", {
+      const body: Record<string, unknown> = {
         document_id: input.documentId,
         compression_level: input.compressionLevel,
         idempotency_key: input.idempotencyKey,
-      });
+      };
+      if (input.options !== undefined) {
+        body.options = optionsToApi(input.options);
+      }
+      const { data } = await apiClient.post<ApiJob>("/jobs/compress", body);
       return mapJob(data);
     },
     onSuccess: (job) => {

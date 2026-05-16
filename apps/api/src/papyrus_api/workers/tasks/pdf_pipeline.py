@@ -19,7 +19,11 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
-from papyrus_api.services.pdf.compress import CompressionLevel, compress_pdf
+from papyrus_api.services.pdf.compress import (
+    CompressionLevel,
+    compress_pdf,
+    options_from_payload,
+)
 from papyrus_api.services.pdf.merge import merge_pdfs
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
@@ -101,6 +105,10 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
             input_key = params["input_key"]
             level_raw = params["compression_level"]
             level = CompressionLevel(level_raw)
+            overrides_raw = params.get("compression_options") or {}
+            if not isinstance(overrides_raw, dict):
+                raise ValueError("compression_options must be a dict")
+            compress_options = options_from_payload(level=level, overrides=overrides_raw)
         except (KeyError, ValueError) as exc:
             await _fail(
                 session=session,
@@ -167,6 +175,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     input_path=input_path,
                     output_path=output_path,
                     level=level,
+                    options=compress_options,
                     progress=_on_progress,
                 )
             )
@@ -229,6 +238,10 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     "input_size_bytes": result.input_size_bytes,
                     "compression_ratio": result.ratio,
                     "page_count": result.page_count,
+                    "images_processed": result.images_processed,
+                    "images_recompressed": result.images_recompressed,
+                    "images_downsampled": result.images_downsampled,
+                    "metadata_stripped": result.metadata_stripped,
                 }
                 await JobEventRepository(session).append(
                     job_id=job_id,

@@ -109,6 +109,7 @@ class JobService:
         document_id: UUID,
         compression_level: str,
         idempotency_key: UUID,
+        options: dict[str, Any] | None = None,
         is_anonymous: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
@@ -140,6 +141,7 @@ class JobService:
         params: dict[str, Any] = {
             "document_id": str(document.id),
             "compression_level": compression_level,
+            "compression_options": options or {},
             "input_storage_object_id": str(storage_object.id),
             "input_bucket": storage_object.bucket,
             "input_key": storage_object.key,
@@ -562,6 +564,8 @@ class JobService:
         if job.kind == JobKind.COMPRESS:
             document_id_raw = job.params.get("document_id") if job.params else None
             level = job.params.get("compression_level") if job.params else None
+            options_raw = job.params.get("compression_options") if job.params else None
+            options = options_raw if isinstance(options_raw, dict) else None
             if not isinstance(document_id_raw, str) or not isinstance(level, str):
                 raise ValidationError("Job is missing the data needed to retry.")
             return await self.create_compression_job(
@@ -569,6 +573,7 @@ class JobService:
                 user_id=user_id,
                 document_id=UUID(document_id_raw),
                 compression_level=level,
+                options=options,
                 idempotency_key=idempotency_key,
             )
 

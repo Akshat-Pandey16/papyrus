@@ -15,6 +15,7 @@ from papyrus_api.core.security import TokenType, decode_token
 from papyrus_api.db.session import get_session
 from papyrus_api.domain.identity.models import Organization, User
 from papyrus_api.integrations.redis import get_redis
+from papyrus_api.services.compress_estimate_service import CompressEstimateService
 from papyrus_api.services.document_service import DocumentService
 from papyrus_api.services.identity_service import IdentityService
 from papyrus_api.services.job_service import JobService
@@ -65,6 +66,19 @@ def get_job_service(
 
 
 JobServiceDep = Annotated[JobService, Depends(get_job_service)]
+
+
+def get_compress_estimate_service(
+    session: DbSession,
+    storage: StorageServiceDep,
+) -> CompressEstimateService:
+    return CompressEstimateService(session, storage)
+
+
+CompressEstimateServiceDep = Annotated[
+    CompressEstimateService,
+    Depends(get_compress_estimate_service),
+]
 
 
 async def _principal_from_token(

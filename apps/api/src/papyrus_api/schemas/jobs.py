@@ -4,11 +4,15 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from papyrus_api.schemas.common import StrictModel
 
-CompressionLevelLiteral = Literal["low", "medium", "high"]
+CompressionLevelLiteral = Literal["low", "medium", "high", "extreme", "custom"]
+ColorModeLiteral = Literal["preserve", "grayscale"]
+ObjectStreamModeLiteral = Literal["preserve", "generate", "disable"]
+CompressionEngineLiteral = Literal["pikepdf", "ghostscript"]
+PdfVersionLiteral = Literal["1.4", "1.5", "1.6", "1.7"]
 JobStatusLiteral = Literal["pending", "running", "succeeded", "failed", "cancelled"]
 JobKindLiteral = Literal[
     "merge",
@@ -28,10 +32,62 @@ class _MutableModel(StrictModel):
     model_config = ConfigDict(strict=False, extra="forbid", frozen=False)
 
 
+class CompressOptionsIn(_MutableModel):
+    engine: CompressionEngineLiteral | None = None
+    recompress_images: bool | None = None
+    image_quality: int | None = Field(default=None, ge=1, le=100)
+    image_max_dimension: int | None = Field(default=None, ge=0, le=8000)
+    color_mode: ColorModeLiteral | None = None
+    recompress_streams: bool | None = None
+    object_stream_mode: ObjectStreamModeLiteral | None = None
+    strip_metadata: bool | None = None
+    discard_javascript: bool | None = None
+    discard_forms: bool | None = None
+    discard_annotations: bool | None = None
+    discard_bookmarks: bool | None = None
+    discard_attachments: bool | None = None
+    discard_thumbnails: bool | None = None
+    linearize: bool | None = None
+    pdf_version: PdfVersionLiteral | None = None
+
+
 class CompressJobRequest(_MutableModel):
     document_id: UUID
     compression_level: CompressionLevelLiteral
+    options: CompressOptionsIn | None = None
     idempotency_key: UUID
+
+    @model_validator(mode="after")
+    def _require_options_for_custom(self) -> CompressJobRequest:
+        if self.compression_level == "custom" and self.options is None:
+            raise ValueError("Custom compression requires options.")
+        return self
+
+
+class CompressEstimateRequest(_MutableModel):
+    document_id: UUID
+    compression_level: CompressionLevelLiteral
+    options: CompressOptionsIn | None = None
+
+    @model_validator(mode="after")
+    def _require_options_for_custom(self) -> CompressEstimateRequest:
+        if self.compression_level == "custom" and self.options is None:
+            raise ValueError("Custom compression requires options.")
+        return self
+
+
+class CompressEstimateOut(StrictModel):
+    input_size_bytes: int
+    projected_output_size_bytes: int
+    projected_ratio: float
+    projected_savings_bytes: int
+    total_page_count: int
+    sample_page_count: int
+    sample_input_size_bytes: int
+    sample_output_size_bytes: int
+    engine: CompressionEngineLiteral
+    gs_version: str | None
+    elapsed_ms: int
 
 
 class RetryJobRequest(_MutableModel):

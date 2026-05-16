@@ -10,11 +10,20 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
 
-from papyrus_api.api.deps import CurrentPrincipal, JobServiceDep, RedisDep, SsePrincipal
+from papyrus_api.api.deps import (
+    CompressEstimateServiceDep,
+    CurrentPrincipal,
+    JobServiceDep,
+    RedisDep,
+    SsePrincipal,
+    rate_limit,
+)
 from papyrus_api.core.config import settings
 from papyrus_api.core.security import issue_access_token
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.schemas.jobs import (
+    CompressEstimateOut,
+    CompressEstimateRequest,
     CompressJobRequest,
     DownloadUrlOut,
     JobKindLiteral,
@@ -51,11 +60,15 @@ async def create_compression_job(
     response: Response,
 ) -> JobOut:
     user, organization = principal
+    options_dict: dict[str, object] | None = None
+    if payload.options is not None:
+        options_dict = payload.options.model_dump(exclude_none=True)
     result = await service.create_compression_job(
         organization_id=organization.id,
         user_id=user.id,
         document_id=payload.document_id,
         compression_level=payload.compression_level,
+        options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
     )
@@ -63,6 +76,42 @@ async def create_compression_job(
         response.status_code = status.HTTP_200_OK
     phase = "queued" if result.job.status == JobStatus.PENDING else None
     return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/compress/estimate",
+    response_model=CompressEstimateOut,
+    dependencies=[rate_limit("jobs.compress.estimate", limit=20, window_seconds=60)],
+)
+async def estimate_compression(
+    payload: CompressEstimateRequest,
+    principal: CurrentPrincipal,
+    service: CompressEstimateServiceDep,
+) -> CompressEstimateOut:
+    user, organization = principal
+    options_dict: dict[str, object] | None = None
+    if payload.options is not None:
+        options_dict = payload.options.model_dump(exclude_none=True)
+    result = await service.estimate(
+        organization_id=organization.id,
+        document_id=payload.document_id,
+        compression_level=payload.compression_level,
+        options=options_dict,
+        is_anonymous=user.is_anonymous,
+    )
+    return CompressEstimateOut(
+        input_size_bytes=result.input_size_bytes,
+        projected_output_size_bytes=result.projected_output_size_bytes,
+        projected_ratio=result.projected_ratio,
+        projected_savings_bytes=result.projected_savings_bytes,
+        total_page_count=result.total_page_count,
+        sample_page_count=result.sample_page_count,
+        sample_input_size_bytes=result.sample_input_size_bytes,
+        sample_output_size_bytes=result.sample_output_size_bytes,
+        engine=result.engine,  # type: ignore[arg-type]
+        gs_version=result.gs_version,
+        elapsed_ms=result.elapsed_ms,
+    )
 
 
 @router.post(
