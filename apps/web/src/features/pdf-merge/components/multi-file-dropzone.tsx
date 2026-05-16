@@ -1,14 +1,15 @@
 import { ArrowDown, ArrowUp, FileText, FileUp, X } from "lucide-react";
 import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
+import type { PageRange } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/features/pdf-compress/format";
-import { isValidPageRangeSpec } from "@/features/pdf-merge/presets";
+import { FilePagesPopover } from "@/features/pdf-merge/components/file-pages-popover";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 export type MergeFileSpec = {
   file: File;
-  pageRanges: string;
+  ranges: PageRange[] | null;
 };
 
 export type MultiFileDropzoneProps = {
@@ -17,7 +18,7 @@ export type MultiFileDropzoneProps = {
   onRemove: (index: number) => void;
   onMove: (from: number, to: number) => void;
   onClearAll: () => void;
-  onPageRangesChange: (index: number, value: string) => void;
+  onRangesChange: (index: number, ranges: PageRange[] | null) => void;
   disabled?: boolean;
   className?: string;
 };
@@ -28,7 +29,7 @@ export function MultiFileDropzone({
   onRemove,
   onMove,
   onClearAll,
-  onPageRangesChange,
+  onRangesChange,
   disabled = false,
   className,
 }: MultiFileDropzoneProps) {
@@ -171,14 +172,14 @@ export function MultiFileDropzone({
                 key={`${entry.file.name}-${index}-${entry.file.size}`}
                 index={index}
                 file={entry.file}
-                pageRanges={entry.pageRanges}
+                ranges={entry.ranges}
                 disabled={disabled}
                 disableUp={index === 0}
                 disableDown={index === files.length - 1}
                 onMoveUp={() => onMove(index, index - 1)}
                 onMoveDown={() => onMove(index, index + 1)}
                 onRemove={() => onRemove(index)}
-                onPageRangesChange={(value) => onPageRangesChange(index, value)}
+                onRangesChange={(next) => onRangesChange(index, next)}
               />
             ))}
           </ol>
@@ -191,95 +192,73 @@ export function MultiFileDropzone({
 type FileRowProps = {
   index: number;
   file: File;
-  pageRanges: string;
+  ranges: PageRange[] | null;
   disabled: boolean;
   disableUp: boolean;
   disableDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
-  onPageRangesChange: (value: string) => void;
+  onRangesChange: (next: PageRange[] | null) => void;
 };
 
 function FileRow({
   index,
   file,
-  pageRanges,
+  ranges,
   disabled,
   disableUp,
   disableDown,
   onMoveUp,
   onMoveDown,
   onRemove,
-  onPageRangesChange,
+  onRangesChange,
 }: FileRowProps) {
-  const inputId = useId();
-  const valid = isValidPageRangeSpec(pageRanges);
   return (
-    <li className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
-      <div className="flex items-center gap-3">
-        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground/80">
-          {index + 1}
-        </span>
-        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{file.name}</p>
-          <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onMoveUp}
-            disabled={disabled || disableUp}
-            aria-label={`Move ${file.name} up`}
-            className="h-8 w-8 p-0"
-          >
-            <ArrowUp className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onMoveDown}
-            disabled={disabled || disableDown}
-            aria-label={`Move ${file.name} down`}
-            className="h-8 w-8 p-0"
-          >
-            <ArrowDown className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            disabled={disabled}
-            aria-label={`Remove ${file.name}`}
-            className="h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </Button>
-        </div>
+    <li className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground/80">
+        {index + 1}
+      </span>
+      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{file.name}</p>
+        <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
       </div>
-      <div className="flex items-center gap-2 pl-9">
-        <label htmlFor={inputId} className="text-[11px] font-medium text-muted-foreground">
-          Pages
-        </label>
-        <input
-          id={inputId}
-          type="text"
-          value={pageRanges}
-          placeholder="all"
-          aria-invalid={!valid}
+      <FilePagesPopover file={file} ranges={ranges} onChange={onRangesChange} disabled={disabled} />
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onMoveUp}
+          disabled={disabled || disableUp}
+          aria-label={`Move ${file.name} up`}
+          className="h-8 w-8 p-0"
+        >
+          <ArrowUp className="h-4 w-4" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onMoveDown}
+          disabled={disabled || disableDown}
+          aria-label={`Move ${file.name} down`}
+          className="h-8 w-8 p-0"
+        >
+          <ArrowDown className="h-4 w-4" aria-hidden />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onRemove}
           disabled={disabled}
-          onChange={(e) => onPageRangesChange(e.target.value)}
-          className={cn(
-            "h-8 max-w-[180px] flex-1 rounded-md border bg-background px-2 text-xs",
-            valid ? "border-border" : "border-destructive/60",
-          )}
-        />
-        <span className="text-[10px] text-muted-foreground">e.g. 1-3, 5, 7-9</span>
+          aria-label={`Remove ${file.name}`}
+          className="h-8 w-8 p-0"
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </Button>
       </div>
     </li>
   );

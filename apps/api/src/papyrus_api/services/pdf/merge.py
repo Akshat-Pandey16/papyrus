@@ -108,21 +108,24 @@ def _add_blank_pages(
     count: int,
     reference_page: pikepdf.Page | None,
 ) -> int:
-    if count <= 0 or reference_page is None:
+    if count <= 0:
         return 0
-    try:
-        media_box = reference_page.mediabox
-    except Exception:
-        media_box = pikepdf.Array([0, 0, 612, 792])
+    width, height = 612.0, 792.0
+    if reference_page is not None:
+        try:
+            mb = reference_page.mediabox
+            llx = float(mb[0])
+            lly = float(mb[1])
+            urx = float(mb[2])
+            ury = float(mb[3])
+            width = abs(urx - llx)
+            height = abs(ury - lly)
+        except Exception:
+            pass
     added = 0
     for _ in range(count):
         try:
-            new_page = pikepdf.Dictionary(
-                Type=pikepdf.Name.Page,
-                MediaBox=media_box,
-                Resources=pikepdf.Dictionary(),
-            )
-            merged.pages.append(merged.make_indirect(new_page))
+            merged.add_blank_page(page_size=(width, height))
             added += 1
         except Exception:
             break
@@ -200,12 +203,13 @@ def merge_pdfs(
             page_indices = parse_flat(spec.page_ranges, page_count=src_page_count)
 
             if index > 0 and opts.blank_pages_between > 0:
-                blank_pages_added += _add_blank_pages(
+                just_added = _add_blank_pages(
                     merged,
                     count=opts.blank_pages_between,
                     reference_page=first_page_ref,
                 )
-                page_count += blank_pages_added
+                blank_pages_added += just_added
+                page_count += just_added
 
             start_page_index = page_count
             for page_idx in page_indices:

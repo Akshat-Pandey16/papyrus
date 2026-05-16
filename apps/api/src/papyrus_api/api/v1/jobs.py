@@ -162,11 +162,22 @@ async def create_split_job(
     response: Response,
 ) -> JobOut:
     user, organization = principal
+    ranges_payload: list[dict[str, int]] | None = None
+    if payload.ranges is not None:
+        ranges_payload = [
+            {"from": item.from_page, "to": item.to_page} for item in payload.ranges
+        ]
+    options_dict: dict[str, object] | None = None
+    if payload.options is not None:
+        options_dict = payload.options.model_dump(exclude_none=True)
     result = await service.create_split_job(
         organization_id=organization.id,
         user_id=user.id,
         document_id=payload.document_id,
-        ranges=payload.ranges,
+        mode=payload.mode,
+        ranges=ranges_payload,
+        every_n=payload.every_n,
+        options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
     )

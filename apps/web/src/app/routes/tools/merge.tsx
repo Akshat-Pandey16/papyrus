@@ -3,6 +3,7 @@ import { Files } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AnonymousBanner } from "@/components/shared/anonymous-banner";
+import type { PageRange } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { type CreateMergeJobInput, useCreateMergeJobMutation } from "@/features/pdf-merge/api";
@@ -15,7 +16,7 @@ import {
 } from "@/features/pdf-merge/components/multi-file-dropzone";
 import { useMergeUpload } from "@/features/pdf-merge/hooks/use-merge-upload";
 import { useRecoverMerges } from "@/features/pdf-merge/hooks/use-recover-merges";
-import { DEFAULT_MERGE_OPTIONS, isValidPageRangeSpec } from "@/features/pdf-merge/presets";
+import { DEFAULT_MERGE_OPTIONS } from "@/features/pdf-merge/presets";
 import { type MergeFileEntry, useMergeStore } from "@/features/pdf-merge/store";
 import type { MergeInput, MergeOptions } from "@/features/pdf-merge/types";
 import { ApiError } from "@/lib/api/client";
@@ -29,6 +30,11 @@ export const Route = createFileRoute("/tools/merge")({
 
 function newId(): string {
   return crypto.randomUUID();
+}
+
+function rangesToSpec(ranges: PageRange[] | null): string | null {
+  if (ranges == null || ranges.length === 0) return null;
+  return ranges.map((r) => (r.from === r.to ? `${r.from}` : `${r.from}-${r.to}`)).join(",");
 }
 
 function MergePage() {
@@ -45,7 +51,7 @@ function MergePage() {
   const createJob = useCreateMergeJobMutation();
 
   const onAdd = useCallback((incoming: File[]) => {
-    setPendingFiles((prev) => [...prev, ...incoming.map((file) => ({ file, pageRanges: "" }))]);
+    setPendingFiles((prev) => [...prev, ...incoming.map((file) => ({ file, ranges: null }))]);
   }, []);
 
   const onRemove = useCallback((index: number) => {
@@ -63,21 +69,14 @@ function MergePage() {
     });
   }, []);
 
-  const onPageRangesChange = useCallback((index: number, value: string) => {
-    setPendingFiles((prev) =>
-      prev.map((entry, i) => (i === index ? { ...entry, pageRanges: value } : entry)),
-    );
+  const onRangesChange = useCallback((index: number, ranges: PageRange[] | null) => {
+    setPendingFiles((prev) => prev.map((entry, i) => (i === index ? { ...entry, ranges } : entry)));
   }, []);
 
   const onClearAll = useCallback(() => setPendingFiles([]), []);
 
-  const rangesAllValid = useMemo(
-    () => pendingFiles.every((entry) => isValidPageRangeSpec(entry.pageRanges)),
-    [pendingFiles],
-  );
-
   const onSubmit = useCallback(async () => {
-    if (pendingFiles.length < 2 || submitting || !rangesAllValid) return;
+    if (pendingFiles.length < 2 || submitting) return;
     setSubmitting(true);
 
     const clientBatchId = newId();
@@ -87,7 +86,7 @@ function MergePage() {
       fileName: entry.file.name,
       fileSize: entry.file.size,
       fileType: entry.file.type,
-      pageRanges: entry.pageRanges.trim() === "" ? null : entry.pageRanges.trim(),
+      pageRanges: rangesToSpec(entry.ranges),
       phase: "pending",
       bytesUploaded: 0,
       bytesTotal: entry.file.size,
@@ -147,17 +146,7 @@ function MergePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [
-    pendingFiles,
-    submitting,
-    rangesAllValid,
-    options,
-    startBatch,
-    start,
-    updateBatch,
-    createJob,
-    cancel,
-  ]);
+  }, [pendingFiles, submitting, options, startBatch, start, updateBatch, createJob, cancel]);
 
   const onRetry = useCallback(
     (id: string) => {
@@ -172,7 +161,7 @@ function MergePage() {
       .map((batch) => batch.clientBatchId);
   }, [batchesMap]);
 
-  const canSubmit = pendingFiles.length >= 2 && !submitting && rangesAllValid;
+  const canSubmit = pendingFiles.length >= 2 && !submitting;
   const totalSize = pendingFiles.reduce((s, entry) => s + entry.file.size, 0);
 
   return (
@@ -181,8 +170,8 @@ function MergePage() {
         <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Drop two or more PDFs, drag to reorder, pick page ranges per file, and we&apos;ll stitch
-            them into one. Files are deleted after 24 hours.
+            Drop two or more PDFs, drag to reorder, optionally pick pages per file, and we&apos;ll
+            stitch them into one. Files are deleted after 24 hours.
           </p>
         </header>
 
@@ -194,7 +183,7 @@ function MergePage() {
               onRemove={onRemove}
               onMove={onMove}
               onClearAll={onClearAll}
-              onPageRangesChange={onPageRangesChange}
+              onRangesChange={onRangesChange}
               disabled={submitting}
             />
           </div>
@@ -217,9 +206,7 @@ function MergePage() {
                 ? "Starting…"
                 : pendingFiles.length < 2
                   ? "Add at least 2 PDFs"
-                  : !rangesAllValid
-                    ? "Fix page ranges"
-                    : `Merge ${pendingFiles.length} PDFs`}
+                  : `Merge ${pendingFiles.length} PDFs`}
             </Button>
           </aside>
         </section>

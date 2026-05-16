@@ -94,10 +94,47 @@ class RetryJobRequest(_MutableModel):
     idempotency_key: UUID
 
 
+SplitModeLiteral = Literal["ranges", "every_n", "single_pages"]
+
+
+class PageRangeIn(_MutableModel):
+    from_page: int = Field(alias="from", ge=1)
+    to_page: int = Field(alias="to", ge=1)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> PageRangeIn:
+        if self.to_page < self.from_page:
+            raise ValueError("Range 'to' must be greater than or equal to 'from'.")
+        return self
+
+
+class SplitOptionsIn(_MutableModel):
+    combine_into_single: bool | None = None
+    strip_metadata: bool | None = None
+    linearize: bool | None = None
+    pdf_version: PdfVersionLiteral | None = None
+    compress: CompressOptionsIn | None = None
+
+
 class SplitJobRequest(_MutableModel):
     document_id: UUID
-    ranges: str = Field(min_length=1, max_length=512)
+    mode: SplitModeLiteral = "ranges"
+    ranges: list[PageRangeIn] | None = None
+    every_n: int | None = Field(default=None, ge=1, le=10_000)
+    options: SplitOptionsIn | None = None
     idempotency_key: UUID
+
+    @model_validator(mode="after")
+    def _validate_mode(self) -> SplitJobRequest:
+        if self.mode == "ranges":
+            if not self.ranges:
+                raise ValueError("Ranges mode requires at least one range.")
+            if len(self.ranges) > 100:
+                raise ValueError("At most 100 ranges per split.")
+        elif self.mode == "every_n":
+            if self.every_n is None:
+                raise ValueError("Every-N mode requires every_n.")
+        return self
 
 
 class RotateJobRequest(_MutableModel):

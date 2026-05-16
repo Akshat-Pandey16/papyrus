@@ -334,10 +334,21 @@ class JobService:
         organization_id: UUID,
         user_id: UUID,
         document_id: UUID,
-        ranges: str,
+        mode: str = "ranges",
+        ranges: list[dict[str, int]] | None = None,
+        every_n: int | None = None,
+        options: dict[str, Any] | None = None,
         idempotency_key: UUID,
         is_anonymous: bool = False,
     ) -> CreateJobResult:
+        extra: dict[str, Any] = {
+            "mode": mode,
+            "split_options": options or {},
+        }
+        if ranges is not None:
+            extra["ranges"] = ranges
+        if every_n is not None:
+            extra["every_n"] = every_n
         return await self._create_simple_job(
             organization_id=organization_id,
             user_id=user_id,
@@ -345,7 +356,7 @@ class JobService:
             idempotency_key=idempotency_key,
             is_anonymous=is_anonymous,
             kind=JobKind.SPLIT,
-            extra_params={"ranges": ranges},
+            extra_params=extra,
             task_name="papyrus.pdf.split",
         )
 
@@ -636,14 +647,41 @@ class JobService:
                 raise ValidationError("Job is missing the data needed to retry.")
             document_id = UUID(document_id_raw)
             if job.kind == JobKind.SPLIT:
-                ranges = job.params.get("ranges")
-                if not isinstance(ranges, str):
-                    raise ValidationError("Job is missing split spec.")
+                mode_raw = job.params.get("mode", "ranges")
+                mode = mode_raw if isinstance(mode_raw, str) else "ranges"
+                ranges_raw = job.params.get("ranges")
+                ranges: list[dict[str, int]] | None = None
+                if isinstance(ranges_raw, list):
+                    parsed_ranges: list[dict[str, int]] = []
+                    for entry in ranges_raw:
+                        if (
+                            isinstance(entry, dict)
+                            and "from" in entry
+                            and "to" in entry
+                        ):
+                            try:
+                                parsed_ranges.append(
+                                    {"from": int(entry["from"]), "to": int(entry["to"])}
+                                )
+                            except (TypeError, ValueError) as exc:
+                                raise ValidationError("Bad range in saved job.") from exc
+                    ranges = parsed_ranges if parsed_ranges else None
+                every_n_raw = job.params.get("every_n")
+                every_n = (
+                    int(every_n_raw)
+                    if isinstance(every_n_raw, int) and not isinstance(every_n_raw, bool)
+                    else None
+                )
+                options_raw = job.params.get("split_options")
+                options = options_raw if isinstance(options_raw, dict) else None
                 return await self.create_split_job(
                     organization_id=organization_id,
                     user_id=user_id,
                     document_id=document_id,
+                    mode=mode,
                     ranges=ranges,
+                    every_n=every_n,
+                    options=options,
                     idempotency_key=idempotency_key,
                 )
             if job.kind == JobKind.ROTATE:
@@ -861,10 +899,26 @@ _SUFFIX_BY_KIND: dict[JobKind, str] = {
 }
 
 
+def _split_combined_into_single(params: dict[str, Any]) -> bool:
+    if params.get("mode") != "ranges":
+        return False
+    options = params.get("split_options")
+    if not isinstance(options, dict):
+        return False
+    return bool(options.get("combine_into_single"))
+
+
 def _suggest_output_filename_for(job: Job) -> str:
     params = job.params if isinstance(job.params, dict) else {}
     suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
-    ext = "zip" if job.kind == JobKind.SPLIT else "pdf"
+    if job.kind == JobKind.SPLIT:
+        if _split_combined_into_single(params):
+            suffix = "extracted"
+            ext = "pdf"
+        else:
+            ext = "zip"
+    else:
+        ext = "pdf"
 
     if job.kind == JobKind.MERGE:
         names = params.get("input_filenames")

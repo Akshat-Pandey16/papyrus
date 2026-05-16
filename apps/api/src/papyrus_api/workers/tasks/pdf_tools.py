@@ -21,10 +21,14 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
+from papyrus_api.services.pdf.compress import (
+    CompressionLevel,
+    options_from_payload,
+)
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.reorder import reorder_pdf
 from papyrus_api.services.pdf.rotate import rotate_pdf
-from papyrus_api.services.pdf.split import split_pdf
+from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
@@ -172,6 +176,19 @@ async def _run_simple_job(
             await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "processing"})
 
             stats = await process(input_path, output_path, params)
+            actual_output = output_path
+            actual_extension = output_extension
+            actual_content_type = output_content_type
+            if isinstance(stats, dict):
+                override_path = stats.pop("_output_path", None)
+                if isinstance(override_path, str):
+                    actual_output = Path(override_path)
+                override_ext = stats.pop("_output_extension", None)
+                if isinstance(override_ext, str):
+                    actual_extension = override_ext
+                override_ct = stats.pop("_output_content_type", None)
+                if isinstance(override_ct, str):
+                    actual_content_type = override_ct
             await _check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
@@ -186,15 +203,15 @@ async def _run_simple_job(
             output_bucket = settings.s3_bucket_outputs
             output_key = (
                 f"org/{job.organization_id}/outputs/{job_id}/"
-                f"{uuid4().hex}.{output_extension}"
+                f"{uuid4().hex}.{actual_extension}"
             )
 
             try:
                 await storage.upload_from_path(
                     bucket=output_bucket,
                     key=output_key,
-                    src=output_path,
-                    content_type=output_content_type,
+                    src=actual_output,
+                    content_type=actual_content_type,
                 )
             except (ClientError, BotoCoreError) as exc:
                 if _classify_storage_error(exc):
@@ -207,7 +224,7 @@ async def _run_simple_job(
                     bucket=output_bucket,
                     key=output_key,
                     size_bytes=int(stats.get("output_size_bytes", 0)),
-                    content_type=output_content_type,
+                    content_type=actual_content_type,
                     purpose="output",
                 )
                 await so_repo.mark_confirmed(
@@ -282,20 +299,80 @@ async def _run_simple_job(
         return
 
 
+def _build_split_options(params: dict[str, Any]) -> SplitOptions:
+    raw = params.get("split_options") or {}
+    if not isinstance(raw, dict):
+        return SplitOptions()
+    pdf_version_raw = raw.get("pdf_version")
+    pdf_version = pdf_version_raw if isinstance(pdf_version_raw, str) else None
+    compress_raw = raw.get("compress")
+    compress_options = None
+    if isinstance(compress_raw, dict) and compress_raw:
+        compress_options = options_from_payload(
+            level=CompressionLevel.CUSTOM,
+            overrides=compress_raw,
+        )
+    return SplitOptions(
+        combine_into_single=bool(raw.get("combine_into_single", False)),
+        strip_metadata=bool(raw.get("strip_metadata", False)),
+        linearize=bool(raw.get("linearize", False)),
+        pdf_version=pdf_version,
+        compress=compress_options,
+    )
+
+
 async def _split_process(
     input_path: Path, output_path: Path, params: dict[str, Any]
 ) -> dict[str, Any]:
-    ranges = params.get("ranges")
-    if not isinstance(ranges, str):
-        raise AppError("Split spec missing.")
+    mode_raw = params.get("mode", "ranges")
+    try:
+        mode = SplitMode(str(mode_raw))
+    except ValueError as exc:
+        raise AppError("Unknown split mode.") from exc
+
+    ranges_raw = params.get("ranges")
+    ranges: list[dict[str, int]] | None = None
+    if isinstance(ranges_raw, list):
+        ranges = []
+        for entry in ranges_raw:
+            if isinstance(entry, dict) and "from" in entry and "to" in entry:
+                try:
+                    ranges.append({"from": int(entry["from"]), "to": int(entry["to"])})
+                except (TypeError, ValueError) as exc:
+                    raise AppError("Range values must be integers.") from exc
+
+    every_n_raw = params.get("every_n")
+    every_n: int | None = None
+    if isinstance(every_n_raw, int) and not isinstance(every_n_raw, bool):
+        every_n = every_n_raw
+
+    options = _build_split_options(params)
+    combine = options.combine_into_single and mode is SplitMode.RANGES
+    target_ext = "pdf" if combine else "zip"
+    target_content_type = "application/pdf" if combine else "application/zip"
+    actual_output = output_path.parent / f"output.{target_ext}"
+
     result = await anyio.to_thread.run_sync(
-        lambda: split_pdf(input_path=input_path, output_path=output_path, ranges=ranges)
+        lambda: split_pdf(
+            input_path=input_path,
+            output_path=actual_output,
+            mode=mode,
+            ranges=ranges,
+            every_n=every_n,
+            options=options,
+        )
     )
     return {
         "output_size_bytes": result.output_size_bytes,
         "input_size_bytes": result.input_size_bytes,
         "parts": result.parts,
         "page_count": result.page_count,
+        "selected_page_count": result.selected_page_count,
+        "combined": result.combined,
+        "compressed": result.compressed,
+        "_output_extension": target_ext,
+        "_output_content_type": target_content_type,
+        "_output_path": str(actual_output),
     }
 
 
