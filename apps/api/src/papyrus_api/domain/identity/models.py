@@ -3,12 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column
-
 from papyrus_api.db.base import Base
 from papyrus_api.db.mixins import IdMixin, TimestampMixin
 from papyrus_api.domain.identity.enums import MembershipRole
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class Organization(Base, IdMixin, TimestampMixin):

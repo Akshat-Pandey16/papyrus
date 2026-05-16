@@ -9,7 +9,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
-
 from papyrus_api.api.deps import (
     CompressEstimateServiceDep,
     CurrentPrincipal,
@@ -164,9 +163,7 @@ async def create_split_job(
     user, organization = principal
     ranges_payload: list[dict[str, int]] | None = None
     if payload.ranges is not None:
-        ranges_payload = [
-            {"from": item.from_page, "to": item.to_page} for item in payload.ranges
-        ]
+        ranges_payload = [{"from": item.from_page, "to": item.to_page} for item in payload.ranges]
     options_dict: dict[str, object] | None = None
     if payload.options is not None:
         options_dict = payload.options.model_dump(exclude_none=True)

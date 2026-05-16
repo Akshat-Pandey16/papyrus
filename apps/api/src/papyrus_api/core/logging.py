@@ -5,9 +5,8 @@ import sys
 from typing import Any
 
 import structlog
-from structlog.types import EventDict, Processor
-
 from papyrus_api.core.config import LogFormat, settings
+from structlog.types import EventDict, Processor
 
 _REDACTED_KEYS: frozenset[str] = frozenset(
     {

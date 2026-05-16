@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import ConfigDict, Field
-
 from papyrus_api.schemas.common import StrictModel
+from pydantic import ConfigDict, Field
 
 
 class _MutableModel(StrictModel):

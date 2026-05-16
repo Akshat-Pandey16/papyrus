@@ -6,8 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pikepdf
-
-from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError, ValidationError
+from papyrus_api.core.errors import (
+    PdfEncryptedError,
+    PdfMalformedError,
+    ValidationError,
+)
 from papyrus_api.services.pdf.compress import (
     CompressionEngine,
     CompressionLevel,
@@ -287,7 +290,7 @@ def merge_pdfs(
         "strip_metadata": opts.strip_metadata,
         "linearize": opts.linearize,
         "pdf_version": opts.pdf_version,
-        "compress_engine": opts.compress.engine.value if opts.compress is not None else None,
+        "compress_engine": (opts.compress.engine.value if opts.compress is not None else None),
     }
 
     return MergeResult(

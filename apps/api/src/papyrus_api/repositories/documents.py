@@ -3,10 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
-
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.repositories.base import AsyncRepository
+from sqlalchemy import and_, func, select
 
 
 class DocumentRepository(AsyncRepository[Document]):

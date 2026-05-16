@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import Response
-
 from papyrus_api.core.config import settings
 
 _SameSite = Literal["lax", "strict", "none"]

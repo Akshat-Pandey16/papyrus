@@ -9,8 +9,6 @@ import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery.exceptions import SoftTimeLimitExceeded
-from redis.asyncio import Redis
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
 from papyrus_api.db.session import get_sessionmaker
@@ -28,6 +26,7 @@ from papyrus_api.services.pdf.merge import MergeInput, MergeOptions, merge_pdfs
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
+from redis.asyncio import Redis
 
 log = structlog.get_logger(__name__)
 

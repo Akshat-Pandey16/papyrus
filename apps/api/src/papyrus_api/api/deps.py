@@ -6,9 +6,6 @@ from uuid import UUID
 import structlog
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from papyrus_api.core.errors import AuthenticationError, RateLimitedError
 from papyrus_api.core.rate_limit import RateLimiter
 from papyrus_api.core.security import TokenType, decode_token
@@ -20,6 +17,8 @@ from papyrus_api.services.document_service import DocumentService
 from papyrus_api.services.identity_service import IdentityService
 from papyrus_api.services.job_service import JobService
 from papyrus_api.services.storage_service import StorageService
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 

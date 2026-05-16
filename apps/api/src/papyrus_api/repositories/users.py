@@ -3,9 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
 from papyrus_api.domain.identity.models import (
@@ -16,6 +13,8 @@ from papyrus_api.domain.identity.models import (
     User,
 )
 from papyrus_api.repositories.base import AsyncRepository
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class UserRepository(AsyncRepository[User]):
@@ -186,8 +185,7 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
     async def revoke_chain(self, root_id: UUID) -> int:
         from sqlalchemy import text as sql_text
 
-        stmt = sql_text(
-            """
+        stmt = sql_text("""
             WITH RECURSIVE chain AS (
               SELECT id FROM refresh_tokens WHERE id = :root
               UNION ALL
@@ -198,8 +196,7 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
             SET revoked_at = COALESCE(revoked_at, now())
             WHERE id IN (SELECT id FROM chain)
               AND revoked_at IS NULL
-            """
-        )
+            """)
         result = await self.session.execute(stmt, {"root": root_id})
         return int(getattr(result, "rowcount", 0) or 0)
 

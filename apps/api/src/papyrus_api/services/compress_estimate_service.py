@@ -10,8 +10,6 @@ from uuid import UUID
 import anyio
 import pikepdf
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
@@ -32,6 +30,7 @@ from papyrus_api.services.pdf.compress import (
 )
 from papyrus_api.services.pdf.gs_runtime import GsNotConfiguredError, is_available
 from papyrus_api.services.storage_service import StorageService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 
@@ -86,9 +85,7 @@ class CompressEstimateService:
             raise DocumentNotFoundError("Document not found.")
         _document, _version, storage_object = triple
 
-        max_bytes = (
-            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
-        )
+        max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
             raise QuotaExceededError(
                 "File exceeds the maximum allowed size.",

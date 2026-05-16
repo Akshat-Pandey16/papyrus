@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import pikepdf
-from PIL import Image, ImageFile, UnidentifiedImageError
-
 from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
+from PIL import Image, ImageFile, UnidentifiedImageError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = False
 _MAX_IMAGE_PIXELS = 100_000_000
@@ -290,9 +289,7 @@ def _replace_image_stream(image_obj: pikepdf.PdfImage, new_bytes: bytes, gray: b
             filter=pikepdf.Name.DCTDecode,
             decode_parms=pikepdf.Dictionary(),
         )
-        image_obj.obj.ColorSpace = (
-            pikepdf.Name.DeviceGray if gray else pikepdf.Name.DeviceRGB
-        )
+        image_obj.obj.ColorSpace = pikepdf.Name.DeviceGray if gray else pikepdf.Name.DeviceRGB
         if pikepdf.Name.SMask in image_obj.obj:
             del image_obj.obj[pikepdf.Name.SMask]
     except Exception:
@@ -517,7 +514,13 @@ def _structural_pikepdf_pass(
         with contextlib.suppress(Exception):
             pdf.close()
 
-    return page_count, images_processed, images_recompressed, images_downsampled, metadata_stripped
+    return (
+        page_count,
+        images_processed,
+        images_recompressed,
+        images_downsampled,
+        metadata_stripped,
+    )
 
 
 def _compress_pikepdf(

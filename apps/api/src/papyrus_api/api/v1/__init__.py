@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-
 from papyrus_api.api.v1 import auth, documents, health, jobs, users
 
 v1_router = APIRouter()

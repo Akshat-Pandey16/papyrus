@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import structlog
-from sqlalchemy import select
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.time import utc_now
 from papyrus_api.db.session import get_sessionmaker
@@ -17,6 +15,7 @@ from papyrus_api.repositories.documents import (
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
+from sqlalchemy import select
 
 log = structlog.get_logger(__name__)
 
@@ -101,9 +100,7 @@ async def _purge_anonymous_accounts() -> int:
             await session.delete(org)
             purged += 1
         user_stmt = (
-            select(User)
-            .where(User.is_anonymous.is_(True), User.created_at < cutoff)
-            .limit(200)
+            select(User).where(User.is_anonymous.is_(True), User.created_at < cutoff).limit(200)
         )
         users = list((await session.execute(user_stmt)).scalars().all())
         for user in users:

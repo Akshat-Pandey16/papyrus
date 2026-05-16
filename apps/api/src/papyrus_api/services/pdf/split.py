@@ -8,8 +8,11 @@ from enum import StrEnum
 from pathlib import Path
 
 import pikepdf
-
-from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError, ValidationError
+from papyrus_api.core.errors import (
+    PdfEncryptedError,
+    PdfMalformedError,
+    ValidationError,
+)
 from papyrus_api.services.pdf.compress import (
     CompressionLevel,
     CompressOptions,
@@ -233,13 +236,9 @@ def split_pdf(
             output_ext = "zip"
             with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 for idx, group in enumerate(groups, start=1):
-                    buffer_path = output_path.with_name(
-                        f".{output_path.stem}-part-{idx:04d}.pdf"
-                    )
+                    buffer_path = output_path.with_name(f".{output_path.stem}-part-{idx:04d}.pdf")
                     try:
-                        _write_subset(
-                            src, pages=group, out_path=buffer_path, options=opts
-                        )
+                        _write_subset(src, pages=group, out_path=buffer_path, options=opts)
                         compressed = _maybe_compress(buffer_path, options=opts) or compressed
                         zf.write(
                             buffer_path,
@@ -260,7 +259,7 @@ def split_pdf(
         "strip_metadata": opts.strip_metadata,
         "linearize": opts.linearize,
         "pdf_version": opts.pdf_version,
-        "compress_engine": opts.compress.engine.value if opts.compress is not None else None,
+        "compress_engine": (opts.compress.engine.value if opts.compress is not None else None),
     }
 
     return SplitResult(

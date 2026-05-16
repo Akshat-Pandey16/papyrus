@@ -10,7 +10,6 @@ from typing import Any
 
 import aioboto3
 from botocore.config import Config
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.time import utc_now
 

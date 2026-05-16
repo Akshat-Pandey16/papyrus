@@ -4,12 +4,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
-
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job, JobEvent
 from papyrus_api.repositories.base import AsyncRepository
+from sqlalchemy import and_, func, select
 
 
 class JobRepository(AsyncRepository[Job]):

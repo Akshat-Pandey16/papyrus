@@ -10,8 +10,6 @@ import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery.exceptions import SoftTimeLimitExceeded
-from redis.asyncio import Redis
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
 from papyrus_api.core.time import utc_now
@@ -21,10 +19,7 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
-from papyrus_api.services.pdf.compress import (
-    CompressionLevel,
-    options_from_payload,
-)
+from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.reorder import reorder_pdf
 from papyrus_api.services.pdf.rotate import rotate_pdf
@@ -32,6 +27,7 @@ from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
+from redis.asyncio import Redis
 
 log = structlog.get_logger(__name__)
 
@@ -47,7 +43,12 @@ class _TransientStorageError(Exception):
 def _classify_storage_error(exc: BaseException) -> bool:
     if isinstance(exc, ClientError):
         code = exc.response.get("Error", {}).get("Code", "")
-        if code in {"InternalError", "ServiceUnavailable", "SlowDown", "ThrottlingException"}:
+        if code in {
+            "InternalError",
+            "ServiceUnavailable",
+            "SlowDown",
+            "ThrottlingException",
+        }:
             return True
         status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
         if isinstance(status, int) and 500 <= status < 600:
@@ -126,7 +127,11 @@ async def _run_simple_job(
             input_bucket = params["input_bucket"]
             input_key = params["input_key"]
         except KeyError as exc:
-            await _fail(job_id=job_id, code="invalid_params", message="Job parameters are invalid.")
+            await _fail(
+                job_id=job_id,
+                code="invalid_params",
+                message="Job parameters are invalid.",
+            )
             await _publish(
                 redis,
                 job_id,
@@ -156,9 +161,7 @@ async def _run_simple_job(
             output_path = tmp_dir / f"output.{output_extension}"
 
             try:
-                await storage.download_to_path(
-                    bucket=input_bucket, key=input_key, dest=input_path
-                )
+                await storage.download_to_path(bucket=input_bucket, key=input_key, dest=input_path)
             except (ClientError, BotoCoreError) as exc:
                 if _classify_storage_error(exc):
                     raise _TransientStorageError(str(exc)) from exc
@@ -202,8 +205,7 @@ async def _run_simple_job(
 
             output_bucket = settings.s3_bucket_outputs
             output_key = (
-                f"org/{job.organization_id}/outputs/{job_id}/"
-                f"{uuid4().hex}.{actual_extension}"
+                f"org/{job.organization_id}/outputs/{job_id}/{uuid4().hex}.{actual_extension}"
             )
 
             try:
@@ -238,7 +240,11 @@ async def _run_simple_job(
                     output_object_id=output_obj.id,
                     output_size_bytes=int(stats.get("output_size_bytes", 0)),
                 )
-                event_payload = {"phase": "done", "output_object_id": str(output_obj.id), **stats}
+                event_payload = {
+                    "phase": "done",
+                    "output_object_id": str(output_obj.id),
+                    **stats,
+                }
                 await JobEventRepository(session).append(
                     job_id=job_id,
                     status=JobStatus.SUCCEEDED,
@@ -256,7 +262,11 @@ async def _run_simple_job(
             redis,
             job_id,
             JobStatus.FAILED,
-            {"phase": "failed", "error_code": "job_timeout", "error_message": "Took too long."},
+            {
+                "phase": "failed",
+                "error_code": "job_timeout",
+                "error_message": "Took too long.",
+            },
         )
         return
     except (PdfEncryptedError, PdfMalformedError, OcrNotConfiguredError) as exc:

@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Self
 from uuid import UUID
 
-from pydantic import ConfigDict, EmailStr, Field, field_validator, model_validator
-
 from papyrus_api.schemas.common import StrictModel
+from pydantic import ConfigDict, EmailStr, Field, field_validator, model_validator
 
 PasswordStr = Field(min_length=8, max_length=128)
 

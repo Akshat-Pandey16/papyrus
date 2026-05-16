@@ -7,7 +7,6 @@ from typing import Any
 
 import structlog
 from celery.signals import worker_process_init, worker_process_shutdown
-
 from papyrus_api.db.session import dispose_engine, init_engine
 from papyrus_api.integrations.redis import close_redis, init_redis
 from papyrus_api.services.storage_service import close_storage

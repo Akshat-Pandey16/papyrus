@@ -3,7 +3,6 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Request, Response, status
-
 from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep, rate_limit
 from papyrus_api.core.config import settings
 from papyrus_api.core.cookies import clear_refresh_cookie, set_refresh_cookie

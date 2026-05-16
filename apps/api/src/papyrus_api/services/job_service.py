@@ -7,9 +7,6 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
@@ -33,6 +30,8 @@ from papyrus_api.repositories.documents import (
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.schemas.jobs import JobOut
 from papyrus_api.services.storage_service import StorageService
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 
@@ -128,9 +127,7 @@ class JobService:
             raise DocumentNotFoundError("Document not found.")
         document, version, storage_object = triple
 
-        max_bytes = (
-            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
-        )
+        max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
             raise QuotaExceededError(
                 "File exceeds the maximum allowed size.",
@@ -246,9 +243,7 @@ class JobService:
         inputs: list[dict[str, Any]] = []
         input_filenames: list[str] = []
         total_input_bytes = 0
-        max_bytes = (
-            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
-        )
+        max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         for index, (spec, document_id) in enumerate(zip(input_specs, document_ids, strict=True)):
             triple = triples_by_id.get(document_id)
             if triple is None:
@@ -451,9 +446,7 @@ class JobService:
             raise DocumentNotFoundError("Document not found.")
         document, version, storage_object = triple
 
-        max_bytes = (
-            settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
-        )
+        max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
             raise QuotaExceededError(
                 "File exceeds the maximum allowed size.",
@@ -655,11 +648,7 @@ class JobService:
                 if isinstance(ranges_raw, list):
                     parsed_ranges: list[dict[str, int]] = []
                     for entry in ranges_raw:
-                        if (
-                            isinstance(entry, dict)
-                            and "from" in entry
-                            and "to" in entry
-                        ):
+                        if isinstance(entry, dict) and "from" in entry and "to" in entry:
                             try:
                                 parsed_ranges.append(
                                     {"from": int(entry["from"]), "to": int(entry["to"])}
