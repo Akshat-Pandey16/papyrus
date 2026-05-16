@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str = "http://localhost:4318"
     otel_service_name: str = "papyrus-api"
 
+    trusted_proxies: CsvList = Field(default_factory=list)
+
     zero_retention_mode: bool = False
 
     @property

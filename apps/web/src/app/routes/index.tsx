@@ -130,7 +130,10 @@ function Hero() {
 
 function ToolsSection() {
   return (
-    <section className="w-full border-t border-border bg-card/40 py-20 sm:py-28">
+    <section
+      id="tools"
+      className="w-full scroll-mt-24 border-t border-border bg-card/40 py-20 sm:py-28"
+    >
       <div className="w-full px-6 sm:px-10 lg:px-14">
         <div className="mx-auto max-w-screen-2xl">
           <div className="mb-12 flex flex-col gap-3 sm:items-center sm:text-center">
@@ -179,7 +182,7 @@ function ToolsSection() {
 
 function FeaturesSection() {
   return (
-    <section className="w-full py-20 sm:py-28">
+    <section id="features" className="w-full scroll-mt-24 py-20 sm:py-28">
       <div className="w-full px-6 sm:px-10 lg:px-14">
         <div className="mx-auto grid max-w-screen-2xl gap-10 lg:grid-cols-3">
           {features.map((f) => (
@@ -253,21 +256,18 @@ function SiteFooter() {
               <FileSignature className="h-3.5 w-3.5" />
             </span>
             <span className="font-semibold text-foreground">Papyrus</span>
-            <span className="ml-2">© {new Date().getFullYear()}</span>
+            <span className="ml-2">© {new Date().getFullYear()} · Free, open source</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="#" className="hover:text-foreground">
-              Privacy
+            <a href="#tools" className="hover:text-foreground">
+              Tools
             </a>
-            <a href="#" className="hover:text-foreground">
-              Terms
+            <a href="#features" className="hover:text-foreground">
+              Features
             </a>
-            <a href="#" className="hover:text-foreground">
-              Status
-            </a>
-            <a href="#" className="hover:text-foreground">
-              GitHub
-            </a>
+            <Link to="/login" className="hover:text-foreground">
+              Sign in
+            </Link>
           </div>
         </div>
       </div>

@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from papyrus_api.db.base import Base
 from sqlalchemy import select
+
+from papyrus_api.db.base import Base
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

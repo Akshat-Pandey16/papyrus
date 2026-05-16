@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Response, status
+from sqlalchemy import text
+
 from papyrus_api import __version__
 from papyrus_api.api.deps import DbSession, RedisDep
 from papyrus_api.schemas.common import HealthResponse, ReadinessResponse
-from sqlalchemy import text
 
 router = APIRouter()
 

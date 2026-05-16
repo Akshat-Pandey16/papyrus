@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import and_, func, select
+
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.repositories.base import AsyncRepository
-from sqlalchemy import and_, func, select
 
 
 class DocumentRepository(AsyncRepository[Document]):
@@ -122,6 +123,15 @@ class StorageObjectRepository(AsyncRepository[StorageObject]):
         obj.confirmed_at = confirmed_at
         await self.session.flush()
         return obj
+
+    async def list_for_document(
+        self,
+        *,
+        document_id: UUID,
+    ) -> list[StorageObject]:
+        stmt = select(StorageObject).where(StorageObject.document_id == document_id)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def list_unconfirmed_older_than(
         self,

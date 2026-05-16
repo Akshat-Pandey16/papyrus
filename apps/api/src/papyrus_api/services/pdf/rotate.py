@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pikepdf
+
 from papyrus_api.core.errors import (
     PdfEncryptedError,
     PdfMalformedError,

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import structlog
-from papyrus_api.core.config import settings
 from redis.asyncio import ConnectionPool, Redis
+
+from papyrus_api.core.config import settings
 
 log = structlog.get_logger(__name__)
 

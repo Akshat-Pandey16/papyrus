@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ListOrdered, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, GripVertical, ListOrdered, X } from "lucide-react";
+import { type DragEvent, useMemo, useState } from "react";
 import { AnonymousBanner } from "@/components/shared/anonymous-banner";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
@@ -9,7 +9,9 @@ import { useUploadStore } from "@/features/pdf-compress/store";
 import { useCreateReorderJobMutation } from "@/features/pdf-tools/api";
 import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ToolJobCard } from "@/features/pdf-tools/tool-job-card";
+import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tools/reorder")({
   beforeLoad: async () => {
@@ -21,9 +23,17 @@ export const Route = createFileRoute("/tools/reorder")({
 function ReorderPage() {
   const [file, setFile] = useState<File | null>(null);
   const [order, setOrder] = useState<number[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const { pageCount } = useFilePageCount(file);
   const create = useCreateReorderJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
   const uploadsMap = useUploadStore((s) => s.uploads);
+
+  const selectAll = () => {
+    if (!pageCount) return;
+    setOrder(Array.from({ length: pageCount }, (_, i) => i + 1));
+  };
 
   const sortedIds = useMemo(
     () =>
@@ -49,6 +59,43 @@ function ReorderPage() {
       return next;
     });
 
+  const moveTo = (from: number, to: number) =>
+    setOrder((prev) => {
+      if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to)
+        return prev;
+      const next = [...prev];
+      const moved = next.splice(from, 1)[0];
+      if (moved === undefined) return prev;
+      next.splice(to, 0, moved);
+      return next;
+    });
+
+  const onDragStart = (e: DragEvent<HTMLLIElement>, idx: number) => {
+    setDragIndex(idx);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(idx));
+  };
+  const onDragOver = (e: DragEvent<HTMLLIElement>, idx: number) => {
+    if (dragIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (overIndex !== idx) setOverIndex(idx);
+  };
+  const onDragLeave = () => setOverIndex(null);
+  const onDrop = (e: DragEvent<HTMLLIElement>, idx: number) => {
+    e.preventDefault();
+    const raw = dragIndex ?? Number(e.dataTransfer.getData("text/plain"));
+    const from = Number.isFinite(raw) ? Number(raw) : null;
+    setDragIndex(null);
+    setOverIndex(null);
+    if (from === null) return;
+    moveTo(from, idx);
+  };
+  const onDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
   const onSubmit = async () => {
     if (!file || order.length === 0) return;
     await run({
@@ -69,8 +116,8 @@ function ReorderPage() {
         <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Click pages on the left to add them, then arrange the new order on the right. Omitted
-            pages are dropped.
+            Click pages on the left to add them, then drag to rearrange on the right. Omitted pages
+            are dropped.
           </p>
         </header>
 
@@ -93,26 +140,61 @@ function ReorderPage() {
                 file={file}
                 onPageClick={addPage}
                 selectedPages={new Set(order)}
-                maxPages={50}
+                maxPages={pageCount ?? 200}
               />
             ) : null}
           </div>
 
           <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-semibold">New page order</h2>
-              <p className="text-xs text-muted-foreground">
-                {order.length === 0 ? "Click pages to add them." : `${order.length} page(s).`}
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-sm font-semibold">New page order</h2>
+                <p className="text-xs text-muted-foreground">
+                  {order.length === 0
+                    ? pageCount
+                      ? `Click pages to add them · ${pageCount} available.`
+                      : "Click pages to add them."
+                    : `${order.length} of ${pageCount ?? "?"} page(s).`}
+                </p>
+              </div>
+              {pageCount && order.length === 0 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={selectAll}
+                  disabled={submitting}
+                  className="h-8 shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  Select all
+                </Button>
+              ) : null}
             </div>
             {order.length > 0 ? (
               <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-sm">
                 {order.map((page, idx) => (
                   <li
                     key={`${page}-${idx.toString()}`}
-                    className="flex items-center justify-between gap-2 rounded px-2 py-1.5"
+                    draggable
+                    onDragStart={(e) => onDragStart(e, idx)}
+                    onDragOver={(e) => onDragOver(e, idx)}
+                    onDragLeave={onDragLeave}
+                    onDrop={(e) => onDrop(e, idx)}
+                    onDragEnd={onDragEnd}
+                    className={cn(
+                      "flex cursor-grab items-center justify-between gap-2 rounded px-2 py-1.5 transition-all active:cursor-grabbing",
+                      dragIndex === idx && "opacity-40",
+                      overIndex === idx &&
+                        dragIndex !== null &&
+                        dragIndex !== idx &&
+                        "bg-foreground/5 ring-2 ring-foreground/20",
+                    )}
                   >
-                    <span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <GripVertical
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+                        aria-hidden
+                      />
                       <span className="font-medium">{idx + 1}.</span>{" "}
                       <span className="text-muted-foreground">Page {page}</span>
                     </span>

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from papyrus_api.core.config import settings
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+
+from papyrus_api.core.config import settings
 
 _PERMISSIONS_POLICY = ", ".join(
     [

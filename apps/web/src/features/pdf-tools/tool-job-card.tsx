@@ -5,6 +5,7 @@ import { formatBytes } from "@/features/pdf-compress/format";
 import { useJobStream } from "@/features/pdf-compress/hooks/use-job-stream";
 import { selectUpload, useUploadStore } from "@/features/pdf-compress/store";
 import { useDownloadUrlMutation, useRetryJobMutation } from "@/features/pdf-tools/api";
+import { triggerDownload } from "@/features/pdf-tools/download";
 import { cn } from "@/lib/utils";
 
 export type ToolJobCardProps = {
@@ -30,14 +31,7 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
       void download
         .mutateAsync({ jobId: job.id })
         .then((res) => {
-          const a = document.createElement("a");
-          a.href = res.url;
-          a.rel = "noopener noreferrer";
-          a.target = "_blank";
-          a.download = res.filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          triggerDownload(res.url, res.filename);
         })
         .catch(() => undefined);
     } else if (job.status === "failed" && entry.phase !== "failed") {
@@ -120,7 +114,7 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
             onClick={async () => {
               if (!job) return;
               const r = await download.mutateAsync({ jobId: job.id });
-              window.open(r.url, "_blank", "noopener,noreferrer");
+              triggerDownload(r.url, r.filename);
             }}
             size="sm"
             variant="outline"

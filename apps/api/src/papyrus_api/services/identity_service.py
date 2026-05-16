@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     AuthenticationError,
@@ -32,7 +34,6 @@ from papyrus_api.repositories.users import (
     RefreshTokenRepository,
     UserRepository,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from papyrus_api.core.ids import new_id
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
+
+from papyrus_api.core.ids import new_id
 
 
 class IdMixin:

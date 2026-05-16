@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+
 from papyrus_api.core.config import settings
 from papyrus_api.db.session import dispose_engine, init_engine
 from papyrus_api.integrations.redis import close_redis, init_redis

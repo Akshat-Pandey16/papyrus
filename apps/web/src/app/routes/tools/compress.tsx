@@ -25,6 +25,7 @@ import type {
   CompressionLevel,
   CompressionOptions,
 } from "@/features/pdf-compress/types";
+import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/tools/compress")({
@@ -222,6 +223,7 @@ function CompressPage() {
               onClear={onClearFile}
               disabled={submitting}
             />
+            {pendingFile ? <PageThumbnails file={pendingFile} /> : null}
           </div>
 
           <aside className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-5">

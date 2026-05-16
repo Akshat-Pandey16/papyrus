@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AnonymousBanner } from "@/components/shared/anonymous-banner";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { Select } from "@/components/ui/select";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { FileDropzone } from "@/features/pdf-compress/components/file-dropzone";
 import { useUploadStore } from "@/features/pdf-compress/store";
@@ -93,18 +94,13 @@ function OcrPage() {
               </p>
             </div>
             <FormField id="language" label="Detect language">
-              <select
-                id="language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
+              <Select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>
                     {l.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </FormField>
             <Button size="lg" onClick={onSubmit} disabled={!file || submitting} className="h-11">
               <ScanLine className="mr-2 h-4 w-4" />

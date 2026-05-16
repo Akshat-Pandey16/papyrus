@@ -3,10 +3,12 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Request, Response, status
+
 from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep, rate_limit
 from papyrus_api.core.config import settings
 from papyrus_api.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from papyrus_api.core.errors import AuthenticationError
+from papyrus_api.core.request_client import client_ip
 from papyrus_api.core.security import issue_access_token
 from papyrus_api.schemas.identity import (
     AccessToken,
@@ -32,12 +34,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _client(request: Request) -> ClientContext:
     ua = request.headers.get("user-agent")
-    forwarded = request.headers.get("x-forwarded-for")
-    ip = (
-        forwarded.split(",", 1)[0].strip()
-        if forwarded
-        else (request.client.host if request.client else None)
-    )
+    ip = client_ip(request)
     return ClientContext(
         user_agent=ua[:255] if ua else None,
         ip_address=ip[:64] if ip else None,

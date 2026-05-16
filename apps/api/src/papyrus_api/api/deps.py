@@ -6,8 +6,12 @@ from uuid import UUID
 import structlog
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.errors import AuthenticationError, RateLimitedError
 from papyrus_api.core.rate_limit import RateLimiter
+from papyrus_api.core.request_client import client_ip
 from papyrus_api.core.security import TokenType, decode_token
 from papyrus_api.db.session import get_session
 from papyrus_api.domain.identity.models import Organization, User
@@ -17,8 +21,6 @@ from papyrus_api.services.document_service import DocumentService
 from papyrus_api.services.identity_service import IdentityService
 from papyrus_api.services.job_service import JobService
 from papyrus_api.services.storage_service import StorageService
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 
@@ -122,13 +124,6 @@ async def get_principal_for_sse(
 SsePrincipal = Annotated[tuple[User, Organization], Depends(get_principal_for_sse)]
 
 
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",", 1)[0].strip()
-    return request.client.host if request.client else "anonymous"
-
-
 def rate_limit(
     scope: str,
     *,
@@ -137,7 +132,7 @@ def rate_limit(
 ) -> Any:
     async def _dep(request: Request, redis: RedisDep) -> None:
         limiter = RateLimiter(redis)
-        principal_id = _client_ip(request)
+        principal_id = client_ip(request)
         decision = await limiter.hit(
             scope=scope,
             principal_id=principal_id,

@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
+import { Select } from "@/components/ui/select";
 import { CompressionLevelSelector } from "@/features/pdf-compress/components/compression-level-selector";
 import { CompressionOptionsPanel } from "@/features/pdf-compress/components/compression-options-panel";
 import { DEFAULT_LEVEL, detectLevel, optionsForLevel } from "@/features/pdf-compress/presets";
@@ -106,8 +107,9 @@ function HygieneSection({ value, patch, disabled }: SectionProps) {
         <label htmlFor={versionId} className="text-xs font-medium">
           Normalize PDF version
         </label>
-        <select
+        <Select
           id={versionId}
+          size="sm"
           value={value.pdfVersion ?? "auto"}
           disabled={disabled}
           onChange={(e) =>
@@ -118,14 +120,13 @@ function HygieneSection({ value, patch, disabled }: SectionProps) {
                   : (e.target.value as "1.4" | "1.5" | "1.6" | "1.7"),
             })
           }
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
         >
           <option value="auto">Auto (preserve original version)</option>
           <option value="1.4">PDF 1.4</option>
           <option value="1.5">PDF 1.5</option>
           <option value="1.6">PDF 1.6</option>
           <option value="1.7">PDF 1.7</option>
-        </select>
+        </Select>
       </div>
     </div>
   );

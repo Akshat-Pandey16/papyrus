@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import aioboto3
+import anyio
 from botocore.config import Config
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.time import utc_now
 
@@ -28,6 +30,10 @@ class HeadResult:
     size_bytes: int
     content_type: str
     etag: str | None
+
+
+class StorageObjectTooLargeError(Exception):
+    pass
 
 
 _session = aioboto3.Session()
@@ -183,7 +189,13 @@ class StorageService:
         return data
 
     @staticmethod
-    async def download_to_path(*, bucket: str, key: str, dest: Path) -> int:
+    async def download_to_path(
+        *,
+        bucket: str,
+        key: str,
+        dest: Path,
+        max_bytes: int | None = None,
+    ) -> int:
         async with _client_ctx() as client:
             response = await client.get_object(Bucket=bucket, Key=key)
             body = response["Body"]
@@ -196,6 +208,14 @@ class StorageService:
                             break
                         fh.write(chunk)
                         total += len(chunk)
+                        if max_bytes is not None and total > max_bytes:
+                            raise StorageObjectTooLargeError(
+                                f"Object exceeds max_bytes ({total} > {max_bytes})",
+                            )
+            except BaseException:
+                with suppress(OSError):
+                    await anyio.to_thread.run_sync(lambda: dest.unlink(missing_ok=True))
+                raise
             finally:
                 close = getattr(body, "close", None)
                 if callable(close):
@@ -212,8 +232,6 @@ class StorageService:
         src: Path,
         content_type: str,
     ) -> int:
-        import anyio
-
         size = await anyio.to_thread.run_sync(lambda: src.stat().st_size)
         async with _client_ctx() as client:
             with src.open("rb") as fh:

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
+
 from papyrus_api.api.deps import (
     CompressEstimateServiceDep,
     CurrentPrincipal,

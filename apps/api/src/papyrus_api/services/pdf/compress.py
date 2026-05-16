@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any
 
 import pikepdf
-from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
 from PIL import Image, ImageFile, UnidentifiedImageError
+
+from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = False
 _MAX_IMAGE_PIXELS = 100_000_000

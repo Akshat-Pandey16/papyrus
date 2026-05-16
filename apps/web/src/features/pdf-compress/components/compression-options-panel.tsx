@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
+import { Select } from "@/components/ui/select";
 import type { CompressionOptions } from "@/features/pdf-compress/types";
 import { cn } from "@/lib/utils";
 
@@ -76,8 +77,9 @@ function EngineSection({ value, onPatch, disabled }: SectionProps) {
         <label htmlFor={engineId} className="text-xs font-medium">
           Compression engine
         </label>
-        <select
+        <Select
           id={engineId}
+          size="sm"
           value={value.engine}
           disabled={disabled}
           onChange={(e) =>
@@ -85,11 +87,10 @@ function EngineSection({ value, onPatch, disabled }: SectionProps) {
               engine: e.target.value === "ghostscript" ? "ghostscript" : "pikepdf",
             })
           }
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
         >
           <option value="pikepdf">pikepdf — fast, per-image control</option>
           <option value="ghostscript">Ghostscript — best savings, font subsetting</option>
-        </select>
+        </Select>
         <p className="text-[10px] leading-snug text-muted-foreground">
           {isGs
             ? "Auto-subsets fonts and uses CCITT/JBIG2 for mono images. Slower for tiny files."
@@ -100,18 +101,18 @@ function EngineSection({ value, onPatch, disabled }: SectionProps) {
         <label htmlFor={versionId} className="text-xs font-medium">
           Target PDF version
         </label>
-        <select
+        <Select
           id={versionId}
+          size="sm"
           value={value.pdfVersion ?? "1.7"}
           disabled={disabled || !isGs}
           onChange={(e) => onPatch({ pdfVersion: e.target.value as "1.4" | "1.5" | "1.6" | "1.7" })}
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
         >
           <option value="1.4">PDF 1.4 (Acrobat 5+, most compatible)</option>
           <option value="1.5">PDF 1.5 (Acrobat 6+)</option>
           <option value="1.6">PDF 1.6 (Acrobat 7+)</option>
           <option value="1.7">PDF 1.7 (Acrobat 8+)</option>
-        </select>
+        </Select>
       </div>
     </div>
   );
@@ -172,8 +173,9 @@ function ImageSection({ value, onPatch, disabled }: SectionProps) {
           <label htmlFor={dimId} className="text-xs font-medium">
             Max image dimension
           </label>
-          <select
+          <Select
             id={dimId}
+            size="sm"
             value={value.imageMaxDimension ?? "null"}
             disabled={disabled || !value.recompressImages}
             onChange={(e) =>
@@ -181,22 +183,22 @@ function ImageSection({ value, onPatch, disabled }: SectionProps) {
                 imageMaxDimension: e.target.value === "null" ? null : Number(e.target.value),
               })
             }
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm"
           >
             {DIMENSION_OPTIONS.map((d) => (
               <option key={d.label} value={d.value ?? "null"}>
                 {d.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor={colorId} className="text-xs font-medium">
             Color
           </label>
-          <select
+          <Select
             id={colorId}
+            size="sm"
             value={value.colorMode}
             disabled={disabled || !value.recompressImages}
             onChange={(e) =>
@@ -204,11 +206,10 @@ function ImageSection({ value, onPatch, disabled }: SectionProps) {
                 colorMode: e.target.value === "grayscale" ? "grayscale" : "preserve",
               })
             }
-            className="h-9 rounded-md border border-border bg-background px-2 text-sm"
           >
             <option value="preserve">Keep original</option>
             <option value="grayscale">Convert to grayscale</option>
-          </select>
+          </Select>
         </div>
       </div>
     </div>

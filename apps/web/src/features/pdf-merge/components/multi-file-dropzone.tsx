@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, FileText, FileUp, X } from "lucide-react";
+import { ArrowDown, ArrowUp, FileText, FileUp, GripVertical, X } from "lucide-react";
 import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
 import type { PageRange } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
@@ -153,7 +153,7 @@ export function MultiFileDropzone({
         <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">
-              {files.length} file{files.length === 1 ? "" : "s"} · merged in this order
+              {files.length} file{files.length === 1 ? "" : "s"} · drag to reorder
             </p>
             <Button
               type="button"
@@ -166,26 +166,88 @@ export function MultiFileDropzone({
               Clear all
             </Button>
           </div>
-          <ol className="flex flex-col gap-1.5">
-            {files.map((entry, index) => (
-              <FileRow
-                key={`${entry.file.name}-${index}-${entry.file.size}`}
-                index={index}
-                file={entry.file}
-                ranges={entry.ranges}
-                disabled={disabled}
-                disableUp={index === 0}
-                disableDown={index === files.length - 1}
-                onMoveUp={() => onMove(index, index - 1)}
-                onMoveDown={() => onMove(index, index + 1)}
-                onRemove={() => onRemove(index)}
-                onRangesChange={(next) => onRangesChange(index, next)}
-              />
-            ))}
-          </ol>
+          <FileRowList
+            files={files}
+            disabled={disabled}
+            onMove={onMove}
+            onRemove={onRemove}
+            onRangesChange={onRangesChange}
+          />
         </div>
       ) : null}
     </div>
+  );
+}
+
+type FileRowListProps = {
+  files: MergeFileSpec[];
+  disabled: boolean;
+  onMove: (from: number, to: number) => void;
+  onRemove: (index: number) => void;
+  onRangesChange: (index: number, ranges: PageRange[] | null) => void;
+};
+
+function FileRowList({ files, disabled, onMove, onRemove, onRangesChange }: FileRowListProps) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  const onDragStart = (e: DragEvent<HTMLLIElement>, index: number) => {
+    if (disabled) return;
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const onDragOver = (e: DragEvent<HTMLLIElement>, index: number) => {
+    if (disabled || dragIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (overIndex !== index) setOverIndex(index);
+  };
+
+  const onDragLeave = () => setOverIndex(null);
+
+  const onDrop = (e: DragEvent<HTMLLIElement>, index: number) => {
+    if (disabled) return;
+    e.preventDefault();
+    const raw = dragIndex ?? Number(e.dataTransfer.getData("text/plain"));
+    const from = Number.isFinite(raw) ? Number(raw) : null;
+    setDragIndex(null);
+    setOverIndex(null);
+    if (from === null || from === index) return;
+    onMove(from, index);
+  };
+
+  const onDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  return (
+    <ol className="flex flex-col gap-1.5">
+      {files.map((entry, index) => (
+        <FileRow
+          key={`${entry.file.name}-${index}-${entry.file.size}`}
+          index={index}
+          file={entry.file}
+          ranges={entry.ranges}
+          disabled={disabled}
+          disableUp={index === 0}
+          disableDown={index === files.length - 1}
+          isDragging={dragIndex === index}
+          isDragOver={overIndex === index && dragIndex !== null && dragIndex !== index}
+          onDragStart={(e) => onDragStart(e, index)}
+          onDragOver={(e) => onDragOver(e, index)}
+          onDragLeave={onDragLeave}
+          onDrop={(e) => onDrop(e, index)}
+          onDragEnd={onDragEnd}
+          onMoveUp={() => onMove(index, index - 1)}
+          onMoveDown={() => onMove(index, index + 1)}
+          onRemove={() => onRemove(index)}
+          onRangesChange={(next) => onRangesChange(index, next)}
+        />
+      ))}
+    </ol>
   );
 }
 
@@ -196,6 +258,13 @@ type FileRowProps = {
   disabled: boolean;
   disableUp: boolean;
   disableDown: boolean;
+  isDragging: boolean;
+  isDragOver: boolean;
+  onDragStart: (e: DragEvent<HTMLLIElement>) => void;
+  onDragOver: (e: DragEvent<HTMLLIElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (e: DragEvent<HTMLLIElement>) => void;
+  onDragEnd: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
@@ -209,13 +278,39 @@ function FileRow({
   disabled,
   disableUp,
   disableDown,
+  isDragging,
+  isDragOver,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
   onMoveUp,
   onMoveDown,
   onRemove,
   onRangesChange,
 }: FileRowProps) {
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3">
+    <li
+      draggable={!disabled}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3 transition-all",
+        !disabled && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-40",
+        isDragOver && "border-foreground/50 ring-2 ring-foreground/20",
+      )}
+    >
+      <span
+        aria-hidden
+        className="grid h-7 w-5 shrink-0 place-items-center text-muted-foreground/60"
+      >
+        <GripVertical className="h-4 w-4" />
+      </span>
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground/80">
         {index + 1}
       </span>

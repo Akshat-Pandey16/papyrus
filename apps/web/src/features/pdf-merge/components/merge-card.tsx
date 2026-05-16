@@ -10,6 +10,7 @@ import {
 } from "@/features/pdf-merge/api";
 import { selectBatch, useMergeStore } from "@/features/pdf-merge/store";
 import type { Job, JobStatus } from "@/features/pdf-merge/types";
+import { triggerDownload } from "@/features/pdf-tools/download";
 import { cn } from "@/lib/utils";
 
 export type MergeCardProps = {
@@ -66,14 +67,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
       void downloadMutation
         .mutateAsync({ jobId: job.id })
         .then((res) => {
-          const a = document.createElement("a");
-          a.href = res.url;
-          a.rel = "noopener noreferrer";
-          a.target = "_blank";
-          a.download = res.filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          triggerDownload(res.url, res.filename);
         })
         .catch(() => undefined);
     } else if (job.status === "failed" && batch.phase !== "failed") {
@@ -116,7 +110,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
   const onDownload = async () => {
     if (!job) return;
     const result = await downloadMutation.mutateAsync({ jobId: job.id });
-    window.open(result.url, "_blank", "noopener,noreferrer");
+    triggerDownload(result.url, result.filename);
   };
 
   const onCancel = async () => {
@@ -133,8 +127,12 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
   const onDismiss = () => removeBatch(clientBatchId);
 
   const phaseIndex = job?.phase ? PHASES_ORDER.indexOf(job.phase) : -1;
-  const summaryName = `${batch.files.length} PDFs · ${formatBytes(totalBytes)}`;
-  const firstName = batch.files[0]?.fileName ?? "Untitled.pdf";
+  const fileCount = batch.files.length;
+  const headerTitle = `Merged PDF · ${fileCount} file${fileCount === 1 ? "" : "s"}`;
+  const headerSubtitle = `${formatBytes(totalBytes)} total · ${batch.files
+    .slice(0, 2)
+    .map((f) => f.fileName)
+    .join(", ")}${fileCount > 2 ? `, +${fileCount - 2} more` : ""}`;
 
   return (
     <article
@@ -149,10 +147,12 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
           <Files className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold" title={firstName}>
-            {firstName}
+          <p className="truncate text-sm font-semibold" title={headerTitle}>
+            {headerTitle}
           </p>
-          <p className="text-xs text-muted-foreground">{summaryName}</p>
+          <p className="truncate text-xs text-muted-foreground" title={headerSubtitle}>
+            {headerSubtitle}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={cn("text-xs font-semibold", tone.className)}>

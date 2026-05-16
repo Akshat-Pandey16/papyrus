@@ -4,8 +4,9 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from papyrus_api.schemas.common import StrictModel
 from pydantic import ConfigDict, Field, field_validator, model_validator
+
+from papyrus_api.schemas.common import StrictModel
 
 CompressionLevelLiteral = Literal["low", "medium", "high", "extreme", "custom"]
 ColorModeLiteral = Literal["preserve", "grayscale"]

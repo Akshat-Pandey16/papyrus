@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
@@ -21,7 +23,6 @@ from papyrus_api.repositories.documents import (
     StorageObjectRepository,
 )
 from papyrus_api.services.storage_service import PresignedUpload, StorageService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 
@@ -67,10 +68,33 @@ class DocumentService:
         )
         if document is None:
             raise DocumentNotFoundError("Document not found.")
+
+        storage_objects = await self.storage_objects.list_for_document(
+            document_id=document.id,
+        )
         document.deleted_at = utc_now()
         await self.session.flush()
         await self.session.commit()
-        log.info("documents.deleted", document_id=str(document.id))
+
+        purged = 0
+        for obj in storage_objects:
+            try:
+                await self.storage.delete(bucket=obj.bucket, key=obj.key)
+                purged += 1
+            except Exception as exc:
+                log.warning(
+                    "documents.delete.storage_purge_failed",
+                    storage_object_id=str(obj.id),
+                    bucket=obj.bucket,
+                    error=str(exc),
+                )
+
+        log.info(
+            "documents.deleted",
+            document_id=str(document.id),
+            storage_objects_purged=purged,
+            storage_objects_total=len(storage_objects),
+        )
 
     async def initiate_upload(
         self,
@@ -210,7 +234,7 @@ class DocumentService:
 
         confirmed = await self.storage_objects.mark_confirmed(
             storage_object_id=latest_object_stmt.id,
-            sha256=head.etag,
+            sha256=None,
             size_bytes=head.size_bytes,
             confirmed_at=utc_now(),
         )

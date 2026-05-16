@@ -10,6 +10,8 @@ from uuid import UUID
 import anyio
 import pikepdf
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
@@ -30,7 +32,6 @@ from papyrus_api.services.pdf.compress import (
 )
 from papyrus_api.services.pdf.gs_runtime import GsNotConfiguredError, is_available
 from papyrus_api.services.storage_service import StorageService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 

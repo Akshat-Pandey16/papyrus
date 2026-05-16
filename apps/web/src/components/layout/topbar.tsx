@@ -7,10 +7,11 @@ import { useLogoutMutation } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { label: "Tools", href: "/" as const },
-  { label: "Pricing", href: "/" as const },
-  { label: "Docs", href: "/" as const },
+type NavItem = { label: string; href: string };
+
+const NAV: readonly NavItem[] = [
+  { label: "Tools", href: "/#tools" },
+  { label: "Features", href: "/#features" },
 ];
 
 export function Topbar() {
@@ -39,13 +40,13 @@ export function Topbar() {
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
             {NAV.map((item) => (
-              <Link
+              <a
                 key={item.label}
-                to={item.href}
+                href={item.href}
                 className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 {item.label}
-              </Link>
+              </a>
             ))}
           </nav>
         </div>
@@ -112,14 +113,14 @@ export function Topbar() {
       >
         <nav className="flex flex-col gap-1 px-6 py-4">
           {NAV.map((item) => (
-            <Link
+            <a
               key={item.label}
-              to={item.href}
+              href={item.href}
               onClick={() => setOpen(false)}
               className="rounded-md px-2 py-2 text-sm text-foreground hover:bg-accent"
             >
               {item.label}
-            </Link>
+            </a>
           ))}
           <div className="my-2 h-px w-full bg-border" />
           {user ? (

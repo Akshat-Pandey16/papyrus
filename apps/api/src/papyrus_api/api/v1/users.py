@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep
 from papyrus_api.schemas.identity import UpdateProfileRequest, UserOut
 

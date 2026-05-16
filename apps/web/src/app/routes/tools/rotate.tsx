@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RotateCw } from "lucide-react";
+import { RotateCcw, RotateCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AnonymousBanner } from "@/components/shared/anonymous-banner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useUploadStore } from "@/features/pdf-compress/store";
 import { useCreateRotateJobMutation } from "@/features/pdf-tools/api";
 import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ToolJobCard } from "@/features/pdf-tools/tool-job-card";
+import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
 
 export const Route = createFileRoute("/tools/rotate")({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/tools/rotate")({
 function RotatePage() {
   const [file, setFile] = useState<File | null>(null);
   const [rotations, setRotations] = useState<Record<number, number>>({});
+  const { pageCount } = useFilePageCount(file);
   const create = useCreateRotateJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
   const uploadsMap = useUploadStore((s) => s.uploads);
@@ -48,6 +50,15 @@ function RotatePage() {
     });
   };
 
+  const applyToAll = (deg: 90 | 180 | 270) => {
+    if (!pageCount) return;
+    const next: Record<number, number> = {};
+    for (let p = 1; p <= pageCount; p++) next[p] = deg;
+    setRotations(next);
+  };
+
+  const clearRotations = () => setRotations({});
+
   const onSubmit = async () => {
     if (!file || Object.keys(rotations).length === 0) return;
     const payload: Record<string, number> = {};
@@ -74,7 +85,8 @@ function RotatePage() {
         <AnonymousBanner />
         <header className="flex flex-col gap-2">
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-            Click a page to rotate it 90° at a time. Unchanged pages stay as-is.
+            Click a page to rotate it 90° at a time, or use the apply-to-all buttons. Unchanged
+            pages stay as-is.
           </p>
         </header>
 
@@ -97,7 +109,7 @@ function RotatePage() {
                 file={file}
                 onPageClick={cyclePage}
                 rotations={rotations}
-                maxPages={50}
+                maxPages={pageCount ?? 200}
               />
             ) : null}
           </div>
@@ -107,10 +119,63 @@ function RotatePage() {
               <h2 className="text-sm font-semibold">Rotation plan</h2>
               <p className="text-xs text-muted-foreground">
                 {Object.keys(rotations).length === 0
-                  ? "Click any page on the left to rotate it."
-                  : `${Object.keys(rotations).length} page(s) will be rotated.`}
+                  ? pageCount
+                    ? `${pageCount} page${pageCount === 1 ? "" : "s"} in this PDF.`
+                    : "Click any page on the left to rotate it."
+                  : `${Object.keys(rotations).length} of ${pageCount ?? "?"} page(s) will be rotated.`}
               </p>
             </div>
+
+            <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Apply to all pages
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyToAll(90)}
+                  disabled={!pageCount || submitting}
+                  className="h-9"
+                >
+                  <RotateCw className="mr-1.5 h-3.5 w-3.5" /> 90°
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyToAll(180)}
+                  disabled={!pageCount || submitting}
+                  className="h-9"
+                >
+                  180°
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyToAll(270)}
+                  disabled={!pageCount || submitting}
+                  className="h-9"
+                >
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> 270°
+                </Button>
+              </div>
+              {Object.keys(rotations).length > 0 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearRotations}
+                  disabled={submitting}
+                  className="h-8 self-start text-muted-foreground hover:text-foreground"
+                >
+                  Clear all
+                </Button>
+              ) : null}
+            </div>
+
             {Object.keys(rotations).length > 0 ? (
               <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-xs">
                 {Object.entries(rotations)

@@ -16,6 +16,7 @@ import { useJobStream } from "@/features/pdf-compress/hooks/use-job-stream";
 import { useThroughput } from "@/features/pdf-compress/hooks/use-throughput";
 import { selectUpload, useUploadStore } from "@/features/pdf-compress/store";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
+import { triggerDownload } from "@/features/pdf-tools/download";
 import { cn } from "@/lib/utils";
 
 export type CompressionCardProps = {
@@ -75,14 +76,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
       void downloadMutation
         .mutateAsync({ jobId: job.id })
         .then((res) => {
-          const a = document.createElement("a");
-          a.href = res.url;
-          a.rel = "noopener noreferrer";
-          a.target = "_blank";
-          a.download = res.filename;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          triggerDownload(res.url, res.filename);
         })
         .catch(() => undefined);
     } else if (job.status === "failed" && entry.phase !== "failed") {
@@ -128,7 +122,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
   const onDownload = async () => {
     if (!job) return;
     const result = await downloadMutation.mutateAsync({ jobId: job.id });
-    window.open(result.url, "_blank", "noopener,noreferrer");
+    triggerDownload(result.url, result.filename);
   };
 
   const onCancel = async () => {

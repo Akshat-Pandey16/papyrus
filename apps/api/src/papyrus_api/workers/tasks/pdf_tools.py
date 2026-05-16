@@ -10,6 +10,8 @@ import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery.exceptions import SoftTimeLimitExceeded
+from redis.asyncio import Redis
+
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
 from papyrus_api.core.time import utc_now
@@ -27,7 +29,6 @@ from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
-from redis.asyncio import Redis
 
 log = structlog.get_logger(__name__)
 
@@ -54,6 +55,15 @@ def _classify_storage_error(exc: BaseException) -> bool:
         if isinstance(status, int) and 500 <= status < 600:
             return True
     return bool(isinstance(exc, BotoCoreError))
+
+
+async def _purge_input(storage: StorageService, bucket: str | None, key: str | None) -> None:
+    if not bucket or not key:
+        return
+    try:
+        await storage.delete(bucket=bucket, key=key)
+    except Exception as exc:
+        log.warning("jobs.zero_retention.input_purge_failed", bucket=bucket, error=str(exc))
 
 
 async def _check_cancelled(redis: Redis, job_id: UUID) -> None:
@@ -161,7 +171,12 @@ async def _run_simple_job(
             output_path = tmp_dir / f"output.{output_extension}"
 
             try:
-                await storage.download_to_path(bucket=input_bucket, key=input_key, dest=input_path)
+                await storage.download_to_path(
+                    bucket=input_bucket,
+                    key=input_key,
+                    dest=input_path,
+                    max_bytes=settings.user_max_file_bytes,
+                )
             except (ClientError, BotoCoreError) as exc:
                 if _classify_storage_error(exc):
                     raise _TransientStorageError(str(exc)) from exc
@@ -253,6 +268,8 @@ async def _run_simple_job(
                 await session.commit()
             await _publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
             log.info("jobs.tool.succeeded", kind=kind_label, **stats)
+            if settings.zero_retention_mode:
+                await _purge_input(storage, input_bucket, input_key)
     except _JobCancelledError:
         await _publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
         return

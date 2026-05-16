@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Response, status
+
 from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep
 from papyrus_api.schemas.documents import (
     ConfirmUploadRequest,

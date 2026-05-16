@@ -4,11 +4,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import and_, func, or_, select
+
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job, JobEvent
 from papyrus_api.repositories.base import AsyncRepository
-from sqlalchemy import and_, func, select
 
 
 class JobRepository(AsyncRepository[Job]):
@@ -81,9 +82,12 @@ class JobRepository(AsyncRepository[Job]):
             stmt = stmt.where(Job.status == status)
         if cursor_created_at is not None and cursor_id is not None:
             stmt = stmt.where(
-                and_(
-                    Job.created_at <= cursor_created_at,
-                    Job.id != cursor_id,
+                or_(
+                    Job.created_at < cursor_created_at,
+                    and_(
+                        Job.created_at == cursor_created_at,
+                        Job.id < cursor_id,
+                    ),
                 )
             )
         stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit + 1)
