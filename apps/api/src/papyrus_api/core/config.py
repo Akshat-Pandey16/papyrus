@@ -64,10 +64,10 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
 
-    s3_endpoint_url: str | None = "http://localhost:9000"
+    s3_endpoint_url: str | None = "http://localhost:4566"
     s3_region: str = "us-east-1"
-    s3_access_key_id: SecretStr = SecretStr("papyrus")
-    s3_secret_access_key: SecretStr = SecretStr("papyrus-secret")
+    s3_access_key_id: SecretStr = SecretStr("test")
+    s3_secret_access_key: SecretStr = SecretStr("test")
     s3_bucket_uploads: str = "papyrus-uploads"
     s3_bucket_outputs: str = "papyrus-outputs"
     s3_presign_expires_seconds: int = 900

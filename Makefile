@@ -8,32 +8,43 @@ PYTHON_VERSION := 3.13
 export UV_PROJECT_ENVIRONMENT := $(VENV)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup venv install upgrade api worker beat web \
-        db-upgrade db-downgrade db-revision db-reset \
+.PHONY: help setup venv install upgrade api worker beat web web-fresh \
+        infra-up infra-down infra-logs infra-reset \
+        db-upgrade db-downgrade db-revision db-reset openapi \
         lint format typecheck test test-api test-web build clean distclean
 
 help:  ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # ---- Setup -----------------------------------------------------------
-setup:  ## One-shot bootstrap (installs system deps + project deps). See scripts/setup.sh.
+setup:  ## One-shot bootstrap (toolchains + Docker infra + project deps). See scripts/setup.sh.
 	bash scripts/setup.sh
 
 venv:  ## Create the project-local Python virtualenv at .venv
 	$(UV) venv $(VENV) --python $(PYTHON_VERSION)
 
-install: venv  ## Install Python + Node dependencies into .venv and node_modules
+install: venv  ## Install Python (uv) + JS (bun) dependencies
 	$(UV) sync --all-packages --all-groups
-	pnpm install
+	bun install
 
-upgrade:  ## Bump every Python + Node dep to its latest version (regenerates lockfiles)
+upgrade:  ## Bump every Python + JS dep to its latest version (regenerates lockfiles)
 	$(UV) sync --all-packages --all-groups --upgrade
-	pnpm -r update --latest
-	pnpm dedupe
-	pnpm install
-	corepack use pnpm@latest
+	bun update --latest
 
-# ---- Application processes (run natively, no containers) ------------
+# ---- Dev infrastructure (Docker) ------------------------------------
+infra-up:  ## Start Postgres + Redis + LocalStack (S3) via Docker Compose
+	docker compose up -d --wait
+
+infra-down:  ## Stop dev infrastructure (keeps data volumes)
+	docker compose down
+
+infra-logs:  ## Tail dev infrastructure logs
+	docker compose logs -f
+
+infra-reset:  ## Stop dev infrastructure AND delete its data volumes
+	docker compose down -v
+
+# ---- Application processes (run natively against Docker infra) ------
 api:  ## Run the FastAPI server with reload
 	$(UV_RUN) uvicorn papyrus_api.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
 
@@ -44,11 +55,11 @@ beat:  ## Run the Celery beat scheduler
 	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app beat --loglevel=INFO
 
 web:  ## Run the Vite dev server
-	pnpm --filter @papyrus/web dev
+	bun run --filter @papyrus/web dev
 
-web-fresh:
+web-fresh:  ## Run the Vite dev server with a cleared cache
 	rm -rf apps/web/node_modules/.vite
-	pnpm --filter @papyrus/web dev
+	bun run --filter @papyrus/web dev
 
 # ---- Database --------------------------------------------------------
 db-upgrade:  ## Apply migrations to head
@@ -66,20 +77,20 @@ db-reset:  ## Drop the dev database and re-apply all migrations
 # ---- API contract ----------------------------------------------------
 openapi:  ## Refresh the committed OpenAPI snapshot + regenerate shared TS types
 	$(UV_RUN) python -c "import json; from papyrus_api.main import create_app; print(json.dumps(create_app().openapi(), indent=2, sort_keys=True))" > packages/shared-types/openapi.json
-	pnpm --filter @papyrus/shared-types generate
+	bun run --filter @papyrus/shared-types generate
 
 # ---- Quality gates ---------------------------------------------------
 lint:  ## Lint Python + JS/TS
 	$(UV) run ruff check .
-	pnpm lint
+	bun run lint
 
 format:  ## Format Python + JS/TS
 	$(UV) run ruff format .
-	pnpm format
+	bun run format
 
 typecheck:  ## Static type-check Python + TS
 	$(UV) run mypy apps/api/src
-	pnpm typecheck
+	bun run typecheck
 
 test: test-api test-web  ## Run all tests
 
@@ -87,11 +98,11 @@ test-api:  ## Run API tests
 	$(UV_RUN) pytest apps/api/tests
 
 test-web:  ## Run web tests
-	pnpm --filter @papyrus/web test
+	bun run --filter @papyrus/web test
 
 # ---- Build & clean ---------------------------------------------------
 build:  ## Build all packages
-	pnpm -r build
+	bun run build
 
 clean:  ## Remove build artifacts and caches (keeps .venv)
 	rm -rf apps/web/dist apps/web/.vite

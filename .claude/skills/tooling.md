@@ -1,6 +1,6 @@
 ---
 name: tooling
-description: Local dev commands, lint/typecheck/build invocations, dep management for uv + pnpm.
+description: Local dev commands, lint/typecheck/build invocations, dep management for uv + bun.
 ---
 
 # Tooling commands
@@ -8,8 +8,8 @@ description: Local dev commands, lint/typecheck/build invocations, dep managemen
 ## First-time setup
 
 ```bash
-make setup          # installs Postgres/Redis/Node/uv, downloads MinIO, creates DB, runs migrations
-                    # ASSUME_YES=1 to skip prompts; SKIP_SYSTEM=1 to skip OS installs
+make setup          # installs uv/Python/Node/bun, starts Docker infra (PG/Redis/LocalStack), runs migrations
+                    # ASSUME_YES=1 to skip prompts; SKIP_SYSTEM=1 to skip OS package installs
 ```
 
 Python venv lives at `./.venv` (created by `make venv` / `make install`). Recipes pin
@@ -20,7 +20,7 @@ Python venv lives at `./.venv` (created by `make venv` / `make install`). Recipe
 Run each in its own terminal:
 
 ```bash
-bash scripts/run_minio.sh   # MinIO on :9000 (console :9001)
+make infra-up               # Postgres :5432, Redis :6379, LocalStack S3 :4566 (Docker)
 make api                    # FastAPI on :8000
 make worker                 # Celery worker
 make web                    # Vite on :5173 (in pdf-tools branches, includes dev HMR)
@@ -38,28 +38,24 @@ UV_PROJECT_ENVIRONMENT=$PWD/.venv uv run alembic revision --autogenerate -m "...
 UV_PROJECT_ENVIRONMENT=$PWD/.venv uv run alembic upgrade head
 ```
 
-## Node (apps/web)
+## JS (bun)
 
-`pnpm dep-check` runs before every script — if pnpm 11 reports `ERR_PNPM_IGNORED_BUILDS`,
-the build dependency needs an entry in `onlyBuiltDependencies` in `pnpm-workspace.yaml`.
-
-```bash
-CI=true pnpm install --no-frozen-lockfile         # after dep changes
-node apps/web/node_modules/typescript/bin/tsc -b  # typecheck
-/path/to/.bin/biome check . --write               # lint + format from apps/web/
-node apps/web/node_modules/vite/bin/vite.js build # production build
-node apps/web/node_modules/vitest/vitest.mjs --run # tests
-```
-
-Or via the workspace scripts when pnpm is happy:
+bun is the package manager + runtime. Workspaces are declared via `workspaces` in the root
+`package.json` (`apps/*`, `packages/*`); `@papyrus/shared-types` is linked with `workspace:*`.
+If a dependency needs its postinstall script to run, add it to `trustedDependencies` in the root
+`package.json` (currently `msw`).
 
 ```bash
-pnpm --filter @papyrus/web dev
-pnpm --filter @papyrus/web build
-pnpm --filter @papyrus/web typecheck
-pnpm --filter @papyrus/web lint
-pnpm --filter @papyrus/web test
+bun install                                  # install/refresh; --frozen-lockfile in CI
+bun run --filter @papyrus/web dev            # Vite dev server
+bun run --filter @papyrus/web build          # production build
+bun run --filter @papyrus/web test           # vitest (runs once outside watch)
+bun run typecheck                            # tsc -b across all workspaces
+bun run lint                                 # biome check . (root)
 ```
+
+The committed lockfile is `bun.lock` (text). `make upgrade` runs `bun update --latest` +
+`uv sync --upgrade`.
 
 ## Vite cache invalidation
 
@@ -71,11 +67,13 @@ rm -rf apps/web/node_modules/.vite
 # restart dev server and hard-refresh the browser (Cmd/Ctrl+Shift+R)
 ```
 
-## MinIO
+## Object storage (LocalStack)
 
-S3-compatible local storage at `:9000` (API) and `:9001` (web console). Buckets are auto-created
-on boot via `StorageService.ensure_bucket`. Credentials default to
-`papyrus / papyrus-secret` (see `s3_access_key_id` / `s3_secret_access_key` in settings).
+S3-compatible local storage via LocalStack at `:4566` (`docker compose` service `localstack`).
+Buckets `papyrus-uploads` / `papyrus-outputs` are created by `infra/localstack/init-s3.sh` on
+boot (with CORS) and also by `StorageService.ensure_bucket`. Credentials default to `test / test`
+(LocalStack accepts anything); see `s3_endpoint_url` / `s3_access_key_id` in settings. MinIO was
+dropped — its project was archived in 2026.
 
 ## Database reset (destructive)
 

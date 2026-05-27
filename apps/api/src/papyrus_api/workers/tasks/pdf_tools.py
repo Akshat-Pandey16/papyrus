@@ -180,9 +180,7 @@ async def _run_simple_job(
             await publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
 
             output_bucket = settings.s3_bucket_outputs
-            output_key = (
-                f"org/{organization_id}/outputs/{job_id}/{uuid4().hex}.{actual_extension}"
-            )
+            output_key = f"org/{organization_id}/outputs/{job_id}/{uuid4().hex}.{actual_extension}"
 
             output_sha256 = await anyio.to_thread.run_sync(sha256_of_file, actual_output)
 

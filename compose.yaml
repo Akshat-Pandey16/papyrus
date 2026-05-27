@@ -1,0 +1,56 @@
+name: papyrus
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: papyrus
+      POSTGRES_PASSWORD: papyrus
+      POSTGRES_DB: papyrus
+    ports:
+      - "5432:5432"
+    volumes:
+      - papyrus-pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U papyrus -d papyrus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - papyrus-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  localstack:
+    image: localstack/localstack:4
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      PERSISTENCE: "1"
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+    volumes:
+      - papyrus-localstack:/var/lib/localstack
+      - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls >/dev/null 2>&1 || exit 1"]
+      interval: 8s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  papyrus-pg:
+  papyrus-redis:
+  papyrus-localstack:

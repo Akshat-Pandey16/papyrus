@@ -34,8 +34,10 @@ not a gate.
 - **Backend**: Python 3.13, FastAPI, Pydantic v2 strict, SQLAlchemy 2.x async + asyncpg,
   Alembic, Celery + Redis, aioboto3 (one shared client), structlog, OpenTelemetry, argon2,
   pyjwt, pikepdf, ocrmypdf (system dep), uuid-utils (UUIDv7), uv for deps, Ruff, mypy --strict.
-- **Infra**: PostgreSQL 17+, Redis 7+, S3-compatible object storage (MinIO locally).
-  Native processes in dev (no Docker). Docker/Helm under `infra/` is for deploy only.
+- **Infra**: PostgreSQL 18, Redis 8, S3-compatible object storage (LocalStack locally).
+  Dev infra (Postgres/Redis/LocalStack) runs via Docker Compose (`make infra-up`); app
+  processes (API, worker, web) run natively. JS package manager + runtime is **bun**.
+  Docker/Helm under `infra/` also holds the deploy images/manifests.
 
 ## Skills — load these when working in specific areas
 

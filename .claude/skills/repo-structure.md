@@ -5,24 +5,26 @@ description: Map of the Papyrus monorepo — where to put new code, where to fin
 
 # Repo structure
 
-Monorepo with two apps (`apps/web`, `apps/api`) and shared packages. **pnpm workspaces** on the JS
+Monorepo with two apps (`apps/web`, `apps/api`) and shared packages. **bun workspaces** on the JS
 side, **uv workspaces** on the Python side.
 
 ```
 papyrus/
 ├── CLAUDE.md
-├── pnpm-workspace.yaml        # JS workspaces; onlyBuiltDependencies whitelist (msw)
+├── package.json               # bun workspaces (apps/*, packages/*); trustedDependencies (msw)
+├── bun.lock                   # committed JS lockfile
+├── compose.yaml               # dev infra: Postgres + Redis + LocalStack (S3)
 ├── pyproject.toml             # uv workspace root + ruff/mypy config
 ├── uv.lock                    # committed
-├── Makefile                   # thin wrapper around make api / web / worker / setup
+├── Makefile                   # thin wrapper: make api / web / worker / infra-up / setup
 ├── .claude/skills/            # modular skill files (this dir)
 ├── apps/
 │   ├── api/                   # FastAPI + Celery, see backend-* skills
 │   └── web/                   # React SPA, see frontend-* skills
 ├── packages/
 │   └── shared-types/          # OpenAPI-generated TS types consumed by web
-├── infra/                     # Dockerfiles + Helm chart (deploy only — dev is native)
-└── scripts/                   # db_reset, seed
+├── infra/                     # Dockerfiles, Helm, localstack/init-s3.sh
+└── scripts/                   # setup, db_reset, seed
 ```
 
 ## Backend (`apps/api/src/papyrus_api/`)

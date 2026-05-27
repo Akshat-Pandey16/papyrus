@@ -1,16 +1,15 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24-alpine AS builder
+FROM oven/bun:1.3.14 AS builder
 
 WORKDIR /app
-RUN corepack enable
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared-types/package.json packages/shared-types/
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN pnpm --filter @papyrus/web build
+RUN bun run --filter @papyrus/web build
 
 FROM nginx:1.27-alpine AS runtime
 
