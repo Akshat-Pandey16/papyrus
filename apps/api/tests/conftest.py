@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from papyrus_api.main import create_app
 
 
