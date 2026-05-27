@@ -13,7 +13,8 @@ import { useAuthStore } from "@/features/auth/store";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: () => {
-    if (useAuthStore.getState().hasAccess) {
+    const state = useAuthStore.getState();
+    if (state.hasAccess && !state.user?.isAnonymous) {
       throw redirect({ to: "/dashboard" });
     }
   },
