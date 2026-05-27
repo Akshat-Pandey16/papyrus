@@ -26,6 +26,7 @@ import type {
 } from "@/features/pdf-compress/types";
 import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ApiError } from "@/lib/api/client";
+import { randomUUID } from "@/lib/uuid";
 
 const PRESET_LEVELS: CompressionLevel[] = ["low", "medium", "high", "extreme"];
 
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/tools/compress")({
 });
 
 function newClientUploadId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 function CompressPage() {
@@ -56,7 +57,10 @@ function CompressPage() {
   const [options, setOptions] = useState<CompressionOptions>(() => optionsForLevel(initialLevel));
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [uploadedDoc, setUploadedDoc] = useState<{
+    documentId: string;
+    clientUploadId: string;
+  } | null>(null);
   const [estimate, setEstimate] = useState<CompressEstimate | null>(null);
 
   const startUpload = useUploadStore((s) => s.start);
@@ -68,19 +72,19 @@ function CompressPage() {
   const estimateMutation = useEstimateCompressionMutation();
 
   useEffect(() => {
-    setUploadedDocId(null);
+    setUploadedDoc(null);
     setEstimate(null);
   }, []);
 
   const onFile = useCallback((file: File) => {
     setPendingFile(file);
-    setUploadedDocId(null);
+    setUploadedDoc(null);
     setEstimate(null);
   }, []);
 
   const onClearFile = useCallback(() => {
     setPendingFile(null);
-    setUploadedDocId(null);
+    setUploadedDoc(null);
     setEstimate(null);
   }, []);
 
@@ -100,10 +104,10 @@ function CompressPage() {
 
   const ensureUploaded = useCallback(
     async (file: File): Promise<{ documentId: string; clientUploadId: string } | null> => {
-      const clientUploadId = newClientUploadId();
-      if (uploadedDocId) {
-        return { documentId: uploadedDocId, clientUploadId };
+      if (uploadedDoc) {
+        return uploadedDoc;
       }
+      const clientUploadId = newClientUploadId();
       startUpload({
         clientUploadId,
         kind: "compress",
@@ -111,7 +115,7 @@ function CompressPage() {
         fileSize: file.size,
         fileType: file.type,
         level,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: randomUUID(),
         phase: "preparing",
         bytesUploaded: 0,
         bytesTotal: file.size,
@@ -120,8 +124,9 @@ function CompressPage() {
       try {
         const result = await start({ clientUploadId, file });
         updateUpload(clientUploadId, { documentId: result.documentId });
-        setUploadedDocId(result.documentId);
-        return { documentId: result.documentId, clientUploadId };
+        const next = { documentId: result.documentId, clientUploadId };
+        setUploadedDoc(next);
+        return next;
       } catch (err) {
         const message =
           err instanceof ApiError
@@ -147,7 +152,7 @@ function CompressPage() {
         return null;
       }
     },
-    [uploadedDocId, startUpload, level, start, updateUpload, cancel],
+    [uploadedDoc, startUpload, level, start, updateUpload, cancel],
   );
 
   const onEstimate = useCallback(async () => {
@@ -173,8 +178,8 @@ function CompressPage() {
     try {
       const uploaded = await ensureUploaded(pendingFile);
       if (!uploaded) return;
-      const idempotencyKey = crypto.randomUUID();
-      updateUpload(uploaded.clientUploadId, { phase: "queued", idempotencyKey });
+      const idempotencyKey = randomUUID();
+      updateUpload(uploaded.clientUploadId, { phase: "queued", idempotencyKey, level });
 
       const input: CreateCompressionJobInput = {
         documentId: uploaded.documentId,
@@ -185,7 +190,7 @@ function CompressPage() {
       const job = await createJob.mutateAsync(input);
       updateUpload(uploaded.clientUploadId, { jobId: job.id, phase: "queued" });
       setPendingFile(null);
-      setUploadedDocId(null);
+      setUploadedDoc(null);
       setEstimate(null);
     } catch (err) {
       const message =

@@ -5,6 +5,7 @@ import { type UploadKind, useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
 import { ApiError } from "@/lib/api/client";
 import { mapErrorMessage } from "@/lib/api/error-message";
+import { randomUUID } from "@/lib/uuid";
 
 export type RunArgs = {
   file: File;
@@ -23,8 +24,8 @@ export function useSingleFileJobRunner() {
     async ({ file, kind, level = "medium", createJob }: RunArgs) => {
       if (submitting) return null;
       setSubmitting(true);
-      const clientUploadId = crypto.randomUUID();
-      const idempotencyKey = crypto.randomUUID();
+      const clientUploadId = randomUUID();
+      const idempotencyKey = randomUUID();
       startUpload({
         clientUploadId,
         kind,

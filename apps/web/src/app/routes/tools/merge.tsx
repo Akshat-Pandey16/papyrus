@@ -19,6 +19,7 @@ import { DEFAULT_MERGE_OPTIONS } from "@/features/pdf-merge/presets";
 import { type MergeFileEntry, useMergeStore } from "@/features/pdf-merge/store";
 import type { MergeInput, MergeOptions } from "@/features/pdf-merge/types";
 import { ApiError } from "@/lib/api/client";
+import { randomUUID } from "@/lib/uuid";
 
 export const Route = createFileRoute("/tools/merge")({
   beforeLoad: async () => {
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/tools/merge")({
 });
 
 function newId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 function rangesToSpec(ranges: PageRange[] | null): string | null {

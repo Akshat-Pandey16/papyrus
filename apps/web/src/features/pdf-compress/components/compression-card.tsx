@@ -16,6 +16,7 @@ import { triggerDownload } from "@/features/pdf-tools/download";
 import { useAutoDownload } from "@/features/pdf-tools/use-auto-download";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
+import { randomUUID } from "@/lib/uuid";
 
 export type CompressionCardProps = {
   clientUploadId: string;
@@ -273,7 +274,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
                 onClick={async () => {
                   const next = await retryMutation.mutateAsync({
                     jobId: job.id,
-                    idempotencyKey: crypto.randomUUID(),
+                    idempotencyKey: randomUUID(),
                   });
                   updateEntry(clientUploadId, {
                     jobId: next.id,

@@ -12,6 +12,7 @@ import { selectBatch, useMergeStore } from "@/features/pdf-merge/store";
 import type { Job, JobStatus } from "@/features/pdf-merge/types";
 import { triggerDownload } from "@/features/pdf-tools/download";
 import { cn } from "@/lib/utils";
+import { randomUUID } from "@/lib/uuid";
 
 export type MergeCardProps = {
   clientBatchId: string;
@@ -269,7 +270,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
                 onClick={async () => {
                   const next = await retryMutation.mutateAsync({
                     jobId: job.id,
-                    idempotencyKey: crypto.randomUUID(),
+                    idempotencyKey: randomUUID(),
                   });
                   updateBatch(clientBatchId, {
                     jobId: next.id,

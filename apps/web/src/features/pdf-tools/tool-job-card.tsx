@@ -9,6 +9,7 @@ import { triggerDownload } from "@/features/pdf-tools/download";
 import { useAutoDownload } from "@/features/pdf-tools/use-auto-download";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
+import { randomUUID } from "@/lib/uuid";
 
 export type ToolJobCardProps = {
   clientUploadId: string;
@@ -164,7 +165,7 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
               onClick={async () => {
                 const next = await retry.mutateAsync({
                   jobId: job.id,
-                  idempotencyKey: crypto.randomUUID(),
+                  idempotencyKey: randomUUID(),
                 });
                 updateEntry(clientUploadId, { jobId: next.id, phase: "queued" });
               }}
