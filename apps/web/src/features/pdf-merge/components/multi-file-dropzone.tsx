@@ -1,13 +1,16 @@
-import { ArrowDown, ArrowUp, FileText, FileUp, GripVertical, X } from "lucide-react";
-import { type DragEvent, type KeyboardEvent, useId, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, FileUp, GripVertical, X } from "lucide-react";
+import { type KeyboardEvent, useId, useRef, useState } from "react";
 import type { PageRange } from "@/components/shared/page-range-builder";
+import { type DragHandleProps, SortableList } from "@/components/shared/sortable-list";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/features/pdf-compress/format";
 import { FilePagesPopover } from "@/features/pdf-merge/components/file-pages-popover";
+import { FilePreview } from "@/features/pdf-tools/file-preview";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 export type MergeFileSpec = {
+  id: string;
   file: File;
   ranges: PageRange[] | null;
 };
@@ -39,7 +42,8 @@ export function MultiFileDropzone({
   const [error, setError] = useState<string | null>(null);
 
   const validate = (file: File): string | null => {
-    if (file.type !== "application/pdf") return `${file.name}: only PDF files are supported.`;
+    const looksPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!looksPdf) return `${file.name}: only PDF files are supported.`;
     if (file.size > env.VITE_MAX_FILE_BYTES) {
       return `${file.name}: too large (max ${formatBytes(env.VITE_MAX_FILE_BYTES)}).`;
     }
@@ -49,19 +53,17 @@ export function MultiFileDropzone({
   const handleFiles = (incoming: FileList | File[]) => {
     const arr = Array.from(incoming);
     const valid: File[] = [];
+    const skipped: string[] = [];
     for (const f of arr) {
       const err = validate(f);
-      if (err) {
-        setError(err);
-        return;
-      }
-      valid.push(f);
+      if (err) skipped.push(err);
+      else valid.push(f);
     }
-    setError(null);
+    setError(skipped.length > 0 ? (skipped[0] ?? null) : null);
     if (valid.length > 0) onAdd(valid);
   };
 
-  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsOver(false);
     if (disabled) return;
@@ -166,88 +168,34 @@ export function MultiFileDropzone({
               Clear all
             </Button>
           </div>
-          <FileRowList
-            files={files}
+          <SortableList
+            ids={files.map((f) => f.id)}
+            onReorder={onMove}
             disabled={disabled}
-            onMove={onMove}
-            onRemove={onRemove}
-            onRangesChange={onRangesChange}
+            className="flex flex-col gap-1.5"
+            renderItem={(_id, index, handle) => {
+              const entry = files[index];
+              if (!entry) return null;
+              return (
+                <FileRow
+                  index={index}
+                  file={entry.file}
+                  ranges={entry.ranges}
+                  disabled={disabled}
+                  handle={handle}
+                  disableUp={index === 0}
+                  disableDown={index === files.length - 1}
+                  onMoveUp={() => onMove(index, index - 1)}
+                  onMoveDown={() => onMove(index, index + 1)}
+                  onRemove={() => onRemove(index)}
+                  onRangesChange={(next) => onRangesChange(index, next)}
+                />
+              );
+            }}
           />
         </div>
       ) : null}
     </div>
-  );
-}
-
-type FileRowListProps = {
-  files: MergeFileSpec[];
-  disabled: boolean;
-  onMove: (from: number, to: number) => void;
-  onRemove: (index: number) => void;
-  onRangesChange: (index: number, ranges: PageRange[] | null) => void;
-};
-
-function FileRowList({ files, disabled, onMove, onRemove, onRangesChange }: FileRowListProps) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-
-  const onDragStart = (e: DragEvent<HTMLLIElement>, index: number) => {
-    if (disabled) return;
-    setDragIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", String(index));
-  };
-
-  const onDragOver = (e: DragEvent<HTMLLIElement>, index: number) => {
-    if (disabled || dragIndex === null) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (overIndex !== index) setOverIndex(index);
-  };
-
-  const onDragLeave = () => setOverIndex(null);
-
-  const onDrop = (e: DragEvent<HTMLLIElement>, index: number) => {
-    if (disabled) return;
-    e.preventDefault();
-    const raw = dragIndex ?? Number(e.dataTransfer.getData("text/plain"));
-    const from = Number.isFinite(raw) ? Number(raw) : null;
-    setDragIndex(null);
-    setOverIndex(null);
-    if (from === null || from === index) return;
-    onMove(from, index);
-  };
-
-  const onDragEnd = () => {
-    setDragIndex(null);
-    setOverIndex(null);
-  };
-
-  return (
-    <ol className="flex flex-col gap-1.5">
-      {files.map((entry, index) => (
-        <FileRow
-          key={`${entry.file.name}-${index}-${entry.file.size}`}
-          index={index}
-          file={entry.file}
-          ranges={entry.ranges}
-          disabled={disabled}
-          disableUp={index === 0}
-          disableDown={index === files.length - 1}
-          isDragging={dragIndex === index}
-          isDragOver={overIndex === index && dragIndex !== null && dragIndex !== index}
-          onDragStart={(e) => onDragStart(e, index)}
-          onDragOver={(e) => onDragOver(e, index)}
-          onDragLeave={onDragLeave}
-          onDrop={(e) => onDrop(e, index)}
-          onDragEnd={onDragEnd}
-          onMoveUp={() => onMove(index, index - 1)}
-          onMoveDown={() => onMove(index, index + 1)}
-          onRemove={() => onRemove(index)}
-          onRangesChange={(next) => onRangesChange(index, next)}
-        />
-      ))}
-    </ol>
   );
 }
 
@@ -256,15 +204,9 @@ type FileRowProps = {
   file: File;
   ranges: PageRange[] | null;
   disabled: boolean;
+  handle: DragHandleProps;
   disableUp: boolean;
   disableDown: boolean;
-  isDragging: boolean;
-  isDragOver: boolean;
-  onDragStart: (e: DragEvent<HTMLLIElement>) => void;
-  onDragOver: (e: DragEvent<HTMLLIElement>) => void;
-  onDragLeave: () => void;
-  onDrop: (e: DragEvent<HTMLLIElement>) => void;
-  onDragEnd: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
@@ -276,45 +218,38 @@ function FileRow({
   file,
   ranges,
   disabled,
+  handle,
   disableUp,
   disableDown,
-  isDragging,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
   onMoveUp,
   onMoveDown,
   onRemove,
   onRangesChange,
 }: FileRowProps) {
   return (
-    <li
-      draggable={!disabled}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
+    <div
       className={cn(
-        "flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3 transition-all",
-        !disabled && "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-40",
-        isDragOver && "border-foreground/50 ring-2 ring-foreground/20",
+        "flex items-center gap-3 rounded-lg border border-border/60 bg-background/40 p-3 transition-colors",
+        handle.isDragging && "border-foreground/50",
       )}
     >
-      <span
-        aria-hidden
-        className="grid h-7 w-5 shrink-0 place-items-center text-muted-foreground/60"
+      <button
+        type="button"
+        aria-label={`Drag ${file.name} to reorder`}
+        disabled={disabled}
+        className="grid h-7 w-5 shrink-0 cursor-grab touch-none place-items-center text-muted-foreground/60 active:cursor-grabbing disabled:cursor-not-allowed"
+        {...handle.attributes}
+        {...handle.listeners}
       >
-        <GripVertical className="h-4 w-4" />
-      </span>
+        <GripVertical className="h-4 w-4" aria-hidden />
+      </button>
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground/80">
         {index + 1}
       </span>
-      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <FilePreview
+        file={file}
+        className="h-10 w-8 shrink-0 overflow-hidden rounded border border-border/60"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium" title={file.name}>
           {file.name}
@@ -364,6 +299,6 @@ function FileRow({
           <X className="h-4 w-4" aria-hidden />
         </Button>
       </div>
-    </li>
+    </div>
   );
 }

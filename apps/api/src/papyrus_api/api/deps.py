@@ -9,7 +9,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from papyrus_api.core.errors import AuthenticationError, RateLimitedError
+from papyrus_api.core.config import settings
+from papyrus_api.core.errors import AuthenticationError, CsrfError, RateLimitedError
 from papyrus_api.core.rate_limit import RateLimiter
 from papyrus_api.core.request_client import client_ip
 from papyrus_api.core.security import TokenType, decode_token
@@ -28,7 +29,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def get_identity_service(session: DbSession) -> IdentityService:
-    return IdentityService(session)
+    return IdentityService(session, get_redis())
 
 
 IdentityServiceDep = Annotated[IdentityService, Depends(get_identity_service)]
@@ -115,13 +116,35 @@ async def get_principal_for_sse(
     auth = request.headers.get("authorization")
     if auth and auth.lower().startswith("bearer "):
         return await _principal_from_token(auth.split(" ", 1)[1], service)
-    ticket = request.cookies.get("papyrus_sse")
+    ticket = request.cookies.get(settings.sse_cookie_name)
     if ticket:
-        return await _principal_from_token(ticket, service)
+        claims = decode_token(ticket, expected_type=TokenType.SSE)
+        job_id_raw = request.path_params.get("job_id")
+        if job_id_raw is None or claims.get("job") != str(job_id_raw):
+            raise AuthenticationError("SSE ticket does not match this job.")
+        user_id = UUID(claims["sub"])
+        user, organization = await service.get_session(user_id=user_id)
+        structlog.contextvars.bind_contextvars(
+            user_id=str(user.id),
+            organization_id=str(organization.id),
+        )
+        return user, organization
     raise AuthenticationError("Missing SSE auth.")
 
 
 SsePrincipal = Annotated[tuple[User, Organization], Depends(get_principal_for_sse)]
+
+
+async def enforce_origin(request: Request) -> None:
+    origin = request.headers.get("origin")
+    if origin is None:
+        return
+    allowed = {str(o).rstrip("/") for o in settings.api_cors_origins}
+    if origin.rstrip("/") not in allowed:
+        raise CsrfError("Request origin is not allowed.")
+
+
+EnforceOrigin = Depends(enforce_origin)
 
 
 def rate_limit(

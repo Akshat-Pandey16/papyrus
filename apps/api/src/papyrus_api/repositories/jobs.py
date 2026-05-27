@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select, update
 
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
@@ -49,7 +49,7 @@ class JobRepository(AsyncRepository[Job]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_unscoped(self, *, job_id: UUID) -> Job | None:
+    async def get_for_worker(self, *, job_id: UUID) -> Job | None:
         return await self.session.get(Job, job_id)
 
     async def get_by_idempotency_key(
@@ -108,14 +108,25 @@ class JobRepository(AsyncRepository[Job]):
         return int(result.scalar_one() or 0)
 
     async def mark_running(self, *, job_id: UUID) -> Job | None:
-        job = await self.session.get(Job, job_id)
-        if job is None:
-            return None
-        job.status = JobStatus.RUNNING
-        if job.started_at is None:
-            job.started_at = utc_now()
-        await self.session.flush()
-        return job
+        now = utc_now()
+        stmt = (
+            update(Job)
+            .where(
+                Job.id == job_id,
+                Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING]),
+            )
+            .values(
+                status=JobStatus.RUNNING,
+                started_at=case((Job.started_at.is_(None), now), else_=Job.started_at),
+            )
+            .returning(Job)
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is not None:
+            await self.session.flush()
+        return row
 
     async def mark_succeeded(
         self,
@@ -125,18 +136,26 @@ class JobRepository(AsyncRepository[Job]):
         output_size_bytes: int,
         compression_ratio: float | None = None,
     ) -> Job | None:
-        job = await self.session.get(Job, job_id)
-        if job is None:
-            return None
-        job.status = JobStatus.SUCCEEDED
-        job.finished_at = utc_now()
-        job.output_object_id = output_object_id
-        job.output_size_bytes = output_size_bytes
-        job.compression_ratio = compression_ratio
-        job.error_code = None
-        job.error_message = None
-        await self.session.flush()
-        return job
+        stmt = (
+            update(Job)
+            .where(Job.id == job_id, Job.status == JobStatus.RUNNING)
+            .values(
+                status=JobStatus.SUCCEEDED,
+                finished_at=utc_now(),
+                output_object_id=output_object_id,
+                output_size_bytes=output_size_bytes,
+                compression_ratio=compression_ratio,
+                error_code=None,
+                error_message=None,
+            )
+            .returning(Job)
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is not None:
+            await self.session.flush()
+        return row
 
     async def mark_failed(
         self,
@@ -145,25 +164,47 @@ class JobRepository(AsyncRepository[Job]):
         error_code: str,
         error_message: str,
     ) -> Job | None:
-        job = await self.session.get(Job, job_id)
-        if job is None:
-            return None
-        job.status = JobStatus.FAILED
-        job.finished_at = utc_now()
-        job.error_code = error_code
-        job.error_message = error_message
-        await self.session.flush()
-        return job
+        stmt = (
+            update(Job)
+            .where(
+                Job.id == job_id,
+                Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING]),
+            )
+            .values(
+                status=JobStatus.FAILED,
+                finished_at=utc_now(),
+                error_code=error_code,
+                error_message=error_message,
+            )
+            .returning(Job)
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is not None:
+            await self.session.flush()
+        return row
 
     async def mark_cancelled(self, *, job_id: UUID) -> Job | None:
-        job = await self.session.get(Job, job_id)
-        if job is None:
-            return None
-        job.status = JobStatus.CANCELLED
-        if job.finished_at is None:
-            job.finished_at = utc_now()
-        await self.session.flush()
-        return job
+        now = utc_now()
+        stmt = (
+            update(Job)
+            .where(
+                Job.id == job_id,
+                Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING]),
+            )
+            .values(
+                status=JobStatus.CANCELLED,
+                finished_at=case((Job.finished_at.is_(None), now), else_=Job.finished_at),
+            )
+            .returning(Job)
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is not None:
+            await self.session.flush()
+        return row
 
 
 class JobEventRepository(AsyncRepository[JobEvent]):

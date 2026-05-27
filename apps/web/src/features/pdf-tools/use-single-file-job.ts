@@ -3,8 +3,8 @@ import { toast } from "sonner";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { type UploadKind, useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
-import { useConfirmUploadMutation, useInitiateUploadMutation } from "@/features/pdf-tools/api";
 import { ApiError } from "@/lib/api/client";
+import { mapErrorMessage } from "@/lib/api/error-message";
 
 export type RunArgs = {
   file: File;
@@ -18,9 +18,6 @@ export function useSingleFileJobRunner() {
   const startUpload = useUploadStore((s) => s.start);
   const updateUpload = useUploadStore((s) => s.update);
   const { start: doUpload, cancel } = usePdfUpload();
-  // ensure shared hooks are imported (linker hint)
-  useInitiateUploadMutation;
-  useConfirmUploadMutation;
 
   const run = useCallback(
     async ({ file, kind, level = "medium", createJob }: RunArgs) => {
@@ -66,7 +63,7 @@ export function useSingleFileJobRunner() {
           errorCode: code,
           errorMessage: message,
         });
-        if (code !== "cancelled") toast.error(message);
+        if (code !== "cancelled") toast.error(mapErrorMessage(code, message));
         return null;
       } finally {
         setSubmitting(false);

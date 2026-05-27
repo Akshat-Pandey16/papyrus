@@ -112,6 +112,7 @@ class JobService:
         idempotency_key: UUID,
         options: dict[str, Any] | None = None,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
             organization_id=organization_id,
@@ -148,6 +149,7 @@ class JobService:
             "input_filename": document.name,
             "created_by_user_id": str(user_id),
             "version_id": str(version.id),
+            "zero_retention": zero_retention,
         }
 
         job = await self.jobs.create(
@@ -204,6 +206,7 @@ class JobService:
         options: dict[str, Any] | None = None,
         idempotency_key: UUID,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
             organization_id=organization_id,
@@ -291,6 +294,7 @@ class JobService:
             "input_size_bytes": total_input_bytes,
             "merge_options": options or {},
             "created_by_user_id": str(user_id),
+            "zero_retention": zero_retention,
         }
 
         job = await self.jobs.create(
@@ -337,6 +341,7 @@ class JobService:
         options: dict[str, Any] | None = None,
         idempotency_key: UUID,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         extra: dict[str, Any] = {
             "mode": mode,
@@ -352,6 +357,7 @@ class JobService:
             document_id=document_id,
             idempotency_key=idempotency_key,
             is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
             kind=JobKind.SPLIT,
             extra_params=extra,
             task_name="papyrus.pdf.split",
@@ -366,6 +372,7 @@ class JobService:
         rotations: dict[str, int],
         idempotency_key: UUID,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         return await self._create_simple_job(
             organization_id=organization_id,
@@ -373,6 +380,7 @@ class JobService:
             document_id=document_id,
             idempotency_key=idempotency_key,
             is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
             kind=JobKind.ROTATE,
             extra_params={"rotations": rotations},
             task_name="papyrus.pdf.rotate",
@@ -387,6 +395,7 @@ class JobService:
         order: list[int],
         idempotency_key: UUID,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         return await self._create_simple_job(
             organization_id=organization_id,
@@ -394,6 +403,7 @@ class JobService:
             document_id=document_id,
             idempotency_key=idempotency_key,
             is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
             kind=JobKind.REORDER,
             extra_params={"order": order},
             task_name="papyrus.pdf.reorder",
@@ -408,6 +418,7 @@ class JobService:
         language: str,
         idempotency_key: UUID,
         is_anonymous: bool = False,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         return await self._create_simple_job(
             organization_id=organization_id,
@@ -415,6 +426,7 @@ class JobService:
             document_id=document_id,
             idempotency_key=idempotency_key,
             is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
             kind=JobKind.OCR,
             extra_params={"language": language},
             task_name="papyrus.pdf.ocr",
@@ -431,6 +443,7 @@ class JobService:
         kind: JobKind,
         extra_params: dict[str, Any],
         task_name: str,
+        zero_retention: bool = False,
     ) -> CreateJobResult:
         existing = await self.jobs.get_by_idempotency_key(
             organization_id=organization_id,
@@ -465,6 +478,7 @@ class JobService:
             "input_filename": document.name,
             "created_by_user_id": str(user_id),
             "version_id": str(version.id),
+            "zero_retention": zero_retention,
             **extra_params,
         }
 
@@ -594,6 +608,8 @@ class JobService:
                 details={"status": job.status.value},
             )
 
+        zero_retention = bool(job.params.get("zero_retention")) if job.params else False
+
         if job.kind == JobKind.COMPRESS:
             document_id_raw = job.params.get("document_id") if job.params else None
             level = job.params.get("compression_level") if job.params else None
@@ -608,6 +624,7 @@ class JobService:
                 compression_level=level,
                 options=options,
                 idempotency_key=idempotency_key,
+                zero_retention=zero_retention,
             )
 
         if job.kind == JobKind.MERGE:
@@ -634,6 +651,7 @@ class JobService:
                 input_specs=input_specs,
                 options=options,
                 idempotency_key=idempotency_key,
+                zero_retention=zero_retention,
             )
 
         if job.kind in (JobKind.SPLIT, JobKind.ROTATE, JobKind.REORDER, JobKind.OCR):
@@ -674,6 +692,7 @@ class JobService:
                     every_n=every_n,
                     options=options,
                     idempotency_key=idempotency_key,
+                    zero_retention=zero_retention,
                 )
             if job.kind == JobKind.ROTATE:
                 rotations = job.params.get("rotations")
@@ -685,6 +704,7 @@ class JobService:
                     document_id=document_id,
                     rotations={str(k): int(v) for k, v in rotations.items()},
                     idempotency_key=idempotency_key,
+                    zero_retention=zero_retention,
                 )
             if job.kind == JobKind.REORDER:
                 order_raw = job.params.get("order")
@@ -696,6 +716,7 @@ class JobService:
                     document_id=document_id,
                     order=[int(p) for p in order_raw],
                     idempotency_key=idempotency_key,
+                    zero_retention=zero_retention,
                 )
             language = job.params.get("language", "eng")
             return await self.create_ocr_job(
@@ -704,6 +725,7 @@ class JobService:
                 document_id=document_id,
                 language=str(language),
                 idempotency_key=idempotency_key,
+                zero_retention=zero_retention,
             )
 
         raise ValidationError(
@@ -728,7 +750,17 @@ class JobService:
             return _job_to_out(job, phase=phase)
 
         cancelled = await self.jobs.mark_cancelled(job_id=job.id)
-        assert cancelled is not None
+        if cancelled is None:
+            await self.session.rollback()
+            current = await self.jobs.get_for_org(
+                organization_id=organization_id,
+                job_id=job_id,
+            )
+            if current is None:
+                raise JobNotFoundError("Job not found.")
+            phase = await self._latest_phase(job_id=current.id)
+            return _job_to_out(current, phase=phase)
+
         await self.events.append(
             job_id=cancelled.id,
             status=JobStatus.CANCELLED,

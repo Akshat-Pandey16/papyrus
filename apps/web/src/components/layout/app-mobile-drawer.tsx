@@ -14,7 +14,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
@@ -46,14 +46,51 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const isAnonymous = !!user?.isAnonymous;
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusables = (): HTMLElement[] => {
+      const panel = panelRef.current;
+      if (!panel) return [];
+      return Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    focusables()[0]?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused?.focus?.();
+    };
   }, [open, onClose]);
 
   const visible = ITEMS.filter((item) => {
@@ -79,6 +116,10 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
         aria-hidden
       />
       <aside
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
         className={cn(
           "absolute inset-y-0 left-0 flex w-80 max-w-[88vw] flex-col bg-background shadow-2xl transition-transform",
           open ? "translate-x-0" : "-translate-x-full",
@@ -100,7 +141,7 @@ export function AppMobileDrawer({ open, onClose }: { open: boolean; onClose: () 
             <X className="h-5 w-5" />
           </button>
         </header>
-        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
+        <nav aria-label="Mobile" className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
           {(["workspace", "tools", "more"] as const).map((group) => {
             const items = visible.filter((item) => item.group === group);
             if (items.length === 0) return null;

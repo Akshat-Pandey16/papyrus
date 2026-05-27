@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { loadPdfjs } from "@/lib/pdf/pdfjs";
 import { cn } from "@/lib/utils";
 
 type PageMeta = {
   index: number;
   src: string;
-  rotation?: number;
 };
 
 export type PageThumbnailsProps = {
@@ -15,6 +15,27 @@ export type PageThumbnailsProps = {
   selectedPages?: ReadonlySet<number>;
   className?: string;
 };
+
+const _TARGET_DEVICE_WIDTH = 192;
+const _MAX_RENDER_SCALE = 1.5;
+const _JPEG_QUALITY = 0.72;
+
+function canvasToObjectUrl(canvas: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(URL.createObjectURL(blob));
+        else reject(new Error("Could not encode page preview."));
+      },
+      "image/jpeg",
+      _JPEG_QUALITY,
+    );
+  });
+}
+
+function revokeAll(urls: string[]): void {
+  for (const url of urls) URL.revokeObjectURL(url);
+}
 
 export function PageThumbnails({
   file,
@@ -28,6 +49,7 @@ export function PageThumbnails({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tokenRef = useRef(0);
+  const urlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     if (!file) {
@@ -36,55 +58,73 @@ export function PageThumbnails({
       return;
     }
     const token = ++tokenRef.current;
+    const localUrls: string[] = [];
+    urlsRef.current = localUrls;
     setLoading(true);
     setError(null);
+    setPages([]);
+
     (async () => {
+      const pdfjs = await loadPdfjs();
+      const data = await file.arrayBuffer();
+      if (token !== tokenRef.current) return;
+      const doc = await pdfjs.getDocument({ data }).promise;
+      if (token !== tokenRef.current) {
+        void doc.destroy();
+        return;
+      }
       try {
-        const pdfjs = await import("pdfjs-dist");
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const data = await file.arrayBuffer();
-        if (token !== tokenRef.current) return;
-        const doc = await pdfjs.getDocument({ data }).promise;
-        if (token !== tokenRef.current) {
-          doc.destroy();
-          return;
-        }
         const count = Math.min(doc.numPages, maxPages);
-        const out: PageMeta[] = [];
         for (let i = 1; i <= count; i++) {
+          if (token !== tokenRef.current) return;
           const page = await doc.getPage(i);
-          const viewport = page.getViewport({ scale: 0.4 });
+          const unscaled = page.getViewport({ scale: 1 });
+          const scale = Math.min(_MAX_RENDER_SCALE, _TARGET_DEVICE_WIDTH / unscaled.width);
+          const viewport = page.getViewport({ scale });
           const canvas = document.createElement("canvas");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
           const ctx = canvas.getContext("2d");
-          if (!ctx) continue;
-          await page.render({
-            canvasContext: ctx,
-            viewport,
-            canvas,
-          }).promise;
+          if (!ctx) {
+            page.cleanup();
+            continue;
+          }
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+          page.cleanup();
+          const url = await canvasToObjectUrl(canvas);
           if (token !== tokenRef.current) {
-            doc.destroy();
+            URL.revokeObjectURL(url);
             return;
           }
-          out.push({ index: i, src: canvas.toDataURL("image/png") });
+          localUrls.push(url);
+          setPages((prev) => [...prev, { index: i, src: url }]);
         }
-        doc.destroy();
-        if (token === tokenRef.current) setPages(out);
       } catch (err) {
         if (token === tokenRef.current) {
           setError(err instanceof Error ? err.message : "Could not render preview.");
         }
       } finally {
         if (token === tokenRef.current) setLoading(false);
+        doc.cleanup();
+        void doc.destroy();
       }
-    })();
+    })().catch((err) => {
+      if (token === tokenRef.current) {
+        setError(err instanceof Error ? err.message : "Could not render preview.");
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      tokenRef.current++;
+      revokeAll(localUrls);
+    };
   }, [file, maxPages]);
 
   if (!file) return null;
-  if (loading) {
+  if (loading && pages.length === 0) {
     return (
       <div className={cn("flex gap-2 overflow-x-auto", className)}>
         {Array.from({ length: 4 }).map((_, i) => (
@@ -96,7 +136,7 @@ export function PageThumbnails({
       </div>
     );
   }
-  if (error) {
+  if (error && pages.length === 0) {
     return <p className="text-xs text-muted-foreground">Preview unavailable: {error}</p>;
   }
   return (
@@ -120,6 +160,7 @@ export function PageThumbnails({
             <img
               src={p.src}
               alt={`Page ${p.index}`}
+              loading="lazy"
               className="h-32 w-24 rounded-sm bg-background object-contain transition-transform"
               style={{ transform: `rotate(${rotation}deg)` }}
             />
@@ -130,6 +171,7 @@ export function PageThumbnails({
             <img
               src={p.src}
               alt={`Page ${p.index}`}
+              loading="lazy"
               className="h-32 w-24 rounded-sm bg-background object-contain transition-transform"
               style={{ transform: `rotate(${rotation}deg)` }}
             />

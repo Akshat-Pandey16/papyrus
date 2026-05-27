@@ -77,7 +77,11 @@ export function AppSidebar() {
         onClick={toggle}
         className="group absolute -right-3 top-[58px] z-30 grid h-7 w-7 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-md shadow-black/5 transition-all hover:scale-110 hover:border-primary/40 hover:bg-primary hover:text-primary-foreground"
       >
-        {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+        {collapsed ? (
+          <ChevronsRight className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronsLeft className="h-3.5 w-3.5" />
+        )}
       </button>
 
       <div
@@ -96,7 +100,7 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-2.5 py-4">
+      <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 overflow-y-auto px-2.5 py-4">
         {!isAnonymous ? (
           <NavSection label="Workspace" collapsed={collapsed} items={PRIMARY_NAV} />
         ) : null}

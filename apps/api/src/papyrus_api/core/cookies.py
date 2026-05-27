@@ -40,3 +40,15 @@ def clear_refresh_cookie(response: Response) -> None:
         path=settings.refresh_cookie_path,
         domain=settings.refresh_cookie_domain,
     )
+
+
+def set_sse_cookie(response: Response, token: str, *, path: str) -> None:
+    response.set_cookie(
+        key=settings.sse_cookie_name,
+        value=token,
+        max_age=settings.sse_ticket_ttl_seconds,
+        path=path,
+        secure=_cookie_secure(),
+        httponly=True,
+        samesite="strict",
+    )

@@ -1,3 +1,4 @@
+import type { ErrorEnvelope } from "@papyrus/shared-types";
 import axios, {
   type AxiosError,
   type AxiosInstance,
@@ -6,14 +7,7 @@ import axios, {
 } from "axios";
 import { env } from "@/lib/env";
 
-export type ApiErrorBody = {
-  error: {
-    code: string;
-    message: string;
-    details: Record<string, unknown>;
-    request_id: string | null;
-  };
-};
+export type ApiErrorBody = ErrorEnvelope;
 
 export class ApiError extends Error {
   readonly code: string;
@@ -67,9 +61,7 @@ function writeSnapshot(snapshot: AccessSnapshot) {
       sessionStorage.removeItem(ACCESS_KEY);
       sessionStorage.removeItem(ACCESS_EXP_KEY);
     }
-  } catch {
-    // sessionStorage disabled — token will be in-memory only.
-  }
+  } catch {}
 }
 
 function decodeJwtExp(token: string): number | null {
@@ -184,7 +176,7 @@ export function createApiClient(): AxiosInstance {
         !original._retry &&
         !original._skipAuthRetry &&
         refreshHandler &&
-        (isSafe || original._allowReplay !== false)
+        (isSafe || original._allowReplay === true)
       ) {
         original._retry = true;
         const newToken = await refreshAccess();

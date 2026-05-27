@@ -14,6 +14,7 @@ import type {
   MergeOptions,
 } from "@/features/pdf-merge/types";
 import { apiClient } from "@/lib/api/client";
+import { useUiStore } from "@/stores/ui-store";
 
 export {
   requestSseTicket,
@@ -87,6 +88,7 @@ export function useCreateMergeJobMutation() {
           page_ranges: spec.pageRanges,
         })),
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       };
       if (input.options !== undefined) {
         body.options = mergeOptionsToApi(input.options);

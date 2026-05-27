@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { ZeroRetentionToggle } from "@/components/shared/zero-retention-toggle";
 import { cn } from "@/lib/utils";
 
 type ToolPageShellProps = {
@@ -54,6 +55,7 @@ export function ToolPageShell({
             <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
               {options}
             </div>
+            <ZeroRetentionToggle />
           </aside>
         </div>
       </div>

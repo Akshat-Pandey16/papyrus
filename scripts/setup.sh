@@ -32,15 +32,24 @@ OS="$(uname -s)"
 DISTRO=""
 PKG=""
 if [[ "$OS" == "Linux" ]]; then
+  ID_LIKE_VAL=""
   if [[ -r /etc/os-release ]]; then
     . /etc/os-release
     DISTRO="${ID:-unknown}"
+    ID_LIKE_VAL="${ID_LIKE:-}"
   fi
   case "$DISTRO" in
-    ubuntu|debian|pop|linuxmint) PKG=apt ;;
-    fedora|rhel|rocky|almalinux) PKG=dnf ;;
-    arch|manjaro|endeavouros)    PKG=pacman ;;
-    *)                           PKG="" ;;
+    ubuntu|debian|pop|linuxmint|zorin|elementary|neon|kali|raspbian|tuxedo) PKG=apt ;;
+    fedora|rhel|rocky|almalinux|centos) PKG=dnf ;;
+    arch|manjaro|endeavouros|garuda)    PKG=pacman ;;
+    *)
+      case " $ID_LIKE_VAL " in
+        *" ubuntu "*|*" debian "*)           PKG=apt ;;
+        *" fedora "*|*" rhel "*|*" centos "*) PKG=dnf ;;
+        *" arch "*)                          PKG=pacman ;;
+        *)                                   PKG="" ;;
+      esac
+      ;;
   esac
 elif [[ "$OS" == "Darwin" ]]; then
   DISTRO=macos

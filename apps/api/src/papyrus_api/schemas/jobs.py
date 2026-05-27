@@ -56,6 +56,7 @@ class CompressJobRequest(_MutableModel):
     compression_level: CompressionLevelLiteral
     options: CompressOptionsIn | None = None
     idempotency_key: UUID
+    zero_retention: bool = False
 
     @model_validator(mode="after")
     def _require_options_for_custom(self) -> CompressJobRequest:
@@ -123,6 +124,7 @@ class SplitJobRequest(_MutableModel):
     every_n: int | None = Field(default=None, ge=1, le=10_000)
     options: SplitOptionsIn | None = None
     idempotency_key: UUID
+    zero_retention: bool = False
 
     @model_validator(mode="after")
     def _validate_mode(self) -> SplitJobRequest:
@@ -141,6 +143,7 @@ class RotateJobRequest(_MutableModel):
     document_id: UUID
     rotations: dict[str, int]
     idempotency_key: UUID
+    zero_retention: bool = False
 
     @field_validator("rotations")
     @classmethod
@@ -161,6 +164,7 @@ class ReorderJobRequest(_MutableModel):
     document_id: UUID
     order: list[int] = Field(min_length=1, max_length=10_000)
     idempotency_key: UUID
+    zero_retention: bool = False
 
     @field_validator("order")
     @classmethod
@@ -175,6 +179,7 @@ class OcrJobRequest(_MutableModel):
     document_id: UUID
     language: str = Field(default="eng", min_length=2, max_length=32)
     idempotency_key: UUID
+    zero_retention: bool = False
 
 
 class MergeInputSpec(_MutableModel):
@@ -195,6 +200,7 @@ class MergeJobRequest(_MutableModel):
     inputs: list[MergeInputSpec] = Field(min_length=2, max_length=50)
     options: MergeOptionsIn | None = None
     idempotency_key: UUID
+    zero_retention: bool = False
 
     @field_validator("inputs")
     @classmethod

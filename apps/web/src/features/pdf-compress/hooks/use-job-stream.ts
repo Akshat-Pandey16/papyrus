@@ -37,9 +37,7 @@ export function useJobStream(jobId: string | null) {
       if (es) {
         try {
           es.close();
-        } catch {
-          // ignore
-        }
+        } catch {}
         es = null;
       }
       if (retryTimer !== null) {
@@ -82,17 +80,13 @@ export function useJobStream(jobId: string | null) {
             qc.invalidateQueries({ queryKey: compressKeys.all });
           }
         }
-      } catch {
-        // bad payload, ignore
-      }
+      } catch {}
     };
 
     const open = async () => {
       try {
         await requestSseTicket(jobId);
-      } catch {
-        // ticket request will be retried by reconnect
-      }
+      } catch {}
       if (closed) return;
 
       const url = `${env.VITE_API_BASE_URL}/api/v1/jobs/${jobId}/events`;
@@ -111,9 +105,7 @@ export function useJobStream(jobId: string | null) {
         if (es) {
           try {
             es.close();
-          } catch {
-            // ignore
-          }
+          } catch {}
           es = null;
         }
         attempts += 1;

@@ -27,7 +27,17 @@ import type {
 import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ApiError } from "@/lib/api/client";
 
+const PRESET_LEVELS: CompressionLevel[] = ["low", "medium", "high", "extreme"];
+
+type CompressSearch = { level?: CompressionLevel };
+
 export const Route = createFileRoute("/tools/compress")({
+  validateSearch: (search: Record<string, unknown>): CompressSearch => {
+    const raw = typeof search.level === "string" ? search.level : undefined;
+    return raw && (PRESET_LEVELS as string[]).includes(raw)
+      ? { level: raw as CompressionLevel }
+      : {};
+  },
   beforeLoad: async () => {
     await ensureAnonymousSession();
   },
@@ -41,8 +51,9 @@ function newClientUploadId(): string {
 function CompressPage() {
   useRecoverUploads();
 
-  const [level, setLevel] = useState<CompressionLevel>(DEFAULT_LEVEL);
-  const [options, setOptions] = useState<CompressionOptions>(() => optionsForLevel(DEFAULT_LEVEL));
+  const initialLevel = Route.useSearch().level ?? DEFAULT_LEVEL;
+  const [level, setLevel] = useState<CompressionLevel>(initialLevel);
+  const [options, setOptions] = useState<CompressionOptions>(() => optionsForLevel(initialLevel));
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);

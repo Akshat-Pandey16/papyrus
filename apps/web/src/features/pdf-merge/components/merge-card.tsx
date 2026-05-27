@@ -117,9 +117,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
     if (job) {
       try {
         await cancelMutation.mutateAsync({ jobId: job.id });
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
     updateBatch(clientBatchId, { phase: "cancelled" });
   };
@@ -155,7 +153,7 @@ export function MergeCard({ clientBatchId, onRetry }: MergeCardProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn("text-xs font-semibold", tone.className)}>
+          <span className={cn("text-xs font-semibold", tone.className)} aria-live="polite">
             {batch.phase === "uploading" ? "Uploading" : tone.label}
           </span>
           {!isTerminal && job ? (

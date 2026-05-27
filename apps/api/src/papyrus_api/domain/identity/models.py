@@ -65,6 +65,7 @@ class PasswordResetToken(Base, IdMixin, TimestampMixin):
         index=True,
         nullable=False,
     )
+    purpose: Mapped[str] = mapped_column(String(20), default="reset", nullable=False)
     expires_at: Mapped[datetime] = mapped_column(index=True, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(default=None, nullable=True)
 
@@ -87,7 +88,11 @@ class Membership(Base, IdMixin, TimestampMixin):
         nullable=False,
     )
     role: Mapped[MembershipRole] = mapped_column(
-        Enum(MembershipRole, name="membership_role"),
+        Enum(
+            MembershipRole,
+            name="membership_role",
+            values_callable=lambda e: [m.name for m in e],
+        ),
         nullable=False,
     )
 
@@ -101,6 +106,11 @@ class RefreshToken(Base, IdMixin, TimestampMixin):
             postgresql_where=text("revoked_at IS NULL"),
         ),
         Index("ix_refresh_tokens_user_id_revoked_at", "user_id", "revoked_at"),
+        Index(
+            "ix_refresh_tokens_family_active",
+            "family_id",
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
     )
 
     user_id: Mapped[UUID] = mapped_column(
@@ -111,6 +121,7 @@ class RefreshToken(Base, IdMixin, TimestampMixin):
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
     )
+    family_id: Mapped[UUID] = mapped_column(nullable=False)
     token_hash: Mapped[str] = mapped_column(
         String(128),
         unique=True,

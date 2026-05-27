@@ -7,6 +7,7 @@ import {
 } from "@/features/pdf-compress/api";
 import type { CompressionOptions, Job, PdfVersion } from "@/features/pdf-compress/types";
 import { apiClient } from "@/lib/api/client";
+import { useUiStore } from "@/stores/ui-store";
 
 export type SplitMode = "ranges" | "every_n" | "single_pages";
 
@@ -80,6 +81,7 @@ export function useCreateSplitJobMutation() {
         document_id: input.documentId,
         mode: input.mode,
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       };
       if (input.ranges) {
         body.ranges = input.ranges.map((r) => ({ from: r.from, to: r.to }));
@@ -113,6 +115,7 @@ export function useCreateRotateJobMutation() {
         document_id: input.documentId,
         rotations: input.rotations,
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       });
       return mapJob(data);
     },
@@ -136,6 +139,7 @@ export function useCreateReorderJobMutation() {
         document_id: input.documentId,
         order: input.order,
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       });
       return mapJob(data);
     },
@@ -159,6 +163,7 @@ export function useCreateOcrJobMutation() {
         document_id: input.documentId,
         language: input.language,
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       });
       return mapJob(data);
     },

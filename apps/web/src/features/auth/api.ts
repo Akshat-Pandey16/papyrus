@@ -1,3 +1,9 @@
+import type {
+  AccessToken as ApiAccess,
+  Organization as ApiOrg,
+  AuthSession as ApiSession,
+  User as ApiUser,
+} from "@papyrus/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ForgotPasswordInput,
@@ -8,26 +14,6 @@ import type {
 import { useAuthStore } from "@/features/auth/store";
 import type { AccessToken, AuthOrganization, AuthSession, AuthUser } from "@/features/auth/types";
 import { apiClient } from "@/lib/api/client";
-
-type ApiUser = {
-  id: string;
-  email: string;
-  full_name: string | null;
-  is_active: boolean;
-  is_anonymous: boolean;
-  email_verified_at: string | null;
-  created_at: string;
-};
-
-type ApiOrg = { id: string; name: string; slug: string };
-
-type ApiAccess = {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-};
-
-type ApiSession = { user: ApiUser; organization: ApiOrg; access: ApiAccess };
 
 function mapUser(u: ApiUser): AuthUser {
   return {
@@ -141,6 +127,16 @@ export async function createAnonymousSession(): Promise<AuthSession | null> {
   }
 }
 
+const PERSISTED_FEATURE_STORES = ["papyrus.uploads.v2", "papyrus.merge.v1"];
+
+function purgeFeatureState() {
+  try {
+    for (const key of PERSISTED_FEATURE_STORES) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 export function useLogoutMutation() {
   const clear = useAuthStore((s) => s.clear);
   const qc = useQueryClient();
@@ -150,7 +146,8 @@ export function useLogoutMutation() {
     },
     onSettled: () => {
       clear();
-      qc.removeQueries({ queryKey: authKeys.session });
+      purgeFeatureState();
+      qc.clear();
     },
   });
 }

@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { AppMobileDrawer } from "@/components/layout/app-mobile-drawer";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { SkipLink } from "@/components/shared/skip-link";
 import { useAuthStore } from "@/features/auth/store";
 
 const AUTH_FORM_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password"];
@@ -31,11 +32,14 @@ export function AppShell({ children }: AppShellProps) {
   if ((isAppRoute && hasAccess) || (isToolRoute && hasAccess)) {
     return (
       <div className="flex min-h-svh w-full bg-background text-foreground antialiased">
+        <SkipLink />
         <AppSidebar />
         <AppMobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader onOpenMobileNav={() => setDrawerOpen(true)} />
-          <main className="flex-1">{children}</main>
+          <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+            {children}
+          </main>
         </div>
       </div>
     );
@@ -43,8 +47,11 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-svh w-full flex-col bg-background text-foreground antialiased">
+      <SkipLink />
       <Topbar />
-      <main className="flex-1">{children}</main>
+      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+        {children}
+      </main>
     </div>
   );
 }

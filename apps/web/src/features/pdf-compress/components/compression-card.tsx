@@ -1,11 +1,7 @@
 import { AlertCircle, CheckCircle2, CircleX, Download, FileText, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  useCancelJobMutation,
-  useDownloadUrlMutation,
-  useRetryJobMutation,
-} from "@/features/pdf-compress/api";
+import { useCancelJobMutation, useRetryJobMutation } from "@/features/pdf-compress/api";
 import {
   formatBytes,
   formatEta,
@@ -17,6 +13,8 @@ import { useThroughput } from "@/features/pdf-compress/hooks/use-throughput";
 import { selectUpload, useUploadStore } from "@/features/pdf-compress/store";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
 import { triggerDownload } from "@/features/pdf-tools/download";
+import { useAutoDownload } from "@/features/pdf-tools/use-auto-download";
+import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
 
 export type CompressionCardProps = {
@@ -65,7 +63,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
   const jobQuery = useJobStream(jobId);
   const job: Job | null = jobQuery.data ?? null;
 
-  const downloadMutation = useDownloadUrlMutation();
+  const downloadMutation = useAutoDownload(job);
   const cancelMutation = useCancelJobMutation();
   const retryMutation = useRetryJobMutation();
 
@@ -73,12 +71,6 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     if (!entry || !job) return;
     if (job.status === "succeeded" && entry.phase !== "succeeded") {
       updateEntry(clientUploadId, { phase: "succeeded" });
-      void downloadMutation
-        .mutateAsync({ jobId: job.id })
-        .then((res) => {
-          triggerDownload(res.url, res.filename);
-        })
-        .catch(() => undefined);
     } else if (job.status === "failed" && entry.phase !== "failed") {
       updateEntry(clientUploadId, {
         phase: "failed",
@@ -98,7 +90,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     ) {
       updateEntry(clientUploadId, { phase: "queued" });
     }
-  }, [job, entry, clientUploadId, updateEntry, downloadMutation]);
+  }, [job, entry, clientUploadId, updateEntry]);
 
   const isUploading = entry?.phase === "uploading" || entry?.phase === "preparing";
   const throughput = useThroughput(entry?.bytesUploaded ?? 0, !!isUploading);
@@ -129,9 +121,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
     if (job) {
       try {
         await cancelMutation.mutateAsync({ jobId: job.id });
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
     updateEntry(clientUploadId, { phase: "cancelled" });
   };
@@ -161,7 +151,7 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn("text-xs font-semibold", tone.className)}>
+          <span className={cn("text-xs font-semibold", tone.className)} aria-live="polite">
             {entry.phase === "preparing" || entry.phase === "uploading" ? "Uploading" : tone.label}
           </span>
           {!isTerminal && job ? (
@@ -269,7 +259,10 @@ export function CompressionCard({ clientUploadId, onRetry }: CompressionCardProp
             <div className="flex flex-col gap-1">
               <p className="text-sm font-semibold">Couldn't compress this file</p>
               <p className="text-xs text-muted-foreground">
-                {job?.errorMessage ?? entry.errorMessage ?? "Something went wrong."}
+                {mapErrorMessage(
+                  job?.errorCode ?? entry.errorCode,
+                  job?.errorMessage ?? entry.errorMessage,
+                )}
               </p>
             </div>
           </div>

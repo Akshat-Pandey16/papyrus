@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from papyrus_api.core.ids import new_id
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
 from papyrus_api.domain.identity.models import (
@@ -107,20 +108,28 @@ class PasswordResetTokenRepository(AsyncRepository[PasswordResetToken]):
         user_id: UUID,
         token_hash: str,
         expires_at: datetime,
+        purpose: str = "reset",
     ) -> PasswordResetToken:
         token = PasswordResetToken(
             user_id=user_id,
             token_hash=token_hash,
             expires_at=expires_at,
+            purpose=purpose,
         )
         self.session.add(token)
         await self.session.flush()
         return token
 
-    async def get_active_by_hash(self, token_hash: str) -> PasswordResetToken | None:
+    async def get_active_by_hash(
+        self,
+        token_hash: str,
+        *,
+        purpose: str = "reset",
+    ) -> PasswordResetToken | None:
         stmt = (
             select(PasswordResetToken)
             .where(PasswordResetToken.token_hash == token_hash)
+            .where(PasswordResetToken.purpose == purpose)
             .where(PasswordResetToken.used_at.is_(None))
             .where(PasswordResetToken.expires_at > utc_now())
         )
@@ -132,12 +141,13 @@ class PasswordResetTokenRepository(AsyncRepository[PasswordResetToken]):
         await self.session.flush()
         return token
 
-    async def revoke_all_for_user(self, user_id: UUID) -> int:
+    async def revoke_all_for_user(self, user_id: UUID, *, purpose: str = "reset") -> int:
         from sqlalchemy import update
 
         stmt = (
             update(PasswordResetToken)
             .where(PasswordResetToken.user_id == user_id)
+            .where(PasswordResetToken.purpose == purpose)
             .where(PasswordResetToken.used_at.is_(None))
             .values(used_at=utc_now())
         )
@@ -156,10 +166,14 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         token_hash: str,
         expires_at: datetime,
         parent_id: UUID | None = None,
+        family_id: UUID | None = None,
         user_agent: str | None = None,
         ip_address: str | None = None,
     ) -> RefreshToken:
+        token_id = new_id()
         token = RefreshToken(
+            id=token_id,
+            family_id=family_id or token_id,
             user_id=user_id,
             organization_id=organization_id,
             token_hash=token_hash,
@@ -183,22 +197,16 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
             await self.session.flush()
         return token
 
-    async def revoke_chain(self, root_id: UUID) -> int:
-        from sqlalchemy import text as sql_text
+    async def revoke_family(self, family_id: UUID) -> int:
+        from sqlalchemy import update
 
-        stmt = sql_text("""
-            WITH RECURSIVE chain AS (
-              SELECT id FROM refresh_tokens WHERE id = :root
-              UNION ALL
-              SELECT rt.id FROM refresh_tokens rt
-              JOIN chain c ON rt.parent_id = c.id
-            )
-            UPDATE refresh_tokens
-            SET revoked_at = COALESCE(revoked_at, now())
-            WHERE id IN (SELECT id FROM chain)
-              AND revoked_at IS NULL
-            """)
-        result = await self.session.execute(stmt, {"root": root_id})
+        stmt = (
+            update(RefreshToken)
+            .where(RefreshToken.family_id == family_id)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=utc_now())
+        )
+        result = await self.session.execute(stmt)
         return int(getattr(result, "rowcount", 0) or 0)
 
     async def revoke_all_for_user(self, user_id: UUID) -> int:
@@ -240,18 +248,3 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
             stmt = stmt.where(RefreshToken.id != keep_id)
         result = await self.session.execute(stmt)
         return int(getattr(result, "rowcount", 0) or 0)
-
-    async def find_root_ancestor(self, token: RefreshToken) -> UUID:
-        current_id = token.id
-        current_parent = token.parent_id
-        visited: set[UUID] = {current_id}
-        depth = 0
-        while current_parent is not None and depth < 200:
-            parent = await self.session.get(RefreshToken, current_parent)
-            if parent is None or parent.id in visited:
-                break
-            visited.add(parent.id)
-            current_id = parent.id
-            current_parent = parent.parent_id
-            depth += 1
-        return current_id

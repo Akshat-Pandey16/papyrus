@@ -47,6 +47,11 @@ class PermissionError(AppError):
     http_status = status.HTTP_403_FORBIDDEN
 
 
+class CsrfError(AppError):
+    code = "csrf_failed"
+    http_status = status.HTTP_403_FORBIDDEN
+
+
 class QuotaExceededError(AppError):
     code = "quota_exceeded"
     http_status = status.HTTP_429_TOO_MANY_REQUESTS

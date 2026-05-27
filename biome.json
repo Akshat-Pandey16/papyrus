@@ -17,6 +17,7 @@
       "!**/*.gen.ts",
       "!apps/web/src/types/api.d.ts",
       "!apps/web/src/routeTree.gen.ts",
+      "!packages/shared-types/src/api.ts",
       "!apps/web/src/styles"
     ]
   },

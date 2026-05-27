@@ -38,7 +38,7 @@ export function Topbar() {
             </span>
             Papyrus
           </Link>
-          <nav className="hidden items-center gap-6 md:flex">
+          <nav aria-label="Primary" className="hidden items-center gap-6 md:flex">
             {NAV.map((item) => (
               <a
                 key={item.label}
@@ -111,7 +111,7 @@ export function Topbar() {
       <div
         className={cn("border-t border-border bg-background md:hidden", open ? "block" : "hidden")}
       >
-        <nav className="flex flex-col gap-1 px-6 py-4">
+        <nav aria-label="Mobile" className="flex flex-col gap-1 px-6 py-4">
           {NAV.map((item) => (
             <a
               key={item.label}

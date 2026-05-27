@@ -9,16 +9,15 @@ import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery.exceptions import SoftTimeLimitExceeded
-from redis.asyncio import Redis
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
+from papyrus_api.core.time import utc_now
 from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.jobs.enums import JobStatus
 from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
-from papyrus_api.services.job_service import JobService
 from papyrus_api.services.pdf.compress import (
     CompressionLevel,
     compress_pdf,
@@ -28,46 +27,20 @@ from papyrus_api.services.pdf.merge import MergeInput, MergeOptions, merge_pdfs
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
+from papyrus_api.workers.tasks._common import (
+    JobCancelledError,
+    JobTask,
+    TransientStorageError,
+    check_cancelled,
+    classify_storage_error,
+    fail_job,
+    publish,
+    purge_input,
+    release_lock,
+    sha256_of_file,
+)
 
 log = structlog.get_logger(__name__)
-
-
-class _JobCancelledError(Exception):
-    pass
-
-
-def _classify_storage_error(exc: BaseException) -> bool:
-    if isinstance(exc, ClientError):
-        code = exc.response.get("Error", {}).get("Code", "")
-        if code in {
-            "InternalError",
-            "ServiceUnavailable",
-            "SlowDown",
-            "ThrottlingException",
-        }:
-            return True
-        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-        if isinstance(status, int) and 500 <= status < 600:
-            return True
-    return bool(isinstance(exc, BotoCoreError))
-
-
-async def _check_cancelled(redis: Redis, job_id: UUID) -> None:
-    try:
-        flag = await redis.get(f"job:cancel:{job_id}")
-    except Exception:
-        flag = None
-    if flag:
-        raise _JobCancelledError()
-
-
-async def _purge_input(storage: StorageService, bucket: str | None, key: str | None) -> None:
-    if not bucket or not key:
-        return
-    try:
-        await storage.delete(bucket=bucket, key=key)
-    except Exception as exc:
-        log.warning("jobs.zero_retention.input_purge_failed", bucket=bucket, error=str(exc))
 
 
 def _build_merge_options(params: dict[str, Any]) -> MergeOptions:
@@ -115,66 +88,83 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
     sessionmaker = get_sessionmaker()
     storage = StorageService()
 
-    async with sessionmaker() as session:
-        job_repo = JobRepository(session)
-        job = await job_repo.get_unscoped(job_id=job_id)
-        if job is None:
-            log.warning("jobs.compress.missing", job_id=str(job_id))
-            return
-
-        if job.status in (
-            JobStatus.SUCCEEDED,
-            JobStatus.FAILED,
-            JobStatus.CANCELLED,
-        ):
-            log.info("jobs.compress.already_terminal", status=job.status.value)
-            return
-
-        structlog.contextvars.bind_contextvars(
-            organization_id=str(job.organization_id),
-        )
-
-        params: dict[str, Any] = dict(job.params or {})
-        try:
-            input_bucket = params["input_bucket"]
-            input_key = params["input_key"]
-            level_raw = params["compression_level"]
-            level = CompressionLevel(level_raw)
-            overrides_raw = params.get("compression_options") or {}
-            if not isinstance(overrides_raw, dict):
-                raise ValueError("compression_options must be a dict")
-            compress_options = options_from_payload(level=level, overrides=overrides_raw)
-        except (KeyError, ValueError) as exc:
-            await _fail(
-                session=session,
-                job_id=job_id,
-                code="invalid_params",
-                message="Job parameters are invalid.",
-            )
-            await _publish(
-                redis,
-                job_id,
-                JobStatus.FAILED,
-                {
-                    "phase": "failed",
-                    "error_code": "invalid_params",
-                    "error_message": "Job parameters are invalid.",
-                },
-            )
-            log.warning("jobs.compress.invalid_params", error=str(exc))
-            return
-
-        await job_repo.mark_running(job_id=job.id)
-        await JobEventRepository(session).append(
-            job_id=job.id,
-            status=JobStatus.RUNNING,
-            payload={"phase": "downloading"},
-        )
-        await session.commit()
-        await _publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
-        log.info("jobs.compress.started", input_size_bytes=job.input_size_bytes)
+    input_bucket: str | None = None
+    input_key: str | None = None
+    organization_id: UUID | None = None
+    level: CompressionLevel | None = None
+    compress_options = None
 
     try:
+        async with sessionmaker() as session:
+            job_repo = JobRepository(session)
+            job = await job_repo.get_for_worker(job_id=job_id)
+            if job is None:
+                log.warning("jobs.compress.missing", job_id=str(job_id))
+                return
+
+            if job.status in (
+                JobStatus.SUCCEEDED,
+                JobStatus.FAILED,
+                JobStatus.CANCELLED,
+            ):
+                log.info("jobs.compress.already_terminal", status=job.status.value)
+                return
+
+            organization_id = job.organization_id
+            structlog.contextvars.bind_contextvars(
+                organization_id=str(organization_id),
+            )
+
+            params: dict[str, Any] = dict(job.params or {})
+            try:
+                input_bucket = params["input_bucket"]
+                input_key = params["input_key"]
+                level_raw = params["compression_level"]
+                level = CompressionLevel(level_raw)
+                overrides_raw = params.get("compression_options") or {}
+                if not isinstance(overrides_raw, dict):
+                    raise ValueError("compression_options must be a dict")
+                compress_options = options_from_payload(level=level, overrides=overrides_raw)
+            except (KeyError, ValueError) as exc:
+                await fail_job(
+                    session=session,
+                    job_id=job_id,
+                    code="invalid_params",
+                    message="Job parameters are invalid.",
+                )
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.FAILED,
+                    {
+                        "phase": "failed",
+                        "error_code": "invalid_params",
+                        "error_message": "Job parameters are invalid.",
+                    },
+                )
+                log.warning("jobs.compress.invalid_params", error=str(exc))
+                return
+
+            claimed = await job_repo.mark_running(job_id=job.id)
+            if claimed is None:
+                await session.rollback()
+                log.info("jobs.compress.claim_failed", job_id=str(job_id))
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.CANCELLED,
+                    {"phase": "cancelled"},
+                )
+                return
+            await JobEventRepository(session).append(
+                job_id=job.id,
+                status=JobStatus.RUNNING,
+                payload={"phase": "downloading"},
+            )
+            await session.commit()
+            await publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
+            log.info("jobs.compress.started", input_size_bytes=job.input_size_bytes)
+
         with tempfile.TemporaryDirectory(prefix="papyrus-compress-") as tmp_root:
             tmp_dir = Path(tmp_root)
             input_path = tmp_dir / "input.pdf"
@@ -188,11 +178,11 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     max_bytes=settings.user_max_file_bytes,
                 )
             except (ClientError, BotoCoreError) as exc:
-                if _classify_storage_error(exc):
-                    raise _TransientStorageError(str(exc)) from exc
+                if classify_storage_error(exc):
+                    raise TransientStorageError(str(exc)) from exc
                 raise
 
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -201,11 +191,13 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     payload={"phase": "compressing"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "compressing"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "compressing"})
 
             def _on_progress(_label: str) -> None:
                 pass
 
+            assert level is not None
+            assert compress_options is not None
             result = await anyio.to_thread.run_sync(
                 lambda: compress_pdf(
                     input_path=input_path,
@@ -216,7 +208,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                 )
             )
 
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -225,10 +217,12 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     payload={"phase": "uploading"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
 
             output_bucket = settings.s3_bucket_outputs
-            output_key = f"org/{job.organization_id}/outputs/{job_id}/{uuid4().hex}.pdf"
+            output_key = f"org/{organization_id}/outputs/{job_id}/{uuid4().hex}.pdf"
+
+            output_sha256 = await anyio.to_thread.run_sync(sha256_of_file, output_path)
 
             try:
                 await storage.upload_from_path(
@@ -238,8 +232,8 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     content_type="application/pdf",
                 )
             except (ClientError, BotoCoreError) as exc:
-                if _classify_storage_error(exc):
-                    raise _TransientStorageError(str(exc)) from exc
+                if classify_storage_error(exc):
+                    raise TransientStorageError(str(exc)) from exc
                 raise
 
             async with sessionmaker() as session:
@@ -251,22 +245,24 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     content_type="application/pdf",
                     purpose="output",
                 )
-                from papyrus_api.core.time import utc_now
-
                 await so_repo.mark_confirmed(
                     storage_object_id=output_obj.id,
-                    sha256=None,
+                    sha256=output_sha256,
                     size_bytes=result.output_size_bytes,
                     confirmed_at=utc_now(),
                 )
 
                 job_repo = JobRepository(session)
-                await job_repo.mark_succeeded(
+                succeeded = await job_repo.mark_succeeded(
                     job_id=job_id,
                     output_object_id=output_obj.id,
                     output_size_bytes=result.output_size_bytes,
                     compression_ratio=result.ratio,
                 )
+                if succeeded is None:
+                    await session.rollback()
+                    log.info("jobs.compress.succeed_blocked", job_id=str(job_id))
+                    return
                 event_payload = {
                     "phase": "done",
                     "output_object_id": str(output_obj.id),
@@ -286,7 +282,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                 )
                 await session.commit()
 
-            await _publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
+            await publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
 
             log.info(
                 "jobs.compress.succeeded",
@@ -295,20 +291,20 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                 ratio=result.ratio,
                 page_count=result.page_count,
             )
-            if settings.zero_retention_mode:
-                await _purge_input(storage, input_bucket, input_key)
-    except _JobCancelledError:
+            if settings.zero_retention_mode or params.get("zero_retention"):
+                await purge_input(storage, input_bucket, input_key)
+    except JobCancelledError:
         log.info("jobs.compress.cancelled_during_run")
-        await _publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
+        await publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
         return
     except SoftTimeLimitExceeded:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code="job_timeout",
             message="Compression took too long. Try a lower compression level.",
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -321,13 +317,13 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
         log.warning("jobs.compress.timeout")
         return
     except (PdfEncryptedError, PdfMalformedError) as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code=exc.code,
             message=exc.message,
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -339,16 +335,16 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
         )
         log.warning("jobs.compress.failed", error_code=exc.code)
         return
-    except _TransientStorageError:
+    except TransientStorageError:
         raise
     except AppError as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code=exc.code,
             message=exc.message,
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -361,13 +357,13 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
         log.warning("jobs.compress.failed", error_code=exc.code)
         return
     except Exception as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code="internal_error",
             message="An unexpected error occurred during compression.",
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -379,61 +375,16 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
         )
         log.exception("jobs.compress.unhandled", exc_class=type(exc).__name__)
         return
-
-
-class _TransientStorageError(Exception):
-    pass
-
-
-async def _fail(
-    *,
-    sessionmaker: Any | None = None,
-    session: Any | None = None,
-    job_id: UUID,
-    code: str,
-    message: str,
-) -> None:
-    if session is not None:
-        repo = JobRepository(session)
-        await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
-        await JobEventRepository(session).append(
-            job_id=job_id,
-            status=JobStatus.FAILED,
-            payload={"phase": "failed", "error_code": code, "error_message": message},
-        )
-        await session.commit()
-        return
-    if sessionmaker is None:
-        sessionmaker = get_sessionmaker()
-    async with sessionmaker() as s:
-        repo = JobRepository(s)
-        await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
-        await JobEventRepository(s).append(
-            job_id=job_id,
-            status=JobStatus.FAILED,
-            payload={"phase": "failed", "error_code": code, "error_message": message},
-        )
-        await s.commit()
-
-
-async def _publish(redis: Redis, job_id: UUID, status: JobStatus, payload: dict[str, Any]) -> None:
-    try:
-        await redis.publish(
-            JobService.channel(job_id),
-            JobService.event_payload(
-                job_id=job_id,
-                status=status,
-                payload=payload,
-            ),
-        )
-    except Exception:
-        log.warning("jobs.publish_failed", job_id=str(job_id))
+    finally:
+        structlog.contextvars.unbind_contextvars("job_id", "task_id", "organization_id")
+        await release_lock(redis, job_id, task_id)
 
 
 @celery_app.task(
     name="papyrus.pdf.compress",
+    base=JobTask,
     bind=True,
-    autoretry_for=(_TransientStorageError,),
+    autoretry_for=(TransientStorageError,),
     retry_backoff=True,
     retry_backoff_max=60,
     retry_jitter=True,
@@ -465,74 +416,88 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
     sessionmaker = get_sessionmaker()
     storage = StorageService()
 
-    async with sessionmaker() as session:
-        job_repo = JobRepository(session)
-        job = await job_repo.get_unscoped(job_id=job_id)
-        if job is None:
-            log.warning("jobs.merge.missing", job_id=str(job_id))
-            return
-
-        if job.status in (
-            JobStatus.SUCCEEDED,
-            JobStatus.FAILED,
-            JobStatus.CANCELLED,
-        ):
-            log.info("jobs.merge.already_terminal", status=job.status.value)
-            return
-
-        structlog.contextvars.bind_contextvars(
-            organization_id=str(job.organization_id),
-        )
-
-        params: dict[str, Any] = dict(job.params or {})
-        try:
-            inputs_raw = params["inputs"]
-            if not isinstance(inputs_raw, list) or len(inputs_raw) < 2:
-                raise ValueError("inputs must be a list of length >= 2")
-            inputs: list[dict[str, Any]] = []
-            for item in inputs_raw:
-                if not isinstance(item, dict):
-                    raise ValueError("input entry must be an object")
-                bucket = item["input_bucket"]
-                key = item["input_key"]
-                if not isinstance(bucket, str) or not isinstance(key, str):
-                    raise ValueError("input_bucket/input_key must be strings")
-                inputs.append(item)
-        except (KeyError, ValueError) as exc:
-            await _fail(
-                session=session,
-                job_id=job_id,
-                code="invalid_params",
-                message="Job parameters are invalid.",
-            )
-            await _publish(
-                redis,
-                job_id,
-                JobStatus.FAILED,
-                {
-                    "phase": "failed",
-                    "error_code": "invalid_params",
-                    "error_message": "Job parameters are invalid.",
-                },
-            )
-            log.warning("jobs.merge.invalid_params", error=str(exc))
-            return
-
-        await job_repo.mark_running(job_id=job.id)
-        await JobEventRepository(session).append(
-            job_id=job.id,
-            status=JobStatus.RUNNING,
-            payload={"phase": "downloading"},
-        )
-        await session.commit()
-        await _publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
-        log.info(
-            "jobs.merge.started",
-            input_count=len(inputs),
-            input_size_bytes=job.input_size_bytes,
-        )
+    inputs: list[dict[str, Any]] = []
+    organization_id: UUID | None = None
+    params: dict[str, Any] = {}
 
     try:
+        async with sessionmaker() as session:
+            job_repo = JobRepository(session)
+            job = await job_repo.get_for_worker(job_id=job_id)
+            if job is None:
+                log.warning("jobs.merge.missing", job_id=str(job_id))
+                return
+
+            if job.status in (
+                JobStatus.SUCCEEDED,
+                JobStatus.FAILED,
+                JobStatus.CANCELLED,
+            ):
+                log.info("jobs.merge.already_terminal", status=job.status.value)
+                return
+
+            organization_id = job.organization_id
+            structlog.contextvars.bind_contextvars(
+                organization_id=str(organization_id),
+            )
+
+            params = dict(job.params or {})
+            try:
+                inputs_raw = params["inputs"]
+                if not isinstance(inputs_raw, list) or len(inputs_raw) < 2:
+                    raise ValueError("inputs must be a list of length >= 2")
+                for item in inputs_raw:
+                    if not isinstance(item, dict):
+                        raise ValueError("input entry must be an object")
+                    bucket = item["input_bucket"]
+                    key = item["input_key"]
+                    if not isinstance(bucket, str) or not isinstance(key, str):
+                        raise ValueError("input_bucket/input_key must be strings")
+                    inputs.append(item)
+            except (KeyError, ValueError) as exc:
+                await fail_job(
+                    session=session,
+                    job_id=job_id,
+                    code="invalid_params",
+                    message="Job parameters are invalid.",
+                )
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.FAILED,
+                    {
+                        "phase": "failed",
+                        "error_code": "invalid_params",
+                        "error_message": "Job parameters are invalid.",
+                    },
+                )
+                log.warning("jobs.merge.invalid_params", error=str(exc))
+                return
+
+            claimed = await job_repo.mark_running(job_id=job.id)
+            if claimed is None:
+                await session.rollback()
+                log.info("jobs.merge.claim_failed", job_id=str(job_id))
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.CANCELLED,
+                    {"phase": "cancelled"},
+                )
+                return
+            await JobEventRepository(session).append(
+                job_id=job.id,
+                status=JobStatus.RUNNING,
+                payload={"phase": "downloading"},
+            )
+            await session.commit()
+            await publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
+            log.info(
+                "jobs.merge.started",
+                input_count=len(inputs),
+                input_size_bytes=job.input_size_bytes,
+            )
+
         with tempfile.TemporaryDirectory(prefix="papyrus-merge-") as tmp_root:
             tmp_dir = Path(tmp_root)
             merge_inputs: list[MergeInput] = []
@@ -546,8 +511,8 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                         max_bytes=settings.user_max_file_bytes,
                     )
                 except (ClientError, BotoCoreError) as exc:
-                    if _classify_storage_error(exc):
-                        raise _TransientStorageError(str(exc)) from exc
+                    if classify_storage_error(exc):
+                        raise TransientStorageError(str(exc)) from exc
                     raise
                 page_ranges_raw = item.get("page_ranges")
                 page_ranges = (
@@ -563,7 +528,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     )
                 )
 
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             output_path = tmp_dir / "output.pdf"
 
@@ -574,7 +539,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     payload={"phase": "merging"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "merging"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "merging"})
 
             def _on_progress(_label: str) -> None:
                 pass
@@ -590,7 +555,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                 )
             )
 
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -599,10 +564,12 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     payload={"phase": "uploading"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
 
             output_bucket = settings.s3_bucket_outputs
-            output_key = f"org/{job.organization_id}/outputs/{job_id}/{uuid4().hex}.pdf"
+            output_key = f"org/{organization_id}/outputs/{job_id}/{uuid4().hex}.pdf"
+
+            output_sha256 = await anyio.to_thread.run_sync(sha256_of_file, output_path)
 
             try:
                 await storage.upload_from_path(
@@ -612,8 +579,8 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     content_type="application/pdf",
                 )
             except (ClientError, BotoCoreError) as exc:
-                if _classify_storage_error(exc):
-                    raise _TransientStorageError(str(exc)) from exc
+                if classify_storage_error(exc):
+                    raise TransientStorageError(str(exc)) from exc
                 raise
 
             async with sessionmaker() as session:
@@ -625,21 +592,23 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     content_type="application/pdf",
                     purpose="output",
                 )
-                from papyrus_api.core.time import utc_now
-
                 await so_repo.mark_confirmed(
                     storage_object_id=output_obj.id,
-                    sha256=None,
+                    sha256=output_sha256,
                     size_bytes=result.output_size_bytes,
                     confirmed_at=utc_now(),
                 )
 
                 job_repo = JobRepository(session)
-                await job_repo.mark_succeeded(
+                succeeded = await job_repo.mark_succeeded(
                     job_id=job_id,
                     output_object_id=output_obj.id,
                     output_size_bytes=result.output_size_bytes,
                 )
+                if succeeded is None:
+                    await session.rollback()
+                    log.info("jobs.merge.succeed_blocked", job_id=str(job_id))
+                    return
                 event_payload = {
                     "phase": "done",
                     "output_object_id": str(output_obj.id),
@@ -658,7 +627,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                 )
                 await session.commit()
 
-            await _publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
+            await publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
 
             log.info(
                 "jobs.merge.succeeded",
@@ -667,21 +636,21 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                 page_count=result.page_count,
                 input_count=result.input_count,
             )
-            if settings.zero_retention_mode:
+            if settings.zero_retention_mode or params.get("zero_retention"):
                 for item in inputs:
-                    await _purge_input(storage, item.get("input_bucket"), item.get("input_key"))
-    except _JobCancelledError:
+                    await purge_input(storage, item.get("input_bucket"), item.get("input_key"))
+    except JobCancelledError:
         log.info("jobs.merge.cancelled_during_run")
-        await _publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
+        await publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
         return
     except SoftTimeLimitExceeded:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code="job_timeout",
             message="Merging took too long. Try fewer or smaller files.",
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -694,13 +663,13 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
         log.warning("jobs.merge.timeout")
         return
     except (PdfEncryptedError, PdfMalformedError) as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code=exc.code,
             message=exc.message,
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -712,16 +681,16 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
         )
         log.warning("jobs.merge.failed", error_code=exc.code)
         return
-    except _TransientStorageError:
+    except TransientStorageError:
         raise
     except AppError as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code=exc.code,
             message=exc.message,
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -734,13 +703,13 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
         log.warning("jobs.merge.failed", error_code=exc.code)
         return
     except Exception as exc:
-        await _fail(
+        await fail_job(
             sessionmaker=sessionmaker,
             job_id=job_id,
             code="internal_error",
             message="An unexpected error occurred during merge.",
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -752,12 +721,16 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
         )
         log.exception("jobs.merge.unhandled", exc_class=type(exc).__name__)
         return
+    finally:
+        structlog.contextvars.unbind_contextvars("job_id", "task_id", "organization_id")
+        await release_lock(redis, job_id, task_id)
 
 
 @celery_app.task(
     name="papyrus.pdf.merge",
+    base=JobTask,
     bind=True,
-    autoretry_for=(_TransientStorageError,),
+    autoretry_for=(TransientStorageError,),
     retry_backoff=True,
     retry_backoff_max=60,
     retry_jitter=True,

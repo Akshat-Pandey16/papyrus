@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 import structlog
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
@@ -14,6 +15,7 @@ from papyrus_api.core.errors import (
     AuthenticationError,
     ConflictError,
     NotFoundError,
+    RateLimitedError,
     ValidationError,
 )
 from papyrus_api.core.security import (
@@ -26,7 +28,8 @@ from papyrus_api.core.security import (
 )
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
-from papyrus_api.domain.identity.models import Organization, RefreshToken, User
+from papyrus_api.domain.identity.models import Organization, User
+from papyrus_api.repositories.audit import AuditEventRepository
 from papyrus_api.repositories.users import (
     MembershipRepository,
     OrganizationRepository,
@@ -38,8 +41,12 @@ from papyrus_api.repositories.users import (
 log = structlog.get_logger(__name__)
 
 _RESET_TOKEN_TTL = timedelta(minutes=30)
+_VERIFY_TOKEN_TTL = timedelta(hours=24)
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 _SLUG_COLLISION_RETRIES = 8
+_RESET_PURPOSE = "reset"
+_VERIFY_PURPOSE = "verify"
+_DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 def _slugify(value: str) -> str:
@@ -63,13 +70,54 @@ class ClientContext:
 
 
 class IdentityService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, redis: Redis) -> None:
         self.session = session
+        self.redis = redis
         self.users = UserRepository(session)
         self.organizations = OrganizationRepository(session)
         self.memberships = MembershipRepository(session)
         self.reset_tokens = PasswordResetTokenRepository(session)
         self.refresh_tokens = RefreshTokenRepository(session)
+        self.audit = AuditEventRepository(session)
+
+    def _login_fail_key(self, email_norm: str) -> str:
+        return f"auth:login:fail:{email_norm}"
+
+    async def _login_lock_seconds(self, email_norm: str) -> int | None:
+        try:
+            raw = await self.redis.get(self._login_fail_key(email_norm))
+        except Exception:
+            return None
+        if raw is None:
+            return None
+        try:
+            count = int(raw)
+        except (TypeError, ValueError):
+            return None
+        if count < settings.login_max_failures:
+            return None
+        try:
+            ttl = int(await self.redis.ttl(self._login_fail_key(email_norm)))
+        except Exception:
+            ttl = settings.login_lockout_seconds
+        return max(ttl, 1)
+
+    async def _record_login_failure(self, email_norm: str) -> None:
+        try:
+            count = int(await self.redis.incr(self._login_fail_key(email_norm)))
+            if count == 1:
+                await self.redis.expire(
+                    self._login_fail_key(email_norm),
+                    settings.login_lockout_seconds,
+                )
+        except Exception:
+            log.warning("auth.login.fail_counter_unavailable")
+
+    async def _clear_login_failures(self, email_norm: str) -> None:
+        try:
+            await self.redis.delete(self._login_fail_key(email_norm))
+        except Exception:
+            log.warning("auth.login.fail_counter_clear_failed")
 
     async def create_anonymous(self, *, client: ClientContext | None = None) -> AuthResult:
         anon_id = secrets.token_hex(12)
@@ -92,6 +140,12 @@ class IdentityService:
         )
         await self.session.flush()
         result = await self._issue_tokens(user, organization, client=client, parent=None)
+        await self._audit(
+            "auth.anonymous_created",
+            actor_user_id=user.id,
+            organization_id=organization.id,
+            client=client,
+        )
         await self.session.commit()
         log.info(
             "auth.anonymous.created",
@@ -135,6 +189,12 @@ class IdentityService:
         )
 
         result = await self._issue_tokens(user, organization, client=client, parent=None)
+        await self._audit(
+            "auth.signup",
+            actor_user_id=user.id,
+            organization_id=organization.id,
+            client=client,
+        )
         await self.session.commit()
         log.info("auth.signup", user_id=str(user.id), organization_id=str(organization.id))
         return result
@@ -147,11 +207,23 @@ class IdentityService:
         client: ClientContext | None = None,
     ) -> AuthResult:
         email_norm = email.strip().lower()
+        locked_for = await self._login_lock_seconds(email_norm)
+        if locked_for is not None:
+            raise RateLimitedError(
+                "Too many failed login attempts. Please try again later.",
+                details={"retry_after_seconds": locked_for},
+            )
+
         user = await self.users.get_by_email(email_norm)
         if user is None or not user.is_active:
+            verify_password(password, _DUMMY_PASSWORD_HASH)
+            await self._record_login_failure(email_norm)
             raise AuthenticationError("Invalid email or password.")
         if not verify_password(password, user.password_hash):
+            await self._record_login_failure(email_norm)
             raise AuthenticationError("Invalid email or password.")
+
+        await self._clear_login_failures(email_norm)
 
         if needs_rehash(user.password_hash):
             await self.users.update_password(user, password_hash=hash_password(password))
@@ -161,6 +233,12 @@ class IdentityService:
             raise AuthenticationError("Account is missing a workspace. Contact support.")
 
         result = await self._issue_tokens(user, organization, client=client, parent=None)
+        await self._audit(
+            "auth.login",
+            actor_user_id=user.id,
+            organization_id=organization.id,
+            client=client,
+        )
         await self.session.commit()
         log.info("auth.login", user_id=str(user.id))
         return result
@@ -185,8 +263,7 @@ class IdentityService:
             raise AuthenticationError("Session expired. Please sign in again.")
 
         if record.revoked_at is not None:
-            root_id = await self.refresh_tokens.find_root_ancestor(record)
-            await self.refresh_tokens.revoke_chain(root_id)
+            await self.refresh_tokens.revoke_family(record.family_id)
             await self.session.commit()
             log.warning(
                 "auth.refresh.reuse_detected",
@@ -213,7 +290,13 @@ class IdentityService:
             raise AuthenticationError("Account is missing a workspace.")
 
         await self.refresh_tokens.revoke(record)
-        result = await self._issue_tokens(user, organization, client=client, parent=record.id)
+        result = await self._issue_tokens(
+            user,
+            organization,
+            client=client,
+            parent=record.id,
+            family_id=record.family_id,
+        )
         await self.session.commit()
         return result
 
@@ -224,6 +307,13 @@ class IdentityService:
         if record is None:
             return
         await self.refresh_tokens.revoke(record)
+        await self._audit(
+            "auth.logout",
+            actor_user_id=record.user_id,
+            organization_id=record.organization_id,
+            target_type="refresh_token",
+            target_id=record.id,
+        )
         await self.session.commit()
 
     async def forgot_password(self, *, email: str) -> str | None:
@@ -233,19 +323,23 @@ class IdentityService:
             log.info("auth.forgot.unknown_email")
             return None
 
-        await self.reset_tokens.revoke_all_for_user(user.id)
+        await self.reset_tokens.revoke_all_for_user(user.id, purpose=_RESET_PURPOSE)
         raw_token = secrets.token_urlsafe(48)
         await self.reset_tokens.create(
             user_id=user.id,
             token_hash=hash_opaque_token(raw_token),
             expires_at=utc_now() + _RESET_TOKEN_TTL,
+            purpose=_RESET_PURPOSE,
         )
         await self.session.commit()
         log.info("auth.forgot.token_issued", user_id=str(user.id))
         return raw_token if settings.is_development else None
 
     async def reset_password(self, *, token: str, new_password: str) -> None:
-        record = await self.reset_tokens.get_active_by_hash(hash_opaque_token(token))
+        record = await self.reset_tokens.get_active_by_hash(
+            hash_opaque_token(token),
+            purpose=_RESET_PURPOSE,
+        )
         if record is None:
             raise ValidationError(
                 "This reset link is invalid or has expired.",
@@ -257,6 +351,7 @@ class IdentityService:
         await self.users.update_password(user, password_hash=hash_password(new_password))
         await self.reset_tokens.mark_used(record)
         await self.refresh_tokens.revoke_all_for_user(user.id)
+        await self._audit("auth.password_reset", actor_user_id=user.id)
         await self.session.commit()
         log.info("auth.reset_password", user_id=str(user.id))
 
@@ -278,6 +373,7 @@ class IdentityService:
             if record is not None and record.revoked_at is None:
                 keep_id = record.id
         await self._revoke_other_sessions(user_id=user.id, keep_id=keep_id)
+        await self._audit("auth.password_changed", actor_user_id=user.id)
         await self.session.commit()
         log.info("auth.password_changed", user_id=str(user.id))
 
@@ -318,6 +414,13 @@ class IdentityService:
         if record is None or record.user_id != user_id:
             raise NotFoundError("Session not found.")
         await self.refresh_tokens.revoke(record)
+        await self._audit(
+            "auth.session_revoked",
+            actor_user_id=user_id,
+            organization_id=record.organization_id,
+            target_type="refresh_token",
+            target_id=record.id,
+        )
         await self.session.commit()
 
     async def revoke_other_sessions(
@@ -332,6 +435,11 @@ class IdentityService:
             if record is not None and record.revoked_at is None:
                 keep_id = record.id
         revoked = await self._revoke_other_sessions(user_id=user_id, keep_id=keep_id)
+        await self._audit(
+            "auth.sessions_revoked_others",
+            actor_user_id=user_id,
+            payload={"revoked": revoked},
+        )
         await self.session.commit()
         return revoked
 
@@ -341,22 +449,48 @@ class IdentityService:
             keep_id=keep_id,
         )
 
+    async def _audit(
+        self,
+        action: str,
+        *,
+        actor_user_id: UUID | None = None,
+        organization_id: UUID | None = None,
+        target_type: str | None = None,
+        target_id: UUID | None = None,
+        client: ClientContext | None = None,
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        await self.audit.record(
+            action=action,
+            actor_user_id=actor_user_id,
+            organization_id=organization_id,
+            target_type=target_type,
+            target_id=target_id,
+            ip_address=client.ip_address if client else None,
+            user_agent=client.user_agent if client else None,
+            payload=payload,
+        )
+
     async def request_email_verification(self, *, user: User) -> str | None:
         if user.email_verified_at is not None:
             return None
-        await self.reset_tokens.revoke_all_for_user(user.id)
+        await self.reset_tokens.revoke_all_for_user(user.id, purpose=_VERIFY_PURPOSE)
         raw_token = secrets.token_urlsafe(48)
         await self.reset_tokens.create(
             user_id=user.id,
             token_hash=hash_opaque_token(raw_token),
-            expires_at=utc_now() + timedelta(hours=24),
+            expires_at=utc_now() + _VERIFY_TOKEN_TTL,
+            purpose=_VERIFY_PURPOSE,
         )
         await self.session.commit()
         log.info("auth.verify_email.token_issued", user_id=str(user.id))
         return raw_token if settings.is_development else None
 
     async def confirm_email_verification(self, *, token: str) -> User:
-        record = await self.reset_tokens.get_active_by_hash(hash_opaque_token(token))
+        record = await self.reset_tokens.get_active_by_hash(
+            hash_opaque_token(token),
+            purpose=_VERIFY_PURPOSE,
+        )
         if record is None:
             raise ValidationError(
                 "This verification link is invalid or has expired.",
@@ -369,6 +503,7 @@ class IdentityService:
             user.email_verified_at = utc_now()
             await self.session.flush()
         await self.reset_tokens.mark_used(record)
+        await self._audit("auth.email_verified", actor_user_id=user.id)
         await self.session.commit()
         log.info("auth.verify_email.confirmed", user_id=str(user.id))
         return user
@@ -400,22 +535,23 @@ class IdentityService:
         *,
         client: ClientContext | None,
         parent: UUID | None,
+        family_id: UUID | None = None,
     ) -> AuthResult:
         access = issue_access_token(
             subject=user.id,
             organization_id=organization.id,
         )
         raw_refresh = new_opaque_token(48)
-        record: RefreshToken = await self.refresh_tokens.create(
+        await self.refresh_tokens.create(
             user_id=user.id,
             organization_id=organization.id,
             token_hash=hash_opaque_token(raw_refresh),
             expires_at=utc_now() + timedelta(seconds=settings.jwt_refresh_ttl_seconds),
             parent_id=parent,
+            family_id=family_id,
             user_agent=(client.user_agent if client else None),
             ip_address=(client.ip_address if client else None),
         )
-        _ = record  # bound for future use (auditing handles below)
         return AuthResult(
             user=user,
             organization=organization,

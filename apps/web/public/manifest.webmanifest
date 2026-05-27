@@ -1,0 +1,25 @@
+{
+  "name": "Papyrus",
+  "short_name": "Papyrus",
+  "description": "A free, private, self-hostable PDF toolkit. Compress, merge, split, rotate, reorder, and OCR PDFs.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

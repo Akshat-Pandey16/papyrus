@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
+from papyrus_api.services.pdf._subprocess import run_capture
 from papyrus_api.services.pdf.gs_runtime import (
     GsCapabilities,
     GsNotConfiguredError,
@@ -137,13 +138,7 @@ def gs_compress(inputs: GsCompressInputs) -> GsCompressResult:
 
     args = _build_args(inputs, caps)
     try:
-        completed = subprocess.run(  # noqa: S603
-            args,
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=inputs.timeout_seconds,
-        )
+        completed = run_capture(args, timeout=inputs.timeout_seconds)
     except subprocess.TimeoutExpired as exc:
         raise PdfMalformedError(
             "Ghostscript took too long to compress this PDF.",

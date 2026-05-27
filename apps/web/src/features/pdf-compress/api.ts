@@ -18,6 +18,7 @@ import type {
   UploadInitiateResult,
 } from "@/features/pdf-compress/types";
 import { apiClient } from "@/lib/api/client";
+import { useUiStore } from "@/stores/ui-store";
 
 type ApiPresigned = {
   url: string;
@@ -256,6 +257,7 @@ export function useCreateCompressionJobMutation() {
         document_id: input.documentId,
         compression_level: input.compressionLevel,
         idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
       };
       if (input.options !== undefined) {
         body.options = optionsToApi(input.options);

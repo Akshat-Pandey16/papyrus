@@ -9,11 +9,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "openapi-typescript http://localhost:8000/api/v1/openapi.json -o src/api.ts",
+    "generate": "openapi-typescript ./openapi.json -o src/api.ts",
+    "generate:live": "openapi-typescript http://localhost:8000/api/v1/openapi.json -o src/api.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "openapi-typescript": "^7.13.0",
-    "typescript": "catalog:"
+    "typescript": "~6.0.3"
   }
 }

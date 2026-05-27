@@ -1,18 +1,9 @@
+import type { Organization as ApiOrg, User as ApiUser } from "@papyrus/shared-types";
 import { type ReactNode, useEffect, useState } from "react";
 import { fetchSession, refreshAccessOnly } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { apiClient, isAccessTokenValid, registerRefreshHandler } from "@/lib/api/client";
 
-type ApiUser = {
-  id: string;
-  email: string;
-  full_name: string | null;
-  is_active: boolean;
-  is_anonymous: boolean;
-  email_verified_at: string | null;
-  created_at: string;
-};
-type ApiOrg = { id: string; name: string; slug: string };
 type ApiMe = { user: ApiUser; organization: ApiOrg };
 
 let bootstrapPromise: Promise<void> | null = null;

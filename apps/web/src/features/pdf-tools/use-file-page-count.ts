@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { loadPdfjs } from "@/lib/pdf/pdfjs";
 
 export type FilePageCountState = {
   pageCount: number | null;
@@ -23,18 +24,16 @@ export function useFilePageCount(file: File | null): FilePageCountState {
     setState({ pageCount: null, loading: true, error: null });
     (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const pdfjs = await loadPdfjs();
         const data = await file.arrayBuffer();
         if (token !== tokenRef.current) return;
         const doc = await pdfjs.getDocument({ data }).promise;
         if (token !== tokenRef.current) {
-          doc.destroy();
+          void doc.destroy();
           return;
         }
         const count = doc.numPages;
-        doc.destroy();
+        void doc.destroy();
         setState({ pageCount: count, loading: false, error: null });
       } catch (err) {
         if (token !== tokenRef.current) return;

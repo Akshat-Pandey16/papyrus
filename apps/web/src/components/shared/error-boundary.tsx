@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/observability/report-error";
 
 type Props = {
   children: ReactNode;
@@ -18,9 +19,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    if (import.meta.env.DEV) {
-      console.error("[ErrorBoundary]", error, info);
-    }
+    reportError(error, { source: "ErrorBoundary", componentStack: info.componentStack });
   }
 
   private readonly reset = () => this.setState({ error: null });

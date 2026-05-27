@@ -31,6 +31,7 @@ celery_app.conf.update(
     enable_utc=True,
     task_default_queue="default",
     task_routes={
+        "papyrus.pdf.ocr": {"queue": "pdf-heavy"},
         "papyrus.pdf.*": {"queue": "pdf"},
         "papyrus.cleanup.*": {"queue": "cleanup"},
     },

@@ -28,9 +28,7 @@ export function useMergeUpload() {
       for (const xhr of xhrRegistry.values()) {
         try {
           xhr.abort();
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
       xhrRegistry.clear();
     };
@@ -119,9 +117,7 @@ export function useMergeUpload() {
       if (key.startsWith(`${clientBatchId}::`)) {
         try {
           xhr.abort();
-        } catch {
-          // ignore
-        }
+        } catch {}
         xhrRegistry.delete(key);
       }
     }

@@ -24,9 +24,7 @@ export function usePdfUpload() {
       for (const xhr of xhrRegistry.values()) {
         try {
           xhr.abort();
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
       xhrRegistry.clear();
     };
@@ -104,9 +102,7 @@ export function usePdfUpload() {
     if (xhr) {
       try {
         xhr.abort();
-      } catch {
-        // ignore
-      }
+      } catch {}
       xhrRegistry.delete(clientUploadId);
     }
   }, []);

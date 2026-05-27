@@ -37,8 +37,8 @@ upgrade:  ## Bump every Python + Node dep to its latest version (regenerates loc
 api:  ## Run the FastAPI server with reload
 	$(UV_RUN) uvicorn papyrus_api.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
 
-worker:  ## Run a Celery worker (listens on default, pdf, cleanup queues)
-	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=4 -Q default,pdf,cleanup
+worker:  ## Run a Celery worker (listens on default, pdf, pdf-heavy, cleanup queues)
+	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app worker --loglevel=INFO --concurrency=4 -Q default,pdf,pdf-heavy,cleanup
 
 beat:  ## Run the Celery beat scheduler
 	$(UV_RUN) celery -A papyrus_api.workers.celery_app:celery_app beat --loglevel=INFO
@@ -62,6 +62,11 @@ db-revision:  ## Autogenerate a migration. Usage: make db-revision m="add users 
 
 db-reset:  ## Drop the dev database and re-apply all migrations
 	bash scripts/db_reset.sh
+
+# ---- API contract ----------------------------------------------------
+openapi:  ## Refresh the committed OpenAPI snapshot + regenerate shared TS types
+	$(UV_RUN) python -c "import json; from papyrus_api.main import create_app; print(json.dumps(create_app().openapi(), indent=2, sort_keys=True))" > packages/shared-types/openapi.json
+	pnpm --filter @papyrus/shared-types generate
 
 # ---- Quality gates ---------------------------------------------------
 lint:  ## Lint Python + JS/TS

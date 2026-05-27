@@ -1,11 +1,13 @@
-import { AlertCircle, CheckCircle2, Download, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileText, Loader2, X } from "lucide-react";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/features/pdf-compress/format";
 import { useJobStream } from "@/features/pdf-compress/hooks/use-job-stream";
 import { selectUpload, useUploadStore } from "@/features/pdf-compress/store";
-import { useDownloadUrlMutation, useRetryJobMutation } from "@/features/pdf-tools/api";
+import { useCancelJobMutation, useRetryJobMutation } from "@/features/pdf-tools/api";
 import { triggerDownload } from "@/features/pdf-tools/download";
+import { useAutoDownload } from "@/features/pdf-tools/use-auto-download";
+import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
 
 export type ToolJobCardProps = {
@@ -21,19 +23,14 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
   const jobId = entry?.jobId ?? null;
   const stream = useJobStream(jobId);
   const job = stream.data ?? null;
-  const download = useDownloadUrlMutation();
+  const download = useAutoDownload(job);
+  const cancel = useCancelJobMutation();
   const retry = useRetryJobMutation();
 
   useEffect(() => {
     if (!entry || !job) return;
     if (job.status === "succeeded" && entry.phase !== "succeeded") {
       updateEntry(clientUploadId, { phase: "succeeded" });
-      void download
-        .mutateAsync({ jobId: job.id })
-        .then((res) => {
-          triggerDownload(res.url, res.filename);
-        })
-        .catch(() => undefined);
     } else if (job.status === "failed" && entry.phase !== "failed") {
       updateEntry(clientUploadId, {
         phase: "failed",
@@ -51,7 +48,7 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
     ) {
       updateEntry(clientUploadId, { phase: "queued" });
     }
-  }, [job, entry, clientUploadId, updateEntry, download]);
+  }, [job, entry, clientUploadId, updateEntry]);
 
   if (!entry) return null;
 
@@ -65,6 +62,15 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
 
   const succeeded = job?.status === "succeeded";
   const failed = entry.phase === "failed" || job?.status === "failed";
+
+  const onCancel = async () => {
+    if (job) {
+      try {
+        await cancel.mutateAsync({ jobId: job.id });
+      } catch {}
+    }
+    updateEntry(clientUploadId, { phase: "cancelled" });
+  };
 
   return (
     <article
@@ -84,6 +90,17 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
           </p>
           <p className="text-xs text-muted-foreground">{formatBytes(entry.fileSize)}</p>
         </div>
+        {!isTerminal && job ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onCancel}
+            aria-label="Cancel job"
+            className="h-8 w-8 p-0"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
+        ) : null}
         {isTerminal ? (
           <Button
             size="sm"
@@ -97,7 +114,7 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
       </header>
 
       {!isTerminal ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-live="polite">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>{job?.phase ? `${job.phase}…` : "Working…"}</span>
         </div>
@@ -116,12 +133,13 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
               const r = await download.mutateAsync({ jobId: job.id });
               triggerDownload(r.url, r.filename);
             }}
+            disabled={download.isPending}
             size="sm"
             variant="outline"
             className="self-start"
           >
             <Download className="mr-2 h-4 w-4" />
-            Download again
+            {download.isPending ? "Preparing…" : "Download again"}
           </Button>
         </div>
       ) : null}
@@ -133,7 +151,10 @@ export function ToolJobCard({ clientUploadId, successLabel = "Done" }: ToolJobCa
             <div className="flex flex-col gap-1">
               <p className="text-sm font-semibold">Couldn&apos;t finish</p>
               <p className="text-xs text-muted-foreground">
-                {job?.errorMessage ?? entry.errorMessage ?? "Something went wrong."}
+                {mapErrorMessage(
+                  job?.errorCode ?? entry.errorCode,
+                  job?.errorMessage ?? entry.errorMessage,
+                )}
               </p>
             </div>
           </div>

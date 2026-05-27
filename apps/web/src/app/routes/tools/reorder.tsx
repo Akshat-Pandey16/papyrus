@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, GripVertical, ListOrdered, TextSelect, X } from "lucide-react";
-import { type DragEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ToolOptionsHeader, ToolPageShell } from "@/components/layout/tool-page-shell";
+import { SortableList } from "@/components/shared/sortable-list";
 import { Button } from "@/components/ui/button";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { FileDropzone } from "@/features/pdf-compress/components/file-dropzone";
@@ -11,7 +12,6 @@ import { PageThumbnails } from "@/features/pdf-tools/page-thumbnails";
 import { ToolJobCard } from "@/features/pdf-tools/tool-job-card";
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tools/reorder")({
   beforeLoad: async () => {
@@ -23,8 +23,6 @@ export const Route = createFileRoute("/tools/reorder")({
 function ReorderPage() {
   const [file, setFile] = useState<File | null>(null);
   const [order, setOrder] = useState<number[]>([]);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
   const { pageCount } = useFilePageCount(file);
   const create = useCreateReorderJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
@@ -48,17 +46,6 @@ function ReorderPage() {
     setOrder((prev) => (prev.includes(page) ? prev : [...prev, page]));
   };
   const removePage = (idx: number) => setOrder((prev) => prev.filter((_, i) => i !== idx));
-  const move = (idx: number, dir: -1 | 1) =>
-    setOrder((prev) => {
-      const target = idx + dir;
-      if (target < 0 || target >= prev.length) return prev;
-      const next = [...prev];
-      const moved = next.splice(idx, 1)[0];
-      if (moved === undefined) return prev;
-      next.splice(target, 0, moved);
-      return next;
-    });
-
   const moveTo = (from: number, to: number) =>
     setOrder((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to)
@@ -69,32 +56,7 @@ function ReorderPage() {
       next.splice(to, 0, moved);
       return next;
     });
-
-  const onDragStart = (e: DragEvent<HTMLLIElement>, idx: number) => {
-    setDragIndex(idx);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", String(idx));
-  };
-  const onDragOver = (e: DragEvent<HTMLLIElement>, idx: number) => {
-    if (dragIndex === null) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (overIndex !== idx) setOverIndex(idx);
-  };
-  const onDragLeave = () => setOverIndex(null);
-  const onDrop = (e: DragEvent<HTMLLIElement>, idx: number) => {
-    e.preventDefault();
-    const raw = dragIndex ?? Number(e.dataTransfer.getData("text/plain"));
-    const from = Number.isFinite(raw) ? Number(raw) : null;
-    setDragIndex(null);
-    setOverIndex(null);
-    if (from === null) return;
-    moveTo(from, idx);
-  };
-  const onDragEnd = () => {
-    setDragIndex(null);
-    setOverIndex(null);
-  };
+  const move = (idx: number, dir: -1 | 1) => moveTo(idx, idx + dir);
 
   const onSubmit = async () => {
     if (!file || order.length === 0) return;
@@ -164,38 +126,32 @@ function ReorderPage() {
             ) : null}
           </ToolOptionsHeader>
           {order.length > 0 ? (
-            <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-sm">
-              {order.map((page, idx) => (
-                <li
-                  key={`${page}-${idx.toString()}`}
-                  draggable
-                  onDragStart={(e) => onDragStart(e, idx)}
-                  onDragOver={(e) => onDragOver(e, idx)}
-                  onDragLeave={onDragLeave}
-                  onDrop={(e) => onDrop(e, idx)}
-                  onDragEnd={onDragEnd}
-                  className={cn(
-                    "flex cursor-grab items-center justify-between gap-2 rounded px-2 py-1.5 transition-all active:cursor-grabbing",
-                    dragIndex === idx && "opacity-40",
-                    overIndex === idx &&
-                      dragIndex !== null &&
-                      dragIndex !== idx &&
-                      "bg-primary/5 ring-2 ring-primary/20",
-                  )}
-                >
+            <SortableList
+              ids={order.map((page) => String(page))}
+              onReorder={moveTo}
+              disabled={submitting}
+              className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 text-sm"
+              renderItem={(_id, idx, handle) => (
+                <div className="flex items-center justify-between gap-2 rounded px-2 py-1.5">
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <GripVertical
-                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
-                      aria-hidden
-                    />
+                    <button
+                      type="button"
+                      aria-label="Drag to reorder"
+                      className="cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing"
+                      {...handle.attributes}
+                      {...handle.listeners}
+                    >
+                      <GripVertical className="h-3.5 w-3.5" aria-hidden />
+                    </button>
                     <span className="font-medium">{idx + 1}.</span>{" "}
-                    <span className="text-muted-foreground">Page {page}</span>
+                    <span className="text-muted-foreground">Page {order[idx]}</span>
                   </span>
                   <div className="flex items-center gap-1">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => move(idx, -1)}
+                      disabled={submitting || idx === 0}
                       aria-label="Move up"
                       className="h-6 w-6 p-0"
                     >
@@ -205,6 +161,7 @@ function ReorderPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => move(idx, 1)}
+                      disabled={submitting || idx === order.length - 1}
                       aria-label="Move down"
                       className="h-6 w-6 p-0"
                     >
@@ -214,15 +171,16 @@ function ReorderPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => removePage(idx)}
+                      disabled={submitting}
                       aria-label="Remove"
                       className="h-6 w-6 p-0"
                     >
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
-                </li>
-              ))}
-            </ul>
+                </div>
+              )}
+            />
           ) : null}
           <Button
             size="lg"

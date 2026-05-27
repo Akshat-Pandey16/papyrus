@@ -18,8 +18,8 @@ from papyrus_api.api.deps import (
     SsePrincipal,
     rate_limit,
 )
-from papyrus_api.core.config import settings
-from papyrus_api.core.security import issue_access_token
+from papyrus_api.core.cookies import set_sse_cookie
+from papyrus_api.core.security import issue_sse_token
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.schemas.jobs import (
     CompressEstimateOut,
@@ -71,6 +71,7 @@ async def create_compression_job(
         options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -143,6 +144,7 @@ async def create_merge_job(
         options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -178,6 +180,7 @@ async def create_split_job(
         options=options_dict,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -204,6 +207,7 @@ async def create_rotate_job(
         rotations=payload.rotations,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -230,6 +234,7 @@ async def create_reorder_job(
         order=payload.order,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -256,6 +261,7 @@ async def create_ocr_job(
         language=payload.language,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
     )
     if result.replay:
         response.status_code = status.HTTP_200_OK
@@ -349,6 +355,7 @@ async def retry_job(
 @router.post(
     "/{job_id}/events/ticket",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[rate_limit("jobs.sse_ticket", limit=120, window_seconds=60)],
 )
 async def issue_sse_ticket(
     job_id: UUID,
@@ -358,19 +365,12 @@ async def issue_sse_ticket(
 ) -> Response:
     user, organization = principal
     await service.get(organization_id=organization.id, job_id=job_id)
-    token = issue_access_token(
+    token = issue_sse_token(
         subject=user.id,
         organization_id=organization.id,
+        job_id=job_id,
     )
-    response.set_cookie(
-        key="papyrus_sse",
-        value=token,
-        max_age=60,
-        path=f"/api/v1/jobs/{job_id}/events",
-        httponly=True,
-        secure=not settings.is_development,
-        samesite="lax",
-    )
+    set_sse_cookie(response, token, path=f"/api/v1/jobs/{job_id}/events")
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 

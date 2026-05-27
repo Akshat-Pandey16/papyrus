@@ -128,6 +128,7 @@ _PILLOW_MODE_FOR = {
     ColorMode.PRESERVE: None,
     ColorMode.GRAYSCALE: "L",
 }
+_SIMPLE_COLORSPACES = (pikepdf.Name.DeviceRGB, pikepdf.Name.DeviceGray)
 
 
 def options_for_level(level: CompressionLevel) -> CompressOptions:
@@ -277,6 +278,23 @@ def _encode_jpeg(pil_img: Image.Image, quality: int) -> bytes | None:
     return buffer.getvalue()
 
 
+def _recompress_is_safe(image_obj: pikepdf.PdfImage) -> bool:
+    try:
+        obj = image_obj.obj
+        if pikepdf.Name.SMask in obj or pikepdf.Name.Mask in obj:
+            return False
+        if obj.get(pikepdf.Name.ImageMask):
+            return False
+        cs = obj.get(pikepdf.Name.ColorSpace)
+    except Exception:
+        return False
+    if cs is None:
+        return True
+    if isinstance(cs, pikepdf.Name):
+        return cs in _SIMPLE_COLORSPACES
+    return False
+
+
 def _replace_image_stream(image_obj: pikepdf.PdfImage, new_bytes: bytes, gray: bool) -> bool:
     try:
         existing = image_obj.obj.read_raw_bytes()
@@ -291,8 +309,6 @@ def _replace_image_stream(image_obj: pikepdf.PdfImage, new_bytes: bytes, gray: b
             decode_parms=pikepdf.Dictionary(),
         )
         image_obj.obj.ColorSpace = pikepdf.Name.DeviceGray if gray else pikepdf.Name.DeviceRGB
-        if pikepdf.Name.SMask in image_obj.obj:
-            del image_obj.obj[pikepdf.Name.SMask]
     except Exception:
         return False
     return True
@@ -306,7 +322,9 @@ def _process_image(
     dims = _safe_dimensions(image_obj)
     if dims is None:
         return False, False
-    if dims[0] * dims[1] < _MIN_IMAGE_PIXELS_TO_TOUCH and options.image_max_dimension is None:
+    if dims[0] * dims[1] < _MIN_IMAGE_PIXELS_TO_TOUCH:
+        return False, False
+    if not _recompress_is_safe(image_obj):
         return False, False
 
     pil_img = _load_pil(image_obj)

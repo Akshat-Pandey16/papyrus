@@ -99,7 +99,11 @@ export function NumberInput({
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
+        role="spinbutton"
         aria-label={ariaLabel}
+        aria-valuenow={value}
+        aria-valuemin={min}
+        aria-valuemax={max === Number.MAX_SAFE_INTEGER ? undefined : max}
         value={draft}
         disabled={disabled}
         onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}

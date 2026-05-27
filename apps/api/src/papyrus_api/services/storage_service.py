@@ -112,15 +112,20 @@ class StorageService:
         content_type: str,
         max_bytes: int,
     ) -> PresignedUpload:
+        fields: dict[str, str] = {"Content-Type": content_type}
+        conditions: list[Any] = [
+            {"Content-Type": content_type},
+            ["content-length-range", 1, max_bytes],
+        ]
+        if settings.s3_sse:
+            fields["x-amz-server-side-encryption"] = settings.s3_sse
+            conditions.append({"x-amz-server-side-encryption": settings.s3_sse})
         async with _client_ctx() as client:
             post = await client.generate_presigned_post(
                 Bucket=bucket,
                 Key=key,
-                Fields={"Content-Type": content_type},
-                Conditions=[
-                    {"Content-Type": content_type},
-                    ["content-length-range", 1, max_bytes],
-                ],
+                Fields=fields,
+                Conditions=conditions,
                 ExpiresIn=settings.s3_presign_expires_seconds,
             )
         expires_at = utc_now() + timedelta(seconds=settings.s3_presign_expires_seconds)
@@ -233,6 +238,9 @@ class StorageService:
         content_type: str,
     ) -> int:
         size = await anyio.to_thread.run_sync(lambda: src.stat().st_size)
+        extra: dict[str, Any] = {}
+        if settings.s3_sse:
+            extra["ServerSideEncryption"] = settings.s3_sse
         async with _client_ctx() as client:
             with src.open("rb") as fh:
                 await client.put_object(
@@ -240,5 +248,6 @@ class StorageService:
                     Key=key,
                     Body=fh,
                     ContentType=content_type,
+                    **extra,
                 )
         return size

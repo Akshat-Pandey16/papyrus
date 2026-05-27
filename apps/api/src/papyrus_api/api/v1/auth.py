@@ -4,7 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Request, Response, status
 
-from papyrus_api.api.deps import CurrentPrincipal, IdentityServiceDep, rate_limit
+from papyrus_api.api.deps import (
+    CurrentPrincipal,
+    EnforceOrigin,
+    IdentityServiceDep,
+    rate_limit,
+)
 from papyrus_api.core.config import settings
 from papyrus_api.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from papyrus_api.core.errors import AuthenticationError
@@ -114,7 +119,7 @@ async def login(
 @router.post(
     "/refresh",
     response_model=AccessToken,
-    dependencies=[rate_limit("auth.refresh", limit=120, window_seconds=300)],
+    dependencies=[EnforceOrigin, rate_limit("auth.refresh", limit=120, window_seconds=300)],
 )
 async def refresh(
     request: Request,
@@ -139,7 +144,11 @@ async def refresh(
     )
 
 
-@router.get("/session", response_model=AuthSession)
+@router.get(
+    "/session",
+    response_model=AuthSession,
+    dependencies=[EnforceOrigin],
+)
 async def session(
     request: Request,
     response: Response,
@@ -205,7 +214,11 @@ async def me(principal: CurrentPrincipal) -> AuthSession:
     )
 
 
-@router.post("/logout", response_model=GenericMessage)
+@router.post(
+    "/logout",
+    response_model=GenericMessage,
+    dependencies=[EnforceOrigin, rate_limit("auth.logout", limit=60, window_seconds=300)],
+)
 async def logout(
     response: Response,
     service: IdentityServiceDep,

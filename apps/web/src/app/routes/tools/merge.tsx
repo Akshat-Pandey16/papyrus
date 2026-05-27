@@ -50,7 +50,10 @@ function MergePage() {
   const createJob = useCreateMergeJobMutation();
 
   const onAdd = useCallback((incoming: File[]) => {
-    setPendingFiles((prev) => [...prev, ...incoming.map((file) => ({ file, ranges: null }))]);
+    setPendingFiles((prev) => [
+      ...prev,
+      ...incoming.map((file) => ({ id: newId(), file, ranges: null })),
+    ]);
   }, []);
 
   const onRemove = useCallback((index: number) => {

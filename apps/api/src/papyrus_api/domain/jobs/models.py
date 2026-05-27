@@ -33,12 +33,20 @@ class Job(Base, IdMixin, TenantMixin, TimestampMixin):
     )
 
     kind: Mapped[JobKind] = mapped_column(
-        Enum(JobKind, name="job_kind"),
+        Enum(
+            JobKind,
+            name="job_kind",
+            values_callable=lambda e: [m.name for m in e],
+        ),
         index=True,
         nullable=False,
     )
     status: Mapped[JobStatus] = mapped_column(
-        Enum(JobStatus, name="job_status"),
+        Enum(
+            JobStatus,
+            name="job_status",
+            values_callable=lambda e: [m.name for m in e],
+        ),
         index=True,
         nullable=False,
         default=JobStatus.PENDING,
@@ -86,7 +94,11 @@ class JobEvent(Base, IdMixin, TimestampMixin):
         nullable=False,
     )
     status: Mapped[JobStatus] = mapped_column(
-        Enum(JobStatus, name="job_status"),
+        Enum(
+            JobStatus,
+            name="job_status",
+            values_callable=lambda e: [m.name for m in e],
+        ),
         nullable=False,
     )
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

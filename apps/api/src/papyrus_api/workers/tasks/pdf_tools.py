@@ -10,7 +10,6 @@ import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery.exceptions import SoftTimeLimitExceeded
-from redis.asyncio import Redis
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
@@ -20,7 +19,6 @@ from papyrus_api.domain.jobs.enums import JobStatus
 from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
-from papyrus_api.services.job_service import JobService
 from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.reorder import reorder_pdf
@@ -29,73 +27,20 @@ from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
+from papyrus_api.workers.tasks._common import (
+    JobCancelledError,
+    JobTask,
+    TransientStorageError,
+    check_cancelled,
+    classify_storage_error,
+    fail_job,
+    publish,
+    purge_input,
+    release_lock,
+    sha256_of_file,
+)
 
 log = structlog.get_logger(__name__)
-
-
-class _JobCancelledError(Exception):
-    pass
-
-
-class _TransientStorageError(Exception):
-    pass
-
-
-def _classify_storage_error(exc: BaseException) -> bool:
-    if isinstance(exc, ClientError):
-        code = exc.response.get("Error", {}).get("Code", "")
-        if code in {
-            "InternalError",
-            "ServiceUnavailable",
-            "SlowDown",
-            "ThrottlingException",
-        }:
-            return True
-        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-        if isinstance(status, int) and 500 <= status < 600:
-            return True
-    return bool(isinstance(exc, BotoCoreError))
-
-
-async def _purge_input(storage: StorageService, bucket: str | None, key: str | None) -> None:
-    if not bucket or not key:
-        return
-    try:
-        await storage.delete(bucket=bucket, key=key)
-    except Exception as exc:
-        log.warning("jobs.zero_retention.input_purge_failed", bucket=bucket, error=str(exc))
-
-
-async def _check_cancelled(redis: Redis, job_id: UUID) -> None:
-    try:
-        flag = await redis.get(f"job:cancel:{job_id}")
-    except Exception:
-        flag = None
-    if flag:
-        raise _JobCancelledError()
-
-
-async def _publish(redis: Redis, job_id: UUID, status: JobStatus, payload: dict[str, Any]) -> None:
-    try:
-        await redis.publish(
-            JobService.channel(job_id),
-            JobService.event_payload(job_id=job_id, status=status, payload=payload),
-        )
-    except Exception:
-        log.warning("jobs.publish_failed", job_id=str(job_id))
-
-
-async def _fail(*, job_id: UUID, code: str, message: str) -> None:
-    sessionmaker = get_sessionmaker()
-    async with sessionmaker() as s:
-        repo = JobRepository(s)
-        await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
-        await JobEventRepository(s).append(
-            job_id=job_id,
-            status=JobStatus.FAILED,
-            payload={"phase": "failed", "error_code": code, "error_message": message},
-        )
-        await s.commit()
 
 
 ProcessFn = Callable[[Path, Path, dict[str, Any]], Awaitable[dict[str, Any]]]
@@ -123,48 +68,64 @@ async def _run_simple_job(
     sessionmaker = get_sessionmaker()
     storage = StorageService()
 
-    async with sessionmaker() as session:
-        job = await JobRepository(session).get_unscoped(job_id=job_id)
-        if job is None:
-            log.warning("jobs.tool.missing", job_id=str(job_id))
-            return
-        if job.status in (JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED):
-            log.info("jobs.tool.already_terminal", status=job.status.value)
-            return
-        structlog.contextvars.bind_contextvars(organization_id=str(job.organization_id))
-        params: dict[str, Any] = dict(job.params or {})
-        try:
-            input_bucket = params["input_bucket"]
-            input_key = params["input_key"]
-        except KeyError as exc:
-            await _fail(
-                job_id=job_id,
-                code="invalid_params",
-                message="Job parameters are invalid.",
-            )
-            await _publish(
-                redis,
-                job_id,
-                JobStatus.FAILED,
-                {
-                    "phase": "failed",
-                    "error_code": "invalid_params",
-                    "error_message": "Job parameters are invalid.",
-                },
-            )
-            log.warning("jobs.tool.invalid_params", error=str(exc))
-            return
-
-        await JobRepository(session).mark_running(job_id=job.id)
-        await JobEventRepository(session).append(
-            job_id=job.id,
-            status=JobStatus.RUNNING,
-            payload={"phase": "downloading"},
-        )
-        await session.commit()
-        await _publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
+    input_bucket: str | None = None
+    input_key: str | None = None
+    organization_id: UUID | None = None
 
     try:
+        async with sessionmaker() as session:
+            job = await JobRepository(session).get_for_worker(job_id=job_id)
+            if job is None:
+                log.warning("jobs.tool.missing", job_id=str(job_id))
+                return
+            if job.status in (JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED):
+                log.info("jobs.tool.already_terminal", status=job.status.value)
+                return
+            organization_id = job.organization_id
+            structlog.contextvars.bind_contextvars(organization_id=str(organization_id))
+            params: dict[str, Any] = dict(job.params or {})
+            try:
+                input_bucket = params["input_bucket"]
+                input_key = params["input_key"]
+            except KeyError as exc:
+                await fail_job(
+                    session=session,
+                    job_id=job_id,
+                    code="invalid_params",
+                    message="Job parameters are invalid.",
+                )
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.FAILED,
+                    {
+                        "phase": "failed",
+                        "error_code": "invalid_params",
+                        "error_message": "Job parameters are invalid.",
+                    },
+                )
+                log.warning("jobs.tool.invalid_params", error=str(exc))
+                return
+
+            claimed = await JobRepository(session).mark_running(job_id=job.id)
+            if claimed is None:
+                await session.rollback()
+                log.info("jobs.tool.claim_failed", job_id=str(job_id))
+                await publish(
+                    redis,
+                    job_id,
+                    JobStatus.CANCELLED,
+                    {"phase": "cancelled"},
+                )
+                return
+            await JobEventRepository(session).append(
+                job_id=job.id,
+                status=JobStatus.RUNNING,
+                payload={"phase": "downloading"},
+            )
+            await session.commit()
+            await publish(redis, job.id, JobStatus.RUNNING, {"phase": "downloading"})
+
         with tempfile.TemporaryDirectory(prefix=f"papyrus-{kind_label}-") as tmp_root:
             tmp_dir = Path(tmp_root)
             input_path = tmp_dir / "input.pdf"
@@ -178,11 +139,11 @@ async def _run_simple_job(
                     max_bytes=settings.user_max_file_bytes,
                 )
             except (ClientError, BotoCoreError) as exc:
-                if _classify_storage_error(exc):
-                    raise _TransientStorageError(str(exc)) from exc
+                if classify_storage_error(exc):
+                    raise TransientStorageError(str(exc)) from exc
                 raise
 
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -191,7 +152,7 @@ async def _run_simple_job(
                     payload={"phase": "processing"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "processing"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "processing"})
 
             stats = await process(input_path, output_path, params)
             actual_output = output_path
@@ -207,7 +168,7 @@ async def _run_simple_job(
                 override_ct = stats.pop("_output_content_type", None)
                 if isinstance(override_ct, str):
                     actual_content_type = override_ct
-            await _check_cancelled(redis, job_id)
+            await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -216,12 +177,14 @@ async def _run_simple_job(
                     payload={"phase": "uploading"},
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
+            await publish(redis, job_id, JobStatus.RUNNING, {"phase": "uploading"})
 
             output_bucket = settings.s3_bucket_outputs
             output_key = (
-                f"org/{job.organization_id}/outputs/{job_id}/{uuid4().hex}.{actual_extension}"
+                f"org/{organization_id}/outputs/{job_id}/{uuid4().hex}.{actual_extension}"
             )
+
+            output_sha256 = await anyio.to_thread.run_sync(sha256_of_file, actual_output)
 
             try:
                 await storage.upload_from_path(
@@ -231,8 +194,8 @@ async def _run_simple_job(
                     content_type=actual_content_type,
                 )
             except (ClientError, BotoCoreError) as exc:
-                if _classify_storage_error(exc):
-                    raise _TransientStorageError(str(exc)) from exc
+                if classify_storage_error(exc):
+                    raise TransientStorageError(str(exc)) from exc
                 raise
 
             async with sessionmaker() as session:
@@ -246,15 +209,19 @@ async def _run_simple_job(
                 )
                 await so_repo.mark_confirmed(
                     storage_object_id=output_obj.id,
-                    sha256=None,
+                    sha256=output_sha256,
                     size_bytes=int(stats.get("output_size_bytes", 0)),
                     confirmed_at=utc_now(),
                 )
-                await JobRepository(session).mark_succeeded(
+                succeeded = await JobRepository(session).mark_succeeded(
                     job_id=job_id,
                     output_object_id=output_obj.id,
                     output_size_bytes=int(stats.get("output_size_bytes", 0)),
                 )
+                if succeeded is None:
+                    await session.rollback()
+                    log.info("jobs.tool.succeed_blocked", job_id=str(job_id))
+                    return
                 event_payload = {
                     "phase": "done",
                     "output_object_id": str(output_obj.id),
@@ -266,16 +233,21 @@ async def _run_simple_job(
                     payload=event_payload,
                 )
                 await session.commit()
-            await _publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
+            await publish(redis, job_id, JobStatus.SUCCEEDED, event_payload)
             log.info("jobs.tool.succeeded", kind=kind_label, **stats)
-            if settings.zero_retention_mode:
-                await _purge_input(storage, input_bucket, input_key)
-    except _JobCancelledError:
-        await _publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
+            if settings.zero_retention_mode or params.get("zero_retention"):
+                await purge_input(storage, input_bucket, input_key)
+    except JobCancelledError:
+        await publish(redis, job_id, JobStatus.CANCELLED, {"phase": "cancelled"})
         return
     except SoftTimeLimitExceeded:
-        await _fail(job_id=job_id, code="job_timeout", message=f"{kind_label} took too long.")
-        await _publish(
+        await fail_job(
+            sessionmaker=sessionmaker,
+            job_id=job_id,
+            code="job_timeout",
+            message=f"{kind_label} took too long.",
+        )
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -287,19 +259,29 @@ async def _run_simple_job(
         )
         return
     except (PdfEncryptedError, PdfMalformedError, OcrNotConfiguredError) as exc:
-        await _fail(job_id=job_id, code=exc.code, message=exc.message)
-        await _publish(
+        await fail_job(
+            sessionmaker=sessionmaker,
+            job_id=job_id,
+            code=exc.code,
+            message=exc.message,
+        )
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
             {"phase": "failed", "error_code": exc.code, "error_message": exc.message},
         )
         return
-    except _TransientStorageError:
+    except TransientStorageError:
         raise
     except AppError as exc:
-        await _fail(job_id=job_id, code=exc.code, message=exc.message)
-        await _publish(
+        await fail_job(
+            sessionmaker=sessionmaker,
+            job_id=job_id,
+            code=exc.code,
+            message=exc.message,
+        )
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -307,12 +289,13 @@ async def _run_simple_job(
         )
         return
     except Exception as exc:
-        await _fail(
+        await fail_job(
+            sessionmaker=sessionmaker,
             job_id=job_id,
             code="internal_error",
             message=f"An unexpected error occurred during {kind_label}.",
         )
-        await _publish(
+        await publish(
             redis,
             job_id,
             JobStatus.FAILED,
@@ -324,6 +307,9 @@ async def _run_simple_job(
         )
         log.exception("jobs.tool.unhandled", exc_class=type(exc).__name__, kind=kind_label)
         return
+    finally:
+        structlog.contextvars.unbind_contextvars("job_id", "task_id", "kind", "organization_id")
+        await release_lock(redis, job_id, task_id)
 
 
 def _build_split_options(params: dict[str, Any]) -> SplitOptions:
@@ -460,8 +446,9 @@ def _make_task(
 ) -> Any:
     @celery_app.task(
         name=name,
+        base=JobTask,
         bind=True,
-        autoretry_for=(_TransientStorageError,),
+        autoretry_for=(TransientStorageError,),
         retry_backoff=True,
         retry_backoff_max=60,
         retry_jitter=True,

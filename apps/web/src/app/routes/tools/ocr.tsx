@@ -28,7 +28,15 @@ const LANGUAGES = [
   { code: "ara", label: "Arabic" },
 ];
 
+const LANG_CODES = LANGUAGES.map((l) => l.code);
+
+type OcrSearch = { lang?: string };
+
 export const Route = createFileRoute("/tools/ocr")({
+  validateSearch: (search: Record<string, unknown>): OcrSearch => {
+    const raw = typeof search.lang === "string" ? search.lang : undefined;
+    return raw && LANG_CODES.includes(raw) ? { lang: raw } : {};
+  },
   beforeLoad: async () => {
     await ensureAnonymousSession();
   },
@@ -36,8 +44,9 @@ export const Route = createFileRoute("/tools/ocr")({
 });
 
 function OcrPage() {
+  const { lang } = Route.useSearch();
   const [file, setFile] = useState<File | null>(null);
-  const [language, setLanguage] = useState("eng");
+  const [language, setLanguage] = useState(lang ?? "eng");
   const create = useCreateOcrJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
   const uploadsMap = useUploadStore((s) => s.uploads);

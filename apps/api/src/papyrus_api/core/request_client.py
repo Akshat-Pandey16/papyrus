@@ -29,12 +29,6 @@ def _is_trusted(ip: str, nets: Iterable[ipaddress.IPv4Network | ipaddress.IPv6Ne
 
 
 def client_ip(request: Request) -> str:
-    """Return the client IP, honoring X-Forwarded-For only behind a trusted proxy.
-
-    Walks the XFF chain right-to-left and returns the rightmost address that is
-    NOT itself in the trusted-proxy allowlist. Falls back to the immediate peer
-    if no XFF or the peer is not trusted.
-    """
     peer = request.client.host if request.client else "anonymous"
     nets = _trusted_networks()
     if not nets or not _is_trusted(peer, nets):

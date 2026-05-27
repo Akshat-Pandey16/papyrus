@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { AppProviders } from "@/app/providers";
 import { AppRouter } from "@/app/router";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { installGlobalErrorHandlers } from "@/lib/observability/report-error";
 import "@/styles/globals.css";
+
+installGlobalErrorHandlers();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root element");

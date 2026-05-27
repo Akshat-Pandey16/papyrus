@@ -4,7 +4,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import AnyHttpUrl, BeforeValidator, Field, SecretStr
+from pydantic import AnyHttpUrl, BeforeValidator, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -72,11 +72,16 @@ class Settings(BaseSettings):
     s3_bucket_outputs: str = "papyrus-outputs"
     s3_presign_expires_seconds: int = 900
     s3_force_path_style: bool = True
+    s3_sse: str | None = None
 
     jwt_secret: SecretStr = SecretStr("change-me")
+    jwt_issuer: str = "papyrus"
+    jwt_audience: str = "papyrus-api"
+    jwt_leeway_seconds: int = 30
     jwt_access_ttl_seconds: int = 900
     jwt_refresh_ttl_seconds: int = 2_592_000
     refresh_absolute_ttl_seconds: int = 60 * 60 * 24 * 90
+    token_pepper: SecretStr | None = None
     argon2_time_cost: int = 2
     argon2_memory_cost: int = 19_456
     argon2_parallelism: int = 1
@@ -84,7 +89,13 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = "papyrus_refresh"
     refresh_cookie_path: str = "/api/v1/auth"
     refresh_cookie_domain: str | None = None
-    refresh_cookie_samesite: str = "lax"
+    refresh_cookie_samesite: str = "strict"
+
+    sse_cookie_name: str = "papyrus_sse"
+    sse_ticket_ttl_seconds: int = 60
+
+    login_max_failures: int = 10
+    login_lockout_seconds: int = 900
 
     anon_max_file_bytes: int = 25 * 1024 * 1024
     user_max_file_bytes: int = 500 * 1024 * 1024
@@ -107,6 +118,17 @@ class Settings(BaseSettings):
     trusted_proxies: CsvList = Field(default_factory=list)
 
     zero_retention_mode: bool = False
+
+    @model_validator(mode="after")
+    def _require_strong_secrets(self) -> Settings:
+        if self.papyrus_env in (Environment.DEVELOPMENT, Environment.TEST):
+            return self
+        weak = {"change-me", "change-me-in-production-use-a-long-random-string", ""}
+        if self.jwt_secret.get_secret_value() in weak:
+            raise ValueError("jwt_secret must be set to a strong value outside development.")
+        if self.token_pepper is not None and self.token_pepper.get_secret_value() in weak:
+            raise ValueError("token_pepper must be a strong value when set.")
+        return self
 
     @property
     def is_development(self) -> bool:
