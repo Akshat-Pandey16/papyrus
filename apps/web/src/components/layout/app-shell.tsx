@@ -1,5 +1,5 @@
 import { useLocation } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SkipLink } from "@/components/shared/skip-link";
@@ -22,17 +22,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SkipLink />
       <TopNav />
       <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+        >
+          {children}
+        </motion.div>
       </main>
       <ResultsHost />
     </div>

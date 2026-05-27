@@ -16,29 +16,20 @@ export function applyTheme(theme: Theme): void {
   if (meta) meta.setAttribute("content", resolved === "dark" ? "#1c1018" : "#fbeff0");
 }
 
-export type ThemeWash = { theme: Theme; commit: () => void; x: number; y: number };
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+};
 
-let washHandler: ((w: ThemeWash) => void) | null = null;
-
-export function registerThemeWash(fn: ((w: ThemeWash) => void) | null): void {
-  washHandler = fn;
-}
-
-export function runThemeTransition(
-  theme: Theme,
-  commit: () => void,
-  origin?: { x: number; y: number },
-): void {
+export function runThemeTransition(theme: Theme, commit: () => void): void {
+  const doc = document as ViewTransitionDocument;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced || !washHandler) {
+  if (reduced || !doc.startViewTransition) {
     applyTheme(theme);
     commit();
     return;
   }
-  washHandler({
-    theme,
-    commit,
-    x: origin?.x ?? window.innerWidth / 2,
-    y: origin?.y ?? window.innerHeight / 2,
+  doc.startViewTransition(() => {
+    applyTheme(theme);
+    commit();
   });
 }

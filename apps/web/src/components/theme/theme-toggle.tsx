@@ -1,6 +1,6 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
-import { type MouseEvent, useId } from "react";
+import { useId } from "react";
 import { springSnappy } from "@/lib/motion";
 import { runThemeTransition } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const setTheme = useUiStore((s) => s.setTheme);
   const groupId = useId().replace(/:/g, "");
 
-  const onPick = (value: (typeof OPTIONS)[number]["value"], e: MouseEvent) => {
+  const onPick = (value: (typeof OPTIONS)[number]["value"]) => {
     if (value === theme) return;
-    runThemeTransition(value, () => setTheme(value), { x: e.clientX, y: e.clientY });
+    runThemeTransition(value, () => setTheme(value));
   };
 
   return (
@@ -41,7 +41,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             role="radio"
             aria-checked={active}
             aria-label={label}
-            onClick={(e) => onPick(value, e)}
+            onClick={() => onPick(value)}
             className={cn(
               "relative grid size-7 place-items-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
               active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",

@@ -62,7 +62,6 @@ Desktop.ini
 # Generated
 apps/web/src/types/api.d.ts
 apps/web/src/app/routes/__route-tree.gen.ts
-apps/web/src/routeTree.gen.ts
 
 # Playwright
 test-results/

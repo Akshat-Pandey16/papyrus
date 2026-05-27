@@ -185,6 +185,12 @@
     cursor: none !important;
   }
 
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.32s;
+    animation-timing-function: var(--ease-clay);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
