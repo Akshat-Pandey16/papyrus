@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { History, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { History, LayoutDashboard, LogOut, ScrollText, Settings } from "lucide-react";
 import { Wordmark } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 surface-glass">
-      <div className="flex h-16 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 w-full items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           to="/"
           aria-label="Papyrus home"
@@ -38,7 +38,13 @@ export function TopNav() {
           <Wordmark />
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <Button asChild variant="soft" size="sm">
+            <Link to="/" aria-label="Open the Studio">
+              <ScrollText />
+              <span className="hidden sm:inline">Studio</span>
+            </Link>
+          </Button>
           <ThemeToggle />
           {isAuthed ? (
             <>
@@ -62,6 +68,12 @@ export function TopNav() {
                   <DropdownMenuLabel className="normal-case">
                     {user?.fullName ?? user?.email ?? "Account"}
                   </DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/">
+                      <ScrollText />
+                      Studio
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard">
                       <LayoutDashboard />

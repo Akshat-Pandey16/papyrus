@@ -16,41 +16,29 @@ export function applyTheme(theme: Theme): void {
   if (meta) meta.setAttribute("content", resolved === "dark" ? "#1c1018" : "#fbeff0");
 }
 
-type ViewTransitionDocument = Document & {
-  startViewTransition?: (callback: () => void) => { finished: Promise<void> };
-};
+export type ThemeWash = { theme: Theme; commit: () => void; x: number; y: number };
+
+let washHandler: ((w: ThemeWash) => void) | null = null;
+
+export function registerThemeWash(fn: ((w: ThemeWash) => void) | null): void {
+  washHandler = fn;
+}
 
 export function runThemeTransition(
   theme: Theme,
   commit: () => void,
   origin?: { x: number; y: number },
 ): void {
-  const root = document.documentElement;
-  const doc = document as ViewTransitionDocument;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  if (!doc.startViewTransition || reduced) {
+  if (reduced || !washHandler) {
     applyTheme(theme);
     commit();
     return;
   }
-
-  if (origin) {
-    const radius = Math.hypot(
-      Math.max(origin.x, window.innerWidth - origin.x),
-      Math.max(origin.y, window.innerHeight - origin.y),
-    );
-    root.style.setProperty("--vt-x", `${origin.x}px`);
-    root.style.setProperty("--vt-y", `${origin.y}px`);
-    root.style.setProperty("--vt-r", `${radius}px`);
-  }
-
-  root.classList.add("theme-flip");
-  const transition = doc.startViewTransition(() => {
-    applyTheme(theme);
-    commit();
-  });
-  transition.finished.finally(() => {
-    root.classList.remove("theme-flip");
+  washHandler({
+    theme,
+    commit,
+    x: origin?.x ?? window.innerWidth / 2,
+    y: origin?.y ?? window.innerHeight / 2,
   });
 }

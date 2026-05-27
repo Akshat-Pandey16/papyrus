@@ -10,9 +10,10 @@ export type DropzoneProps = {
   onFiles: (files: File[]) => void;
   multi?: boolean;
   disabled?: boolean;
+  className?: string;
 };
 
-export function Dropzone({ onFiles, multi = false, disabled = false }: DropzoneProps) {
+export function Dropzone({ onFiles, multi = false, disabled = false, className }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const inputId = useId();
@@ -69,6 +70,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false }: DropzoneP
         "group relative flex min-h-[58svh] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-colors sm:p-10",
         over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
         disabled && "pointer-events-none opacity-60",
+        className,
       )}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain opacity-[0.05]" />

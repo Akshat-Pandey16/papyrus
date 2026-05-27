@@ -185,24 +185,6 @@
     cursor: none !important;
   }
 
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-  }
-
-  ::view-transition-old(root) {
-    z-index: 1;
-  }
-
-  ::view-transition-new(root) {
-    z-index: 2147483646;
-  }
-
-  html.theme-flip::view-transition-new(root) {
-    animation: theme-reveal 0.5s var(--ease-clay);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -295,14 +277,5 @@
   }
   50% {
     transform: translateY(-10px) rotate(1.2deg);
-  }
-}
-
-@keyframes theme-reveal {
-  from {
-    clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 50%));
-  }
-  to {
-    clip-path: circle(var(--vt-r, 160%) at var(--vt-x, 50%) var(--vt-y, 50%));
   }
 }

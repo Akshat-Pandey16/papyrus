@@ -22,32 +22,35 @@ export function ToolDock({
   onOpenResults,
 }: ToolDockProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-2 sm:bottom-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex flex-col items-center gap-2 px-2 sm:bottom-6">
+      <span className="rounded-full bg-popover/90 px-3 py-1 text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase shadow-clay-sm backdrop-blur sm:hidden">
+        Tools · tap to switch
+      </span>
       <motion.div
-        initial={{ y: 48, opacity: 0 }}
+        initial={{ y: 56, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ ...springSnappy, delay: 0.1 }}
-        className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/70 surface-glass p-1.5 shadow-clay-lg sm:gap-1"
+        transition={{ ...springSnappy, delay: 0.12 }}
+        className="pointer-events-auto flex items-center gap-1 rounded-full border border-border bg-popover/95 p-1.5 shadow-clay-lg ring-1 ring-primary/15 backdrop-blur-xl"
       >
         {TOOL_ORDER.map((id) => {
           const tool = TOOLS[id];
           const Icon = tool.icon;
           const active = id === activeTool;
           return (
-            <Tip key={id} label={tool.label}>
+            <Tip key={id} label={tool.tagline}>
               <motion.button
                 type="button"
                 onClick={() => onSelect(id)}
                 aria-label={tool.label}
                 aria-pressed={active}
-                whileHover={{ y: -6, scale: 1.14 }}
-                whileTap={{ scale: 0.92 }}
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.94 }}
                 transition={springSnappy}
                 className={cn(
-                  "relative grid size-10 shrink-0 place-items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-11",
+                  "relative flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-11 sm:px-3",
                   active
                     ? "text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
                 {active ? (
@@ -58,6 +61,9 @@ export function ToolDock({
                   />
                 ) : null}
                 <Icon className="relative z-10 size-[1.15rem]" strokeWidth={2.1} />
+                <span className="relative z-10 hidden text-sm font-medium sm:inline">
+                  {tool.label}
+                </span>
               </motion.button>
             </Tip>
           );
@@ -70,12 +76,13 @@ export function ToolDock({
             type="button"
             onClick={onOpenResults}
             aria-label={`Results (${resultsCount})`}
-            whileHover={{ y: -6, scale: 1.14 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -4 }}
+            whileTap={{ scale: 0.94 }}
             transition={springSnappy}
-            className="relative grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:size-11"
+            className="relative flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:h-11 sm:px-3"
           >
-            <Inbox className="size-[1.15rem]" strokeWidth={2.1} />
+            <Inbox className="relative z-10 size-[1.15rem]" strokeWidth={2.1} />
+            <span className="relative z-10 hidden text-sm font-medium sm:inline">Results</span>
             {resultsCount > 0 ? (
               <span
                 className={cn(

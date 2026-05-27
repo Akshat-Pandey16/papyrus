@@ -15,8 +15,8 @@ export function GlobalCursor() {
 
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
-  const ringX = useSpring(x, { stiffness: 320, damping: 26, mass: 0.45 });
-  const ringY = useSpring(y, { stiffness: 320, damping: 26, mass: 0.45 });
+  const ringX = useSpring(x, { stiffness: 380, damping: 30, mass: 0.4 });
+  const ringY = useSpring(y, { stiffness: 380, damping: 30, mass: 0.4 });
 
   const [visible, setVisible] = useState(false);
   const [hot, setHot] = useState(false);
@@ -61,18 +61,21 @@ export function GlobalCursor() {
   if (!enabled) return null;
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden">
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[9999]">
       <motion.div
-        className="absolute size-8 rounded-full border border-primary"
-        style={{ x: ringX, y: ringY, marginLeft: -16, marginTop: -16 }}
-        animate={{ opacity: visible ? (hot ? 1 : 0.55) : 0, scale: down ? 0.85 : hot ? 1.7 : 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        className="absolute size-9 rounded-full border-[1.5px] border-foreground"
+        style={{ x: ringX, y: ringY, marginLeft: -18, marginTop: -18 }}
+        animate={{
+          opacity: visible ? (hot ? 0.9 : 0.5) : 0,
+          scale: down ? 0.82 : hot ? 1.75 : 1,
+        }}
+        transition={{ type: "spring", stiffness: 250, damping: 20 }}
       />
       <motion.div
-        className="absolute size-2 rounded-full bg-molten"
-        style={{ x, y, marginLeft: -4, marginTop: -4 }}
-        animate={{ opacity: visible ? 1 : 0, scale: down ? 0.5 : hot ? 0.4 : 1 }}
-        transition={{ duration: 0.12 }}
+        className="absolute size-1.5 rounded-full bg-primary ring-2 ring-background/70"
+        style={{ x, y, marginLeft: -3, marginTop: -3 }}
+        animate={{ opacity: visible && !hot ? 1 : 0, scale: down ? 0.6 : 1 }}
+        transition={{ duration: 0.14 }}
       />
     </div>
   );

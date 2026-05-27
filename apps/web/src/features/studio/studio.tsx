@@ -7,7 +7,6 @@ import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
 import { Dropzone } from "@/features/studio/dropzone";
 import { ResultsDrawer } from "@/features/studio/results-drawer";
-import { ResultsHost } from "@/features/studio/results-host";
 import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
 import { ToolDock } from "@/features/studio/tool-dock";
@@ -130,25 +129,31 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pt-8">
-        <AnimatePresence mode="wait" initial={false}>
-          {showEmpty ? (
-            <motion.div key="empty" variants={fadeRise} initial="hidden" animate="show" exit="exit">
-              <Dropzone onFiles={acceptFiles} multi={multi} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key={activeTool}
-              variants={fadeRise}
-              initial="hidden"
-              animate="show"
-              exit="exit"
-            >
-              {renderTool()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {showEmpty ? (
+          <motion.div
+            key="empty"
+            variants={fadeRise}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            className="flex min-h-[calc(100svh-4rem)] w-full items-stretch px-4 pt-4 pb-24 sm:px-6 lg:px-8"
+          >
+            <Dropzone onFiles={acceptFiles} multi={multi} className="flex-1" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key={activeTool}
+            variants={fadeRise}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pt-8"
+          >
+            {renderTool()}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {dragOver ? (
@@ -175,7 +180,6 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
         activeCount={activeCount}
         onOpenResults={() => setResultsOpen(true)}
       />
-      <ResultsHost />
       <ResultsDrawer open={resultsOpen} onOpenChange={setResultsOpen} />
     </div>
   );
