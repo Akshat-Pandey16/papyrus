@@ -130,7 +130,7 @@ function SignupPage() {
                 <span
                   className={[
                     "grid h-4 w-4 place-items-center rounded-full transition-colors",
-                    ok ? "bg-emerald-500/15 text-emerald-600" : "bg-muted text-muted-foreground/70",
+                    ok ? "bg-success/15 text-success" : "bg-muted text-muted-foreground/70",
                   ].join(" ")}
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />

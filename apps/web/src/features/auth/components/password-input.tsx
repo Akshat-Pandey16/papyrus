@@ -13,10 +13,9 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           ref={ref}
           type={shown ? "text" : "password"}
           className={cn(
-            "flex h-11 w-full rounded-lg border border-input bg-background pl-3.5 pr-11 py-2 text-[0.95rem]",
-            "shadow-xs transition-[border-color,box-shadow] outline-none",
-            "placeholder:text-muted-foreground",
-            "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+            "flex h-11 w-full rounded-xl border border-input bg-card py-2 pr-11 pl-3.5 text-[0.95rem] text-foreground shadow-clay-sm outline-none transition-[border-color,box-shadow]",
+            "placeholder:text-muted-foreground/70",
+            "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35",
             "disabled:cursor-not-allowed disabled:opacity-60",
             "aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/30",
             className,
@@ -27,14 +26,10 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type="button"
           onClick={() => setShown((s) => !s)}
           aria-label={shown ? "Hide password" : "Show password"}
-          className={cn(
-            "absolute right-1.5 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center",
-            "rounded-md text-muted-foreground hover:bg-accent hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-          )}
           tabIndex={-1}
+          className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
         >
-          {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
       </div>
     );

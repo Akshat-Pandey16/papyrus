@@ -1,5 +1,8 @@
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useId } from "react";
+import { motion } from "motion/react";
+import { type MouseEvent, useId } from "react";
+import { springSnappy } from "@/lib/motion";
+import { runThemeTransition } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -12,44 +15,49 @@ const OPTIONS = [
 export function ThemeToggle({ className }: { className?: string }) {
   const theme = useUiStore((s) => s.theme);
   const setTheme = useUiStore((s) => s.setTheme);
-  const name = useId();
+  const groupId = useId().replace(/:/g, "");
+
+  const onPick = (value: (typeof OPTIONS)[number]["value"], e: MouseEvent) => {
+    if (value === theme) return;
+    runThemeTransition(value, () => setTheme(value), { x: e.clientX, y: e.clientY });
+  };
 
   return (
-    <fieldset
+    <div
+      role="radiogroup"
       aria-label="Theme"
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5",
+        "inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-card/50 p-1 backdrop-blur",
         className,
       )}
     >
       {OPTIONS.map(({ value, icon: Icon, label }) => {
-        const id = `${name}-${value}`;
-        const checked = theme === value;
+        const active = theme === value;
         return (
-          <label
+          // biome-ignore lint/a11y/useSemanticElements: animated segmented toggle; radiogroup/radio ARIA is intentional
+          <button
             key={value}
-            htmlFor={id}
+            type="button"
+            role="radio"
+            aria-checked={active}
             aria-label={label}
+            onClick={(e) => onPick(value, e)}
             className={cn(
-              "grid h-7 w-7 cursor-pointer place-items-center rounded transition-colors",
-              checked
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              "relative grid size-7 place-items-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+              active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <input
-              id={id}
-              type="radio"
-              name={name}
-              value={value}
-              checked={checked}
-              onChange={() => setTheme(value)}
-              className="sr-only"
-            />
-            <Icon className="h-3.5 w-3.5" aria-hidden />
-          </label>
+            {active ? (
+              <motion.span
+                layoutId={`theme-indicator-${groupId}`}
+                className="absolute inset-0 rounded-full bg-molten shadow-clay-sm"
+                transition={springSnappy}
+              />
+            ) : null}
+            <Icon className="relative z-10 size-3.5" strokeWidth={2.25} aria-hidden />
+          </button>
         );
       })}
-    </fieldset>
+    </div>
   );
 }

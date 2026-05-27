@@ -1,56 +1,37 @@
 import { useLocation } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
-import { AppHeader } from "@/components/layout/app-header";
-import { AppMobileDrawer } from "@/components/layout/app-mobile-drawer";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { Topbar } from "@/components/layout/topbar";
+import { AnimatePresence, motion } from "motion/react";
+import type { ReactNode } from "react";
+import { TopNav } from "@/components/layout/top-nav";
 import { SkipLink } from "@/components/shared/skip-link";
-import { useAuthStore } from "@/features/auth/store";
 
 const AUTH_FORM_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password"];
-const APP_PREFIXES = ["/dashboard", "/tools", "/settings", "/jobs"];
 
-type AppShellProps = {
-  children: ReactNode;
-};
-
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const hasAccess = useAuthStore((s) => s.hasAccess);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
   const isAuthForm = AUTH_FORM_PREFIXES.some((p) => location.pathname.startsWith(p));
+
   if (isAuthForm) {
     return (
       <div className="min-h-svh w-full bg-background text-foreground antialiased">{children}</div>
     );
   }
 
-  const isAppRoute = APP_PREFIXES.some((p) => location.pathname.startsWith(p));
-  const isToolRoute = location.pathname.startsWith("/tools");
-
-  if ((isAppRoute && hasAccess) || (isToolRoute && hasAccess)) {
-    return (
-      <div className="flex min-h-svh w-full bg-background text-foreground antialiased">
-        <SkipLink />
-        <AppSidebar />
-        <AppMobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader onOpenMobileNav={() => setDrawerOpen(true)} />
-          <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-            {children}
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-svh w-full flex-col bg-background text-foreground antialiased">
       <SkipLink />
-      <Topbar />
+      <TopNav />
       <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-        {children}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

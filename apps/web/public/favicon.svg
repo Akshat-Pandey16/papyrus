@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Papyrus">
-  <rect width="512" height="512" rx="112" fill="#0a0a0a"/>
-  <g fill="none" stroke="#fafafa" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <linearGradient id="m" x1="64" y1="40" x2="448" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E5379B"/>
+      <stop offset="1" stop-color="#E1466A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#m)"/>
+  <g fill="none" stroke="#fff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
     <path d="M176 120h128a48 48 0 0 1 48 48v176a48 48 0 0 1-48 48H160a48 48 0 0 1-48-48V120z"/>
     <path d="M112 120a32 32 0 0 1 64 0v224"/>
     <path d="M208 196h104M208 256h104M208 316h72"/>

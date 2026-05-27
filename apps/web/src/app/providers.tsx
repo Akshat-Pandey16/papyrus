@@ -1,9 +1,13 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 import { lazy, type ReactNode, Suspense } from "react";
 import { Toaster } from "sonner";
+import { GlobalCursor } from "@/components/cursor/global-cursor";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionBootstrap } from "@/features/auth/session-bootstrap";
 import { queryClient } from "@/lib/api/query-client";
+import { useUiStore } from "@/stores/ui-store";
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -18,19 +22,31 @@ const ReactQueryDevtools = import.meta.env.DEV
   : null;
 
 export function AppProviders({ children }: AppProvidersProps) {
+  const theme = useUiStore((s) => s.theme);
+
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <SessionBootstrap>{children}</SessionBootstrap>
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider delayDuration={200} skipDelayDuration={400}>
+            <SessionBootstrap>{children}</SessionBootstrap>
+          </TooltipProvider>
+        </MotionConfig>
         <Toaster
           position="bottom-right"
-          richColors
+          theme={theme}
           closeButton
-          theme="system"
           toastOptions={{
             classNames: {
               toast:
-                "group toast group-[.toaster]:bg-card group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+                "group !rounded-2xl !border-border/70 !bg-popover !text-popover-foreground !shadow-clay-lg",
+              title: "!font-medium",
+              description: "!text-muted-foreground",
+              actionButton: "!bg-primary !text-primary-foreground !rounded-full",
+              cancelButton: "!bg-muted !text-muted-foreground !rounded-full",
+              closeButton: "!bg-card !border-border !text-muted-foreground",
+              error: "!text-destructive",
+              success: "!text-success",
             },
           }}
         />
@@ -39,6 +55,7 @@ export function AppProviders({ children }: AppProvidersProps) {
             <ReactQueryDevtools initialIsOpen={false} />
           </Suspense>
         ) : null}
+        <GlobalCursor />
       </QueryClientProvider>
     </ThemeProvider>
   );

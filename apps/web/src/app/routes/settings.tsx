@@ -46,13 +46,13 @@ function SettingsPage() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="w-full px-6 py-10 sm:px-10 lg:px-14">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+    <div className="w-full px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[900px] flex-col gap-8">
         <header className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Account
-          </span>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Settings</h1>
+          <span className="text-xs font-medium tracking-wide text-primary uppercase">Account</span>
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            Settings
+          </h1>
           <p className="text-[0.95rem] text-muted-foreground">
             Manage your profile, password, and active sessions.
           </p>
@@ -108,13 +108,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6">
+    <section className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card p-6 shadow-clay">
       <header className="flex items-start gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground/5 text-foreground">
+        <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-clay-sm">
           {icon}
         </div>
         <div className="flex flex-col">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="font-display text-lg font-semibold">{title}</h2>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </header>

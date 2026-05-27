@@ -12,10 +12,10 @@ export function Select({ className, children, size = "default", ...props }: Sele
       <select
         {...props}
         className={cn(
-          "w-full appearance-none rounded-md border border-input bg-background pr-9 pl-3 text-sm shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          size === "sm" ? "h-9" : "h-10",
+          "w-full appearance-none rounded-xl border border-input bg-card pr-10 pl-3.5 text-[0.95rem] text-foreground shadow-clay-sm outline-none transition-[border-color,box-shadow]",
+          "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35",
+          "disabled:cursor-not-allowed disabled:opacity-60",
+          size === "sm" ? "h-9" : "h-11",
           className,
         )}
       >
@@ -23,7 +23,7 @@ export function Select({ className, children, size = "default", ...props }: Sele
       </select>
       <ChevronDown
         aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground"
       />
     </div>
   );

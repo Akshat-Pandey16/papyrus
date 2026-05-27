@@ -1,17 +1,6 @@
 import { type ReactNode, useEffect } from "react";
+import { applyTheme } from "@/lib/theme";
 import { useUiStore } from "@/stores/ui-store";
-
-function applyTheme(theme: "light" | "dark" | "system") {
-  const root = document.documentElement;
-  const resolved =
-    theme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : theme;
-  root.classList.toggle("dark", resolved === "dark");
-  root.style.colorScheme = resolved;
-}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useUiStore((s) => s.theme);

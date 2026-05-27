@@ -80,7 +80,7 @@ export function NumberInput({
   return (
     <div
       className={cn(
-        "inline-flex h-9 items-center rounded-md border border-border bg-background",
+        "inline-flex h-11 items-center rounded-xl border border-input bg-card shadow-clay-sm",
         disabled && "pointer-events-none opacity-60",
         className,
       )}
@@ -90,9 +90,9 @@ export function NumberInput({
         aria-label="Decrement"
         onClick={() => stepBy(-step)}
         disabled={disabled || value <= min}
-        className="grid h-full w-8 place-items-center rounded-l-md text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        className="grid h-full w-10 place-items-center rounded-l-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Minus className="h-3.5 w-3.5" aria-hidden />
+        <Minus className="size-4" aria-hidden />
       </button>
       <input
         id={id}
@@ -109,16 +109,16 @@ export function NumberInput({
         onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={onKeyDown}
-        className="h-full w-12 bg-transparent text-center text-sm tabular-nums focus:outline-none"
+        className="h-full w-14 bg-transparent text-center font-mono text-sm font-medium tabular-nums text-foreground focus:outline-none"
       />
       <button
         type="button"
         aria-label="Increment"
         onClick={() => stepBy(step)}
         disabled={disabled || value >= max}
-        className="grid h-full w-8 place-items-center rounded-r-md text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        className="grid h-full w-10 place-items-center rounded-r-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <Plus className="h-3.5 w-3.5" aria-hidden />
+        <Plus className="size-4" aria-hidden />
       </button>
     </div>
   );
