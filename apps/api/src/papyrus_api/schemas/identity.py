@@ -77,7 +77,7 @@ class OrganizationOut(StrictModel):
 
 class UserOut(StrictModel):
     id: UUID
-    email: EmailStr
+    email: str
     full_name: str | None
     is_active: bool
     is_anonymous: bool
