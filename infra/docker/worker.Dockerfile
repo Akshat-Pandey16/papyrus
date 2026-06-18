@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         qpdf \
         ghostscript \
         tesseract-ocr \
+        ocrmypdf \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 10001 -g root papyrus
 

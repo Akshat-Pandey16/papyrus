@@ -13,9 +13,27 @@ export type PageCanvasProps = {
   className?: string | undefined;
 };
 
-export const PAGE_CANVAS_CAP = 150;
+export const PAGE_CANVAS_CAP = 2000;
 export const PAGE_GRID_CLASS =
   "grid grid-cols-[repeat(auto-fill,minmax(108px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(124px,1fr))]";
+
+const MAX_CONCURRENT_RENDERS = 4;
+let activeRenders = 0;
+const renderWaiters: Array<() => void> = [];
+
+async function withRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+    await new Promise<void>((resolve) => renderWaiters.push(resolve));
+  }
+  activeRenders += 1;
+  try {
+    return await fn();
+  } finally {
+    activeRenders -= 1;
+    const next = renderWaiters.shift();
+    if (next) next();
+  }
+}
 
 type PdfViewport = { width: number; height: number };
 type PdfPage = {
@@ -40,20 +58,42 @@ const JPEG_QUALITY = 0.8;
 const CACHE_FILES = 4;
 
 const renderCache = new Map<File, Map<number, string>>();
+const docCache = new Map<File, Promise<PdfDoc>>();
+
+function evictFile(file: File): void {
+  const urls = renderCache.get(file);
+  if (urls) {
+    for (const url of urls.values()) URL.revokeObjectURL(url);
+    renderCache.delete(file);
+  }
+  const doc = docCache.get(file);
+  docCache.delete(file);
+  if (doc) void doc.then((d) => d.destroy()).catch(() => {});
+}
+
+function getDoc(file: File): Promise<PdfDoc> {
+  let p = docCache.get(file);
+  if (!p) {
+    p = (async () => {
+      const pdfjs = await loadPdfjs();
+      const data = await file.arrayBuffer();
+      return (await pdfjs.getDocument({ data }).promise) as unknown as PdfDoc;
+    })();
+    docCache.set(file, p);
+    while (docCache.size > CACHE_FILES) {
+      const oldest = docCache.keys().next().value;
+      if (!oldest || oldest === file) break;
+      evictFile(oldest);
+    }
+  }
+  return p;
+}
 
 function fileCache(file: File): Map<number, string> {
   let m = renderCache.get(file);
   if (!m) {
     m = new Map();
     renderCache.set(file, m);
-    if (renderCache.size > CACHE_FILES) {
-      const oldestKey = renderCache.keys().next().value;
-      if (oldestKey) {
-        const old = renderCache.get(oldestKey);
-        if (old) for (const url of old.values()) URL.revokeObjectURL(url);
-        renderCache.delete(oldestKey);
-      }
-    }
   }
   return m;
 }
@@ -78,37 +118,22 @@ export type PdfRenderer = {
 };
 
 export function usePdfRenderer(file: File): PdfRenderer {
-  const docRef = useRef<PdfDoc | null>(null);
-  const tokenRef = useRef(0);
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = ++tokenRef.current;
+    let alive = true;
     setTotal(null);
     setError(null);
-    docRef.current = null;
-    (async () => {
-      const pdfjs = await loadPdfjs();
-      const data = await file.arrayBuffer();
-      if (token !== tokenRef.current) return;
-      const doc = (await pdfjs.getDocument({ data }).promise) as unknown as PdfDoc;
-      if (token !== tokenRef.current) {
-        void doc.destroy();
-        return;
-      }
-      docRef.current = doc;
-      setTotal(doc.numPages);
-    })().catch((err) => {
-      if (token === tokenRef.current) {
-        setError(err instanceof Error ? err.message : "Could not read this PDF.");
-      }
-    });
+    getDoc(file)
+      .then((doc) => {
+        if (alive) setTotal(doc.numPages);
+      })
+      .catch((err) => {
+        if (alive) setError(err instanceof Error ? err.message : "Could not read this PDF.");
+      });
     return () => {
-      tokenRef.current++;
-      const doc = docRef.current;
-      docRef.current = null;
-      if (doc) void doc.destroy();
+      alive = false;
     };
   }, [file]);
 
@@ -117,27 +142,30 @@ export function usePdfRenderer(file: File): PdfRenderer {
       const cache = fileCache(file);
       const hit = cache.get(index);
       if (hit) return hit;
-      const doc = docRef.current;
-      if (!doc) return null;
-      const page = await doc.getPage(index);
-      const unscaled = page.getViewport({ scale: 1 });
-      const scale = Math.min(MAX_SCALE, TARGET_WIDTH / unscaled.width);
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
+      const doc = await getDoc(file);
+      return withRenderSlot(async () => {
+        const existing = cache.get(index);
+        if (existing) return existing;
+        const page = await doc.getPage(index);
+        const unscaled = page.getViewport({ scale: 1 });
+        const scale = Math.min(MAX_SCALE, TARGET_WIDTH / unscaled.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          page.cleanup();
+          return null;
+        }
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
         page.cleanup();
-        return null;
-      }
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-      page.cleanup();
-      const url = await canvasToObjectUrl(canvas);
-      cache.set(index, url);
-      return url;
+        const url = await canvasToObjectUrl(canvas);
+        cache.set(index, url);
+        return url;
+      });
     },
     [file],
   );

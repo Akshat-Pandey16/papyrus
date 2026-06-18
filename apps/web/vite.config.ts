@@ -4,7 +4,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   envDir: path.resolve(__dirname, "../.."),
   plugins: [
     tanstackRouter({
@@ -26,7 +26,7 @@ export default defineConfig({
   },
   build: {
     target: "es2023",
-    sourcemap: true,
+    sourcemap: mode === "production" ? "hidden" : true,
     cssCodeSplit: true,
     chunkSizeWarningLimit: 800,
     rollupOptions: {
@@ -67,4 +67,4 @@ export default defineConfig({
     globals: true,
     css: true,
   },
-});
+}));

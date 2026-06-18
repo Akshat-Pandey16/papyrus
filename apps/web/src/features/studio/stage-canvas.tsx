@@ -119,7 +119,7 @@ export function StageCanvas({
       {instruction ? <CanvasInstruction>{instruction}</CanvasInstruction> : null}
       <PageCanvas
         file={file}
-        maxPages={maxPages ?? 60}
+        maxPages={maxPages}
         rotations={rotations}
         onPageClick={onPageClick}
         selectedPages={selectedPages}

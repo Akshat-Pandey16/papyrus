@@ -31,38 +31,11 @@ export class ApiError extends Error {
   }
 }
 
-const ACCESS_KEY = "papyrus.access_token";
-const ACCESS_EXP_KEY = "papyrus.access_exp";
 const EXP_SKEW_SECONDS = 30;
 
 type AccessSnapshot = { token: string; expiresAt: number } | null;
 
-let accessSnapshot: AccessSnapshot = readSnapshot();
-
-function readSnapshot(): AccessSnapshot {
-  try {
-    const token = sessionStorage.getItem(ACCESS_KEY);
-    const expRaw = sessionStorage.getItem(ACCESS_EXP_KEY);
-    if (!token || !expRaw) return null;
-    const expiresAt = Number.parseInt(expRaw, 10);
-    if (!Number.isFinite(expiresAt)) return null;
-    return { token, expiresAt };
-  } catch {
-    return null;
-  }
-}
-
-function writeSnapshot(snapshot: AccessSnapshot) {
-  try {
-    if (snapshot) {
-      sessionStorage.setItem(ACCESS_KEY, snapshot.token);
-      sessionStorage.setItem(ACCESS_EXP_KEY, String(snapshot.expiresAt));
-    } else {
-      sessionStorage.removeItem(ACCESS_KEY);
-      sessionStorage.removeItem(ACCESS_EXP_KEY);
-    }
-  } catch {}
-}
+let accessSnapshot: AccessSnapshot = null;
 
 function decodeJwtExp(token: string): number | null {
   const parts = token.split(".");
@@ -84,7 +57,6 @@ function decodeJwtExp(token: string): number | null {
 export function setAccessToken(token: string | null, expiresInSeconds?: number) {
   if (!token) {
     accessSnapshot = null;
-    writeSnapshot(null);
     return;
   }
   const exp = decodeJwtExp(token);
@@ -92,7 +64,6 @@ export function setAccessToken(token: string | null, expiresInSeconds?: number) 
   const expiresAt =
     exp ?? (typeof expiresInSeconds === "number" ? now + expiresInSeconds : now + 900);
   accessSnapshot = { token, expiresAt };
-  writeSnapshot(accessSnapshot);
 }
 
 export function getAccessToken(): string | null {
@@ -120,12 +91,23 @@ async function refreshAccess(): Promise<string | null> {
   return inflightRefresh;
 }
 
-function attachAuth(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  const token = getAccessToken();
-  if (token && config.headers) {
-    config.headers.set("Authorization", `Bearer ${token}`);
+const AUTH_REFRESH_PATHS = ["/auth/refresh", "/auth/session", "/auth/anonymous"];
+
+function isAuthRefreshPath(url: string): boolean {
+  return AUTH_REFRESH_PATHS.some((p) => url.includes(p));
+}
+
+async function attachAuth(config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> {
+  const cfg = config as InternalAxiosRequestConfig & { _skipAuthRetry?: boolean };
+  const url = cfg.url ?? "";
+  if (!cfg._skipAuthRetry && !isAuthRefreshPath(url) && getAccessToken() && !isAccessTokenValid()) {
+    await refreshAccess();
   }
-  return config;
+  const token = getAccessToken();
+  if (token && cfg.headers) {
+    cfg.headers.set("Authorization", `Bearer ${token}`);
+  }
+  return cfg;
 }
 
 type RetriableConfig = AxiosRequestConfig & {

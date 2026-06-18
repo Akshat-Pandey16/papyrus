@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/features/auth/store";
 import { JobRunner } from "@/features/studio/job-runner";
-import { useSessionJobs } from "@/features/studio/session-jobs";
+import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 
 export function ResultsHost() {
   const hasAccess = useAuthStore((s) => s.hasAccess);
@@ -9,7 +9,7 @@ export function ResultsHost() {
   return (
     <>
       {jobs
-        .filter((j) => j.jobId)
+        .filter((j) => j.jobId && isActivePhase(j.phase))
         .map((j) => (
           <JobRunner key={j.key} job={j} />
         ))}

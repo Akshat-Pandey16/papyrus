@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,6 +30,7 @@ import {
 } from "@/features/pdf-tools/api";
 import { triggerDownload } from "@/features/pdf-tools/download";
 import { isActivePhase, type SessionJob } from "@/features/studio/session-jobs";
+import { ApiError } from "@/lib/api/client";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
 import { randomUUID } from "@/lib/uuid";
@@ -59,6 +62,7 @@ export function ResultCard({ job }: { job: SessionJob }) {
   const download = useDownloadUrlMutation();
   const cancel = useCancelJobMutation();
   const retry = useRetryJobMutation();
+  const [expired, setExpired] = useState(false);
 
   const status = remote?.status;
   const phase = job.phase;
@@ -77,8 +81,17 @@ export function ResultCard({ job }: { job: SessionJob }) {
 
   const onDownload = async () => {
     if (!job.jobId) return;
-    const r = await download.mutateAsync({ jobId: job.jobId });
-    triggerDownload(r.url, r.filename);
+    try {
+      const r = await download.mutateAsync({ jobId: job.jobId });
+      triggerDownload(r.url, r.filename);
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 410 || err.code === "job_output_expired")) {
+        setExpired(true);
+        toast.info("This file was erased from our servers. Re-run the tool to regenerate it.");
+      } else {
+        toast.error("Could not prepare the download. Please try again.");
+      }
+    }
   };
 
   const onCancel = async () => {
@@ -179,16 +192,22 @@ export function ResultCard({ job }: { job: SessionJob }) {
               </span>
             ) : null}
           </div>
-          <Button
-            size="sm"
-            variant="soft"
-            onClick={onDownload}
-            disabled={download.isPending}
-            className="self-start"
-          >
-            <Download />
-            {download.isPending ? "Preparing…" : "Download again"}
-          </Button>
+          {expired ? (
+            <p className="text-xs text-muted-foreground">
+              Erased from our servers per your privacy setting. Re-run the tool to regenerate it.
+            </p>
+          ) : (
+            <Button
+              size="sm"
+              variant="soft"
+              onClick={onDownload}
+              disabled={download.isPending}
+              className="self-start"
+            >
+              <Download />
+              {download.isPending ? "Preparing…" : "Download again"}
+            </Button>
+          )}
         </div>
       ) : null}
 

@@ -6,6 +6,7 @@ import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
 import { useDownloadUrlMutation } from "@/features/pdf-tools/api";
 import { triggerDownload } from "@/features/pdf-tools/download";
+import { useInvalidateJobsFeed } from "@/features/pdf-tools/jobs-feed";
 import type { SessionJob } from "@/features/studio/session-jobs";
 
 const TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
@@ -32,12 +33,21 @@ export function JobRunner({ job }: { job: SessionJob }) {
   const download = useDownloadUrlMutation();
   const downloadRef = useRef(download);
   downloadRef.current = download;
+  const invalidateFeed = useInvalidateJobsFeed();
+  const invalidateFeedRef = useRef(invalidateFeed);
+  invalidateFeedRef.current = invalidateFeed;
   const seenRef = useRef(false);
   const handledRef = useRef(false);
+  const feedInvalidatedRef = useRef(false);
 
   useEffect(() => {
     if (!data) return;
     const status = data.status;
+
+    if (TERMINAL.has(status) && !feedInvalidatedRef.current) {
+      feedInvalidatedRef.current = true;
+      void invalidateFeedRef.current();
+    }
 
     if (!seenRef.current) {
       seenRef.current = true;
