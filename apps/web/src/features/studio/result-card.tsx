@@ -76,6 +76,10 @@ export function ResultCard({ job }: { job: SessionJob }) {
   const Icon = KIND_ICON[job.kind] ?? FileText;
   const serverPhase = remote?.phase && status === "running" ? remote.phase : null;
   const label = serverPhase ?? PHASE_LABEL[phase] ?? "Working";
+  const uploading = phase === "uploading" && job.bytesTotal != null && job.bytesTotal > 0;
+  const uploadPct = uploading
+    ? Math.round(((job.bytesUploaded ?? 0) / (job.bytesTotal ?? 1)) * 100)
+    : 0;
 
   const dismiss = () => (job.source === "upload" ? removeUpload(job.key) : removeBatch(job.key));
 
@@ -166,11 +170,14 @@ export function ResultCard({ job }: { job: SessionJob }) {
 
       {active ? (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Spinner className="size-3.5 text-primary" />
-            <span>{label}…</span>
+          <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <Spinner className="size-3.5 text-primary" />
+              <span>{uploading ? "Uploading" : label}…</span>
+            </span>
+            {uploading ? <span className="font-mono">{uploadPct}%</span> : null}
           </div>
-          <Progress indeterminate />
+          {uploading ? <Progress value={uploadPct} /> : <Progress indeterminate />}
         </div>
       ) : null}
 

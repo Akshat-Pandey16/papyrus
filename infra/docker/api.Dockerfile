@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 \
         ca-certificates \
         tini \
+        qpdf \
+        ghostscript \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 10001 -g root papyrus
 

@@ -17,6 +17,8 @@ export type SessionJob = {
   createdAt: number;
   errorCode: string | undefined;
   errorMessage: string | undefined;
+  bytesUploaded: number | undefined;
+  bytesTotal: number | undefined;
 };
 
 const ACTIVE_PHASES = new Set([
@@ -51,10 +53,13 @@ export function useSessionJobs(): SessionJob[] {
         createdAt: e.createdAt,
         errorCode: e.errorCode,
         errorMessage: e.errorMessage,
+        bytesUploaded: e.bytesUploaded,
+        bytesTotal: e.bytesTotal,
       });
     }
     for (const b of Object.values(batches)) {
       const totalSize = b.files.reduce((sum, f) => sum + f.fileSize, 0);
+      const uploadedSize = b.files.reduce((sum, f) => sum + (f.bytesUploaded ?? 0), 0);
       const first = b.files[0]?.fileName ?? "Merge";
       const title = b.files.length > 1 ? `${first} + ${b.files.length - 1} more` : first;
       list.push({
@@ -69,6 +74,8 @@ export function useSessionJobs(): SessionJob[] {
         createdAt: b.createdAt,
         errorCode: b.errorCode,
         errorMessage: b.errorMessage,
+        bytesUploaded: uploadedSize,
+        bytesTotal: totalSize,
       });
     }
     return list.sort((a, b) => b.createdAt - a.createdAt);

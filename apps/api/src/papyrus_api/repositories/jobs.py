@@ -96,9 +96,7 @@ class JobRepository(AsyncRepository[Job]):
 
     async def list_stale_pending(self, *, cutoff: datetime, limit: int = 200) -> list[Job]:
         stmt = (
-            select(Job)
-            .where(Job.status == JobStatus.PENDING, Job.created_at < cutoff)
-            .limit(limit)
+            select(Job).where(Job.status == JobStatus.PENDING, Job.created_at < cutoff).limit(limit)
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

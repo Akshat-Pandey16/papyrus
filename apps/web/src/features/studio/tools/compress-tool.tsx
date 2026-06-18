@@ -44,6 +44,7 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const estimateUnavailable = file.size > 100 * 1024 * 1024;
   const { start } = usePdfUpload();
   const startUpload = useUploadStore((s) => s.start);
   const updateUpload = useUploadStore((s) => s.update);
@@ -174,11 +175,15 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
               <Button
                 variant="outline"
                 onClick={onEstimate}
-                disabled={submitting || estimateMutation.isPending}
+                disabled={submitting || estimateMutation.isPending || estimateUnavailable}
                 className="w-full"
               >
                 {estimateMutation.isPending ? <Spinner /> : <Gauge />}
-                {estimateMutation.isPending ? "Estimating…" : "Preview savings"}
+                {estimateUnavailable
+                  ? "Preview off for large files"
+                  : estimateMutation.isPending
+                    ? "Estimating…"
+                    : "Preview savings"}
               </Button>
             </div>
           }

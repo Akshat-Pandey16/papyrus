@@ -77,19 +77,21 @@ install_base_packages() {
     apt)
       sudo_run apt-get update -y || warn "apt-get update reported errors; continuing."
       sudo_run apt-get install -y --no-install-recommends \
-        build-essential ca-certificates curl gnupg pkg-config libssl-dev libffi-dev git
+        build-essential ca-certificates curl gnupg pkg-config libssl-dev libffi-dev git \
+        ghostscript qpdf ocrmypdf tesseract-ocr
       ;;
     dnf)
       sudo_run dnf install -y gcc gcc-c++ make ca-certificates curl gnupg pkgconf \
-        openssl-devel libffi-devel git
+        openssl-devel libffi-devel git ghostscript qpdf ocrmypdf tesseract
       ;;
     pacman)
-      sudo_run pacman -Syu --noconfirm --needed base-devel curl gnupg openssl libffi git
+      sudo_run pacman -Syu --noconfirm --needed base-devel curl gnupg openssl libffi git \
+        ghostscript qpdf ocrmypdf tesseract
       ;;
     brew)
       have brew || { err "Install Homebrew first: https://brew.sh"; exit 1; }
       brew update
-      brew install pkg-config openssl libffi
+      brew install pkg-config openssl libffi ghostscript qpdf ocrmypdf tesseract
       ;;
   esac
   ok "Base packages installed."

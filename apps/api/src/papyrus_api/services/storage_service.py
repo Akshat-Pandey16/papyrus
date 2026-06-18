@@ -105,6 +105,26 @@ class StorageService:
         return True
 
     @staticmethod
+    async def ensure_lifecycle(bucket: str, *, expiry_days: int) -> None:
+        if expiry_days <= 0:
+            return
+        async with _client_ctx() as client:
+            await client.put_bucket_lifecycle_configuration(
+                Bucket=bucket,
+                LifecycleConfiguration={
+                    "Rules": [
+                        {
+                            "ID": "papyrus-ttl",
+                            "Status": "Enabled",
+                            "Filter": {"Prefix": ""},
+                            "Expiration": {"Days": expiry_days},
+                            "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 1},
+                        }
+                    ]
+                },
+            )
+
+    @staticmethod
     async def presign_upload(
         *,
         bucket: str,

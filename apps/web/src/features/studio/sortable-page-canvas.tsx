@@ -10,11 +10,14 @@ import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sort
 import { CSS } from "@dnd-kit/utilities";
 import { Trash2 } from "lucide-react";
 import {
+  isPreviewTooLargeError,
+  LargeFileNotice,
   MorePagesTile,
   PAGE_CANVAS_CAP,
   PAGE_GRID_CLASS,
   PageThumb,
   type PdfRenderer,
+  PREVIEW_MAX_BYTES,
   useLazyThumb,
   usePdfRenderer,
 } from "@/features/studio/page-canvas";
@@ -38,6 +41,9 @@ export function SortablePageCanvas({
   const renderer = usePdfRenderer(file);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
+  if (isPreviewTooLargeError(renderer.error)) {
+    return <LargeFileNotice />;
+  }
   if (renderer.error) {
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
@@ -63,6 +69,7 @@ export function SortablePageCanvas({
 
   const visible = order.slice(0, PAGE_CANVAS_CAP);
   const restCount = order.length - visible.length;
+  const numbered = file.size > PREVIEW_MAX_BYTES;
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
@@ -84,6 +91,7 @@ export function SortablePageCanvas({
               renderer={renderer}
               excluded={excluded.has(page)}
               onToggle={onToggle}
+              numbered={numbered}
             />
           ))}
           {restCount > 0 ? <MorePagesTile count={restCount} hint="kept in order" /> : null}
@@ -98,11 +106,13 @@ function SortableThumb({
   renderer,
   excluded,
   onToggle,
+  numbered = false,
 }: {
   page: number;
   renderer: PdfRenderer;
   excluded: boolean;
   onToggle: (page: number) => void;
+  numbered?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: String(page),
@@ -129,7 +139,7 @@ function SortableThumb({
         excluded && "opacity-45",
       )}
     >
-      <PageThumb index={page} src={src} imgRef={ref} />
+      <PageThumb index={page} src={src} imgRef={ref} numbered={numbered} />
       {excluded ? (
         <span className="absolute inset-1.5 mb-5 grid place-items-center rounded-lg bg-oxblood/55 backdrop-blur-[1px]">
           <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">

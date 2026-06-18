@@ -15,6 +15,7 @@ from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedErr
 from papyrus_api.core.time import utc_now
 from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.jobs.enums import JobStatus
+from papyrus_api.integrations.clamav import scan_input
 from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
@@ -182,6 +183,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     raise TransientStorageError(str(exc)) from exc
                 raise
 
+            await scan_input(input_path)
             await check_cancelled(redis, job_id)
 
             async with sessionmaker() as session:
@@ -514,6 +516,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                     if classify_storage_error(exc):
                         raise TransientStorageError(str(exc)) from exc
                     raise
+                await scan_input(dest)
                 page_ranges_raw = item.get("page_ranges")
                 page_ranges = (
                     page_ranges_raw
