@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useDownloadUrlMutation } from "@/features/pdf-compress/api";
-import { formatBytes } from "@/features/pdf-compress/format";
+import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import type { Job, JobKind, JobStatus } from "@/features/pdf-compress/types";
 import { triggerDownload } from "@/features/pdf-tools/download";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
@@ -186,6 +186,9 @@ function JobRow({
             {new Date(job.createdAt).toLocaleString()}
             {job.inputSizeBytes != null ? ` · ${formatBytes(job.inputSizeBytes)}` : ""}
             {job.outputSizeBytes != null ? ` → ${formatBytes(job.outputSizeBytes)}` : ""}
+            {job.compressionRatio != null ? (
+              <span className="text-success"> · {formatPercent(job.compressionRatio)}</span>
+            ) : null}
           </span>
         </div>
       </div>

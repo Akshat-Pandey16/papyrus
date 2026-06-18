@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadPdfjs } from "@/lib/pdf/pdfjs";
+import { getCachedDoc, PARSE_MAX_BYTES } from "@/features/studio/page-canvas";
 
 export type FilePageCountState = {
   pageCount: number | null;
@@ -20,30 +20,25 @@ export function useFilePageCount(file: File | null): FilePageCountState {
       setState({ pageCount: null, loading: false, error: null });
       return;
     }
+    if (file.size > PARSE_MAX_BYTES) {
+      setState({ pageCount: null, loading: false, error: null });
+      return;
+    }
     const token = ++tokenRef.current;
     setState({ pageCount: null, loading: true, error: null });
-    (async () => {
-      try {
-        const pdfjs = await loadPdfjs();
-        const data = await file.arrayBuffer();
+    getCachedDoc(file)
+      .then((doc) => {
         if (token !== tokenRef.current) return;
-        const doc = await pdfjs.getDocument({ data }).promise;
-        if (token !== tokenRef.current) {
-          void doc.destroy();
-          return;
-        }
-        const count = doc.numPages;
-        void doc.destroy();
-        setState({ pageCount: count, loading: false, error: null });
-      } catch (err) {
+        setState({ pageCount: doc.numPages, loading: false, error: null });
+      })
+      .catch((err) => {
         if (token !== tokenRef.current) return;
         setState({
           pageCount: null,
           loading: false,
           error: err instanceof Error ? err.message : "Could not read PDF.",
         });
-      }
-    })();
+      });
   }, [file]);
 
   return state;

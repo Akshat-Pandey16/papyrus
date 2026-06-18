@@ -13,7 +13,9 @@ export type PageCanvasProps = {
   className?: string | undefined;
 };
 
-export const PAGE_CANVAS_CAP = 2000;
+export const PAGE_CANVAS_CAP = 300;
+export const PREVIEW_MAX_BYTES = 50 * 1024 * 1024;
+export const PARSE_MAX_BYTES = 150 * 1024 * 1024;
 export const PAGE_GRID_CLASS =
   "grid grid-cols-[repeat(auto-fill,minmax(108px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(124px,1fr))]";
 
@@ -55,7 +57,8 @@ type PdfDoc = {
 const TARGET_WIDTH = 224;
 const MAX_SCALE = 2;
 const JPEG_QUALITY = 0.8;
-const CACHE_FILES = 4;
+const DOC_CACHE_FILES = 2;
+const PREVIEW_TOO_LARGE = "preview_too_large";
 
 const renderCache = new Map<File, Map<number, string>>();
 const docCache = new Map<File, Promise<PdfDoc>>();
@@ -71,6 +74,10 @@ function evictFile(file: File): void {
   if (doc) void doc.then((d) => d.destroy()).catch(() => {});
 }
 
+export function getCachedDoc(file: File): Promise<PdfDoc> {
+  return getDoc(file);
+}
+
 function getDoc(file: File): Promise<PdfDoc> {
   let p = docCache.get(file);
   if (!p) {
@@ -80,7 +87,7 @@ function getDoc(file: File): Promise<PdfDoc> {
       return (await pdfjs.getDocument({ data }).promise) as unknown as PdfDoc;
     })();
     docCache.set(file, p);
-    while (docCache.size > CACHE_FILES) {
+    while (docCache.size > DOC_CACHE_FILES) {
       const oldest = docCache.keys().next().value;
       if (!oldest || oldest === file) break;
       evictFile(oldest);
@@ -125,6 +132,10 @@ export function usePdfRenderer(file: File): PdfRenderer {
     let alive = true;
     setTotal(null);
     setError(null);
+    if (file.size > PARSE_MAX_BYTES) {
+      setError(PREVIEW_TOO_LARGE);
+      return;
+    }
     getDoc(file)
       .then((doc) => {
         if (alive) setTotal(doc.numPages);
@@ -139,6 +150,7 @@ export function usePdfRenderer(file: File): PdfRenderer {
 
   const renderPage = useCallback(
     async (index: number): Promise<string | null> => {
+      if (file.size > PREVIEW_MAX_BYTES) return null;
       const cache = fileCache(file);
       const hit = cache.get(index);
       if (hit) return hit;
@@ -212,12 +224,14 @@ export function PageThumb({
   rotation = 0,
   order,
   imgRef,
+  numbered = false,
 }: {
   index: number;
   src: string | null;
   rotation?: number;
   order?: number | undefined;
   imgRef?: React.Ref<HTMLDivElement>;
+  numbered?: boolean;
 }) {
   return (
     <>
@@ -234,6 +248,12 @@ export function PageThumb({
             className="aspect-[3/4] w-full object-contain transition-transform duration-300 ease-[var(--ease-spring)] select-none"
             style={{ transform: `rotate(${rotation}deg)` }}
           />
+        ) : numbered ? (
+          <div className="grid aspect-[3/4] w-full place-items-center bg-muted/50">
+            <span className="font-display text-lg font-semibold text-muted-foreground">
+              {index}
+            </span>
+          </div>
         ) : (
           <div className="aspect-[3/4] w-full animate-pulse bg-muted" />
         )}
@@ -265,6 +285,9 @@ export function PageCanvas({
 }: PageCanvasProps) {
   const { total, error, renderPage } = usePdfRenderer(file);
 
+  if (error === PREVIEW_TOO_LARGE) {
+    return <LargeFileNotice />;
+  }
   if (error) {
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
@@ -276,6 +299,7 @@ export function PageCanvas({
   const count = total == null ? 0 : Math.min(total, maxPages, PAGE_CANVAS_CAP);
   const remaining = total == null ? 0 : total - count;
   const interactive = !!onPageClick;
+  const numbered = file.size > PREVIEW_MAX_BYTES;
 
   return (
     <div className={cn(PAGE_GRID_CLASS, className)}>
@@ -304,11 +328,28 @@ export function PageCanvas({
             order={selectionOrder?.get(index)}
             highlighted={highlightedPages?.has(index) ?? false}
             onClick={onPageClick}
+            numbered={numbered}
           />
         );
       })}
 
       {remaining > 0 ? <MorePagesTile count={remaining} /> : null}
+    </div>
+  );
+}
+
+export function isPreviewTooLargeError(error: string | null): boolean {
+  return error === PREVIEW_TOO_LARGE;
+}
+
+export function LargeFileNotice() {
+  return (
+    <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
+      <span className="font-medium text-foreground">Previews are off for large files</span>
+      <span className="max-w-md text-xs">
+        To keep things fast we skip thumbnails above 50&nbsp;MB. Your file uploads and processes
+        normally — every page is included.
+      </span>
     </div>
   );
 }
@@ -331,6 +372,7 @@ type LazyPageProps = {
   order: number | undefined;
   highlighted: boolean;
   onClick?: ((page: number) => void) | undefined;
+  numbered?: boolean;
 };
 
 function LazyPage({
@@ -342,6 +384,7 @@ function LazyPage({
   order,
   highlighted,
   onClick,
+  numbered = false,
 }: LazyPageProps) {
   const { ref, src } = useLazyThumb(renderPage, index);
 
@@ -359,7 +402,14 @@ function LazyPage({
   if (interactive) {
     return (
       <button type="button" onClick={() => onClick?.(index)} className={cardClass}>
-        <PageThumb index={index} src={src} rotation={rotation} order={order} imgRef={ref} />
+        <PageThumb
+          index={index}
+          src={src}
+          rotation={rotation}
+          order={order}
+          imgRef={ref}
+          numbered={numbered}
+        />
       </button>
     );
   }

@@ -91,6 +91,7 @@ _PRESETS: dict[CompressionLevel, CompressOptions] = {
         object_stream_mode=ObjectStreamMode.PRESERVE,
     ),
     CompressionLevel.MEDIUM: CompressOptions(
+        engine=CompressionEngine.GHOSTSCRIPT,
         recompress_images=True,
         image_quality=82,
         image_max_dimension=2400,
@@ -100,6 +101,7 @@ _PRESETS: dict[CompressionLevel, CompressOptions] = {
         strip_metadata=False,
     ),
     CompressionLevel.HIGH: CompressOptions(
+        engine=CompressionEngine.GHOSTSCRIPT,
         recompress_images=True,
         image_quality=72,
         image_max_dimension=1600,
@@ -110,6 +112,7 @@ _PRESETS: dict[CompressionLevel, CompressOptions] = {
         discard_thumbnails=True,
     ),
     CompressionLevel.EXTREME: CompressOptions(
+        engine=CompressionEngine.GHOSTSCRIPT,
         recompress_images=True,
         image_quality=55,
         image_max_dimension=1100,
@@ -690,12 +693,17 @@ def compress_pdf(
         options = options_for_level(level)
 
     if options.engine is CompressionEngine.GHOSTSCRIPT:
-        return _compress_ghostscript(
-            input_path=input_path,
-            output_path=output_path,
-            options=options,
-            progress=progress,
-        )
+        from papyrus_api.services.pdf.gs_runtime import GsNotConfiguredError
+
+        try:
+            return _compress_ghostscript(
+                input_path=input_path,
+                output_path=output_path,
+                options=options,
+                progress=progress,
+            )
+        except GsNotConfiguredError:
+            options = replace(options, engine=CompressionEngine.PIKEPDF)
     return _compress_pikepdf(
         input_path=input_path,
         output_path=output_path,
