@@ -75,3 +75,17 @@ jobs:
       - run: bun run typecheck
       - run: bun run --filter @papyrus/web test
       - run: bun run build
+
+  security:
+    name: security · dependency + fs scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
