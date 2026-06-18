@@ -24,6 +24,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             created = await StorageService.ensure_bucket(bucket)
             if created:
                 log.info("storage.bucket.created", bucket=bucket)
+            await StorageService.ensure_lifecycle(
+                bucket,
+                expiry_days=settings.s3_lifecycle_expiry_days,
+            )
         except Exception as exc:
             log.warning(
                 "storage.bucket.ensure_failed",
