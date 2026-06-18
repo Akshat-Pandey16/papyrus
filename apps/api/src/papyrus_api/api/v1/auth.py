@@ -65,7 +65,7 @@ def _to_session(result: AuthResult, response: Response) -> AuthSession:
     "/anonymous",
     response_model=AuthSession,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[rate_limit("auth.anonymous", limit=30, window_seconds=3600)],
+    dependencies=[EnforceOrigin, rate_limit("auth.anonymous", limit=30, window_seconds=3600)],
 )
 async def anonymous_session(
     request: Request,
@@ -80,7 +80,7 @@ async def anonymous_session(
     "/signup",
     response_model=AuthSession,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[rate_limit("auth.signup", limit=10, window_seconds=3600)],
+    dependencies=[EnforceOrigin, rate_limit("auth.signup", limit=10, window_seconds=3600)],
 )
 async def signup(
     payload: SignupRequest,
@@ -100,7 +100,7 @@ async def signup(
 @router.post(
     "/login",
     response_model=AuthSession,
-    dependencies=[rate_limit("auth.login", limit=20, window_seconds=300)],
+    dependencies=[EnforceOrigin, rate_limit("auth.login", limit=20, window_seconds=300)],
 )
 async def login(
     payload: LoginRequest,

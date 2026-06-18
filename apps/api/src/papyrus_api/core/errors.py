@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request, status
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -34,7 +34,7 @@ class ConflictError(AppError):
 
 class ValidationError(AppError):
     code = "validation_error"
-    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class AuthenticationError(AppError):
@@ -102,12 +102,48 @@ class JobOutputExpiredError(GoneError):
 
 class PdfEncryptedError(AppError):
     code = "pdf_encrypted"
-    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class PdfMalformedError(AppError):
     code = "pdf_malformed"
-    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class TooManyPagesError(AppError):
+    code = "too_many_pages"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class MaliciousFileError(AppError):
+    code = "malicious_file_detected"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class PayloadTooLargeError(AppError):
+    code = "payload_too_large"
+    http_status = status.HTTP_413_CONTENT_TOO_LARGE
+
+
+class ServiceUnavailableError(AppError):
+    code = "service_unavailable"
+    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+def _sanitize_validation_errors(raw: Sequence[Any]) -> list[dict[str, Any]]:
+    sanitized: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        loc = item.get("loc")
+        sanitized.append(
+            {
+                "loc": [str(part) for part in loc] if isinstance(loc, (list, tuple)) else [],
+                "msg": str(item.get("msg", "Invalid value.")),
+                "type": str(item.get("type", "value_error")),
+            }
+        )
+    return sanitized
 
 
 def _envelope(
@@ -156,7 +192,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             content=_envelope(
                 code="validation_error",
                 message="Request payload failed validation.",
-                details={"errors": jsonable_encoder(exc.errors())},
+                details={"errors": _sanitize_validation_errors(exc.errors())},
                 request_id=request_id,
             ),
         )

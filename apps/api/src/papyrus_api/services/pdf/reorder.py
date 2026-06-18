@@ -10,6 +10,7 @@ from papyrus_api.core.errors import (
     PdfMalformedError,
     ValidationError,
 )
+from papyrus_api.services.pdf.limits import enforce_page_cap
 
 
 @dataclass(slots=True, frozen=True)
@@ -25,6 +26,7 @@ def reorder_pdf(
     input_path: Path,
     output_path: Path,
     order: list[int],
+    max_pages: int | None = None,
 ) -> ReorderResult:
     if not input_path.exists():
         raise FileNotFoundError(str(input_path))
@@ -44,6 +46,9 @@ def reorder_pdf(
 
     try:
         page_count = len(src.pages)
+        enforce_page_cap(page_count, max_pages)
+        if len(order) > page_count and max_pages is not None:
+            enforce_page_cap(len(order), max_pages)
         for raw in order:
             if raw < 1 or raw > page_count:
                 raise ValidationError(

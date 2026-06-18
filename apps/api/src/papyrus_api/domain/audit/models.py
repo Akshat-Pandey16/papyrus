@@ -18,7 +18,7 @@ class AuditEvent(Base, IdMixin, TimestampMixin):
         Index("ix_audit_events_actor_user_id_created_at", "actor_user_id", "created_at"),
     )
 
-    action: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
     actor_user_id: Mapped[UUID | None] = mapped_column(default=None, nullable=True)
     organization_id: Mapped[UUID | None] = mapped_column(default=None, nullable=True)
     target_type: Mapped[str | None] = mapped_column(String(40), default=None, nullable=True)

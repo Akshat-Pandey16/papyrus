@@ -37,6 +37,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         for key, value in _BASE_HEADERS.items():
             response.headers.setdefault(key, value)
+        path = request.url.path
+        if not (path.startswith("/docs") or path.startswith("/api/v1/openapi")):
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                settings.content_security_policy,
+            )
         if not settings.is_development:
             response.headers.setdefault(
                 "Strict-Transport-Security",

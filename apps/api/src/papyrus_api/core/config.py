@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     database_echo: bool = False
 
     redis_url: str = "redis://localhost:6379/0"
+    redis_max_connections: int = 50
+    redis_pubsub_max_connections: int = 200
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
 
@@ -73,6 +75,13 @@ class Settings(BaseSettings):
     s3_presign_expires_seconds: int = 900
     s3_force_path_style: bool = True
     s3_sse: str | None = None
+    s3_lifecycle_expiry_days: int = 1
+
+    clamav_enabled: bool = False
+    clamav_host: str = "localhost"
+    clamav_port: int = 3310
+    clamav_timeout_seconds: int = 30
+    clamav_max_scan_bytes: int = 200 * 1024 * 1024
 
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_issuer: str = "papyrus"
@@ -102,6 +111,37 @@ class Settings(BaseSettings):
     anon_daily_job_quota: int = 10
     user_daily_job_quota: int = 200
     job_result_ttl_seconds: int = 86_400
+    input_retention_ttl_seconds: int = 86_400
+
+    anon_max_pages: int = 500
+    user_max_pages: int = 5_000
+    max_reorder_output_pages: int = 10_000
+    max_rotate_pages: int = 10_000
+    max_split_parts: int = 5_000
+
+    max_request_body_bytes: int = 1024 * 1024
+    sse_max_streams_per_user: int = 8
+    max_inflight_jobs_per_org: int = 25
+    job_lock_ttl_seconds: int = 1800
+    pending_job_timeout_seconds: int = 900
+
+    subprocess_cpu_seconds: int = 0
+    subprocess_memory_limit_mb: int = 0
+    ocr_jobs: int = 1
+    ocr_max_image_mpixels: int = 256
+
+    jobs_submit_burst_limit: int = 6
+    jobs_submit_burst_window_seconds: int = 10
+    jobs_submit_hourly_limit: int = 120
+    jobs_submit_hourly_window_seconds: int = 3_600
+    uploads_init_burst_limit: int = 30
+    uploads_init_window_seconds: int = 60
+
+    content_security_policy: str = (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; "
+        "img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; connect-src 'self'"
+    )
 
     email_provider: EmailProvider = EmailProvider.SMTP
     email_from: str = "noreply@papyrus.local"
@@ -118,6 +158,7 @@ class Settings(BaseSettings):
     trusted_proxies: CsvList = Field(default_factory=list)
 
     zero_retention_mode: bool = False
+    zero_retention_grace_seconds: int = 120
 
     @model_validator(mode="after")
     def _require_strong_secrets(self) -> Settings:
