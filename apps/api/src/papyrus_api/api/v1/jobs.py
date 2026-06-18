@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import json
 from collections.abc import AsyncIterator
@@ -9,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
+from redis.asyncio import Redis
 
 from papyrus_api.api.deps import (
     CompressEstimateServiceDep,
@@ -18,9 +18,11 @@ from papyrus_api.api.deps import (
     SsePrincipal,
     rate_limit,
 )
+from papyrus_api.core.config import settings
 from papyrus_api.core.cookies import set_sse_cookie
 from papyrus_api.core.security import issue_sse_token
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
+from papyrus_api.integrations.redis import get_pubsub_redis
 from papyrus_api.schemas.jobs import (
     CompressEstimateOut,
     CompressEstimateRequest,
@@ -47,11 +49,25 @@ _TERMINAL_VALUES = {
     JobStatus.CANCELLED.value,
 }
 
+_SUBMIT_LIMITS = [
+    rate_limit(
+        "jobs.submit.burst",
+        limit=settings.jobs_submit_burst_limit,
+        window_seconds=settings.jobs_submit_burst_window_seconds,
+    ),
+    rate_limit(
+        "jobs.submit.hourly",
+        limit=settings.jobs_submit_hourly_limit,
+        window_seconds=settings.jobs_submit_hourly_window_seconds,
+    ),
+]
+
 
 @router.post(
     "/compress",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_compression_job(
     payload: CompressJobRequest,
@@ -119,6 +135,7 @@ async def estimate_compression(
     "/merge",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_merge_job(
     payload: MergeJobRequest,
@@ -156,6 +173,7 @@ async def create_merge_job(
     "/split",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_split_job(
     payload: SplitJobRequest,
@@ -192,6 +210,7 @@ async def create_split_job(
     "/rotate",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_rotate_job(
     payload: RotateJobRequest,
@@ -219,6 +238,7 @@ async def create_rotate_job(
     "/reorder",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_reorder_job(
     payload: ReorderJobRequest,
@@ -246,6 +266,7 @@ async def create_reorder_job(
     "/ocr",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def create_ocr_job(
     payload: OcrJobRequest,
@@ -331,6 +352,7 @@ async def cancel_job(
     "/{job_id}/retry",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
 )
 async def retry_job(
     job_id: UUID,
@@ -382,10 +404,10 @@ async def stream_job_events(
     service: JobServiceDep,
     redis: RedisDep,
 ) -> StreamingResponse:
-    _user, organization = principal
+    user, organization = principal
     initial = await service.get(organization_id=organization.id, job_id=job_id)
     return StreamingResponse(
-        _event_stream(redis, job_id, initial),
+        _event_stream(redis, get_pubsub_redis(), str(user.id), job_id, initial),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-transform",
@@ -401,7 +423,9 @@ def _format_event(event_name: str, data: dict[str, object]) -> bytes:
 
 
 async def _event_stream(
-    redis: RedisDep,
+    redis: Redis,
+    pubsub_redis: Redis,
+    user_id: str,
     job_id: UUID,
     initial: JobOut,
 ) -> AsyncIterator[bytes]:
@@ -411,19 +435,26 @@ async def _event_stream(
         yield _format_event("terminal", initial.model_dump(mode="json"))
         return
 
-    pubsub = redis.pubsub()
+    guard_key = f"sse:streams:{user_id}"
+    try:
+        active = int(await redis.incr(guard_key))
+        await redis.expire(guard_key, 3600)
+    except Exception:
+        active = 1
+    if active > settings.sse_max_streams_per_user:
+        with contextlib.suppress(Exception):
+            await redis.decr(guard_key)
+        yield _format_event(
+            "terminal",
+            {"status": "error", "payload": {"error_code": "too_many_streams"}},
+        )
+        return
+
+    pubsub = pubsub_redis.pubsub()
     try:
         await pubsub.subscribe(JobService.channel(job_id))
         while True:
-            try:
-                message = await asyncio.wait_for(
-                    pubsub.get_message(ignore_subscribe_messages=True),
-                    timeout=15.0,
-                )
-            except TimeoutError:
-                yield b": ping\n\n"
-                continue
-
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15.0)
             if message is None:
                 yield b": ping\n\n"
                 continue
@@ -443,6 +474,8 @@ async def _event_stream(
                 yield _format_event("terminal", payload)
                 break
     finally:
+        with contextlib.suppress(Exception):
+            await redis.decr(guard_key)
         with contextlib.suppress(Exception):
             await pubsub.unsubscribe(JobService.channel(job_id))
         with contextlib.suppress(Exception):

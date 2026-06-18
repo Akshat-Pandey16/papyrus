@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.ids import new_id
@@ -48,6 +48,23 @@ class UserRepository(AsyncRepository[User]):
         user.password_hash = password_hash
         await self.session.flush()
         return user
+
+    async def get_with_primary_org(
+        self,
+        user_id: UUID,
+    ) -> tuple[User, Organization] | None:
+        stmt = (
+            select(User, Organization)
+            .join(Membership, Membership.user_id == User.id)
+            .join(Organization, Organization.id == Membership.organization_id)
+            .where(User.id == user_id, User.is_active.is_(True))
+            .order_by(Membership.created_at.asc())
+            .limit(1)
+        )
+        row = (await self.session.execute(stmt)).first()
+        if row is None:
+            return None
+        return (row[0], row[1])
 
 
 class OrganizationRepository(AsyncRepository[Organization]):
@@ -141,8 +158,19 @@ class PasswordResetTokenRepository(AsyncRepository[PasswordResetToken]):
         await self.session.flush()
         return token
 
+    async def purge_consumed(self, *, cutoff: datetime, limit: int = 1000) -> int:
+        subq = (
+            select(PasswordResetToken.id)
+            .where(
+                (PasswordResetToken.used_at.is_not(None)) | (PasswordResetToken.expires_at < cutoff)
+            )
+            .limit(limit)
+        )
+        stmt = delete(PasswordResetToken).where(PasswordResetToken.id.in_(subq))
+        result = await self.session.execute(stmt)
+        return int(getattr(result, "rowcount", 0) or 0)
+
     async def revoke_all_for_user(self, user_id: UUID, *, purpose: str = "reset") -> int:
-        from sqlalchemy import update
 
         stmt = (
             update(PasswordResetToken)
@@ -191,6 +219,22 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def family_origin(self, family_id: UUID) -> datetime | None:
+        stmt = select(func.min(RefreshToken.created_at)).where(RefreshToken.family_id == family_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def purge_dead_families(self, *, cutoff: datetime, limit: int = 1000) -> int:
+        dead = (
+            select(RefreshToken.family_id)
+            .group_by(RefreshToken.family_id)
+            .having(func.max(RefreshToken.expires_at) < cutoff)
+            .limit(limit)
+        )
+        stmt = delete(RefreshToken).where(RefreshToken.family_id.in_(dead))
+        result = await self.session.execute(stmt)
+        return int(getattr(result, "rowcount", 0) or 0)
+
     async def revoke(self, token: RefreshToken) -> RefreshToken:
         if token.revoked_at is None:
             token.revoked_at = utc_now()
@@ -198,7 +242,6 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         return token
 
     async def revoke_family(self, family_id: UUID) -> int:
-        from sqlalchemy import update
 
         stmt = (
             update(RefreshToken)
@@ -210,7 +253,6 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         return int(getattr(result, "rowcount", 0) or 0)
 
     async def revoke_all_for_user(self, user_id: UUID) -> int:
-        from sqlalchemy import update
 
         stmt = (
             update(RefreshToken)
@@ -236,7 +278,6 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         return list(result.scalars().all())
 
     async def revoke_others_for_user(self, *, user_id: UUID, keep_id: UUID | None) -> int:
-        from sqlalchemy import update
 
         stmt = (
             update(RefreshToken)

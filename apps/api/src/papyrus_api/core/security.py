@@ -126,22 +126,6 @@ def issue_sse_token(
     return jwt.encode(payload, _signing_secret(), algorithm=_JWT_ALG)
 
 
-def issue_token(
-    *,
-    subject: UUID,
-    organization_id: UUID | None,
-    token_type: TokenType,
-    extra: dict[str, Any] | None = None,
-) -> str:
-    if token_type is not TokenType.ACCESS:
-        raise ValueError("issue_token only mints access tokens. Use the refresh repo instead.")
-    return issue_access_token(
-        subject=subject,
-        organization_id=organization_id,
-        extra=extra,
-    )
-
-
 def decode_token(token: str, *, expected_type: TokenType) -> dict[str, Any]:
     try:
         claims: dict[str, Any] = jwt.decode(

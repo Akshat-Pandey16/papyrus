@@ -19,6 +19,7 @@ from papyrus_api.services.pdf.compress import (
     CompressOptions,
     compress_pdf,
 )
+from papyrus_api.services.pdf.limits import enforce_page_cap
 from papyrus_api.services.pdf.page_ranges import parse_groups
 
 _ALLOWED_PDF_VERSIONS = frozenset({"1.4", "1.5", "1.6", "1.7"})
@@ -184,6 +185,7 @@ def split_pdf(
     options: SplitOptions | None = None,
     base_name: str = "part",
     legacy_ranges_spec: str | None = None,
+    max_pages: int | None = None,
 ) -> SplitResult:
     if not input_path.exists():
         raise FileNotFoundError(str(input_path))
@@ -206,6 +208,7 @@ def split_pdf(
         page_count = len(src.pages)
         if page_count == 0:
             raise PdfMalformedError("PDF has no pages.")
+        enforce_page_cap(page_count, max_pages)
 
         if mode is SplitMode.RANGES:
             if ranges is not None:

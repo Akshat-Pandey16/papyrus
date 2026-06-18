@@ -18,6 +18,7 @@ from papyrus_api.services.pdf.compress import (
     CompressOptions,
     compress_pdf,
 )
+from papyrus_api.services.pdf.limits import enforce_page_cap
 from papyrus_api.services.pdf.page_ranges import parse_flat
 
 _ALLOWED_PDF_VERSIONS = frozenset({"1.4", "1.5", "1.6", "1.7"})
@@ -161,6 +162,7 @@ def merge_pdfs(
     output_path: Path,
     options: MergeOptions | None = None,
     progress: ProgressCallback = None,
+    max_pages: int | None = None,
 ) -> MergeResult:
     if len(inputs) < 2:
         raise ValidationError("At least two PDFs are required to merge.")
@@ -219,6 +221,7 @@ def merge_pdfs(
             for page_idx in page_indices:
                 merged.pages.append(src.pages[page_idx])
                 page_count += 1
+                enforce_page_cap(page_count, max_pages)
                 if first_page_ref is None:
                     try:
                         first_page_ref = merged.pages[-1]

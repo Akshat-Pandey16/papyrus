@@ -19,6 +19,11 @@ class Document(Base, IdMixin, TenantMixin, TimestampMixin, SoftDeleteMixin):
             "created_at",
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        Index(
+            "ix_documents_created_at_active",
+            "created_at",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -56,6 +61,11 @@ class StorageObject(Base, IdMixin, TimestampMixin):
             "document_id",
             "created_at",
             postgresql_where=text("confirmed_at IS NULL AND document_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_storage_objects_purpose_created_at",
+            "purpose",
+            "created_at",
         ),
     )
 

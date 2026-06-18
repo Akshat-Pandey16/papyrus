@@ -52,6 +52,12 @@ class PasswordResetToken(Base, IdMixin, TimestampMixin):
             "token_hash",
             postgresql_where=text("used_at IS NULL"),
         ),
+        Index(
+            "ix_password_reset_tokens_user_purpose_active",
+            "user_id",
+            "purpose",
+            postgresql_where=text("used_at IS NULL"),
+        ),
     )
 
     user_id: Mapped[UUID] = mapped_column(
@@ -111,6 +117,8 @@ class RefreshToken(Base, IdMixin, TimestampMixin):
             "family_id",
             postgresql_where=text("revoked_at IS NULL"),
         ),
+        Index("ix_refresh_tokens_parent_id", "parent_id"),
+        Index("ix_refresh_tokens_expires_at", "expires_at"),
     )
 
     user_id: Mapped[UUID] = mapped_column(

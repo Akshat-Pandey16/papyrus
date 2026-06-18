@@ -25,12 +25,20 @@ export function GlobalCursor() {
   useEffect(() => {
     if (!enabled) return;
     const root = document.documentElement;
-    root.classList.add("custom-cursor");
+
+    const show = () => {
+      root.classList.add("custom-cursor");
+      setVisible(true);
+    };
+    const hide = () => {
+      root.classList.remove("custom-cursor");
+      setVisible(false);
+    };
 
     const onMove = (e: PointerEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
-      setVisible(true);
+      show();
     };
     const onOver = (e: PointerEvent) => {
       const t = e.target;
@@ -38,14 +46,14 @@ export function GlobalCursor() {
     };
     const onDown = () => setDown(true);
     const onUp = () => setDown(false);
-    const onLeave = () => setVisible(false);
 
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerover", onOver, { passive: true });
     window.addEventListener("pointerdown", onDown);
     window.addEventListener("pointerup", onUp);
-    document.addEventListener("pointerleave", onLeave);
-    window.addEventListener("blur", onLeave);
+    document.addEventListener("pointerleave", hide);
+    document.addEventListener("pointerenter", show);
+    window.addEventListener("blur", hide);
 
     return () => {
       root.classList.remove("custom-cursor");
@@ -53,8 +61,9 @@ export function GlobalCursor() {
       window.removeEventListener("pointerover", onOver);
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointerup", onUp);
-      document.removeEventListener("pointerleave", onLeave);
-      window.removeEventListener("blur", onLeave);
+      document.removeEventListener("pointerleave", hide);
+      document.removeEventListener("pointerenter", show);
+      window.removeEventListener("blur", hide);
     };
   }, [enabled, x, y]);
 
@@ -74,7 +83,7 @@ export function GlobalCursor() {
       <motion.div
         className="absolute size-1.5 rounded-full bg-primary ring-2 ring-background/70"
         style={{ x, y, marginLeft: -3, marginTop: -3 }}
-        animate={{ opacity: visible && !hot ? 1 : 0, scale: down ? 0.6 : 1 }}
+        animate={{ opacity: visible ? 1 : 0, scale: down ? 0.6 : 1 }}
         transition={{ duration: 0.14 }}
       />
     </div>

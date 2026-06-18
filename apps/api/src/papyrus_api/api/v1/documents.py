@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Response, status
 
-from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep
+from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep, rate_limit
+from papyrus_api.core.config import settings
 from papyrus_api.schemas.documents import (
     ConfirmUploadRequest,
     DocumentOut,
@@ -21,6 +22,13 @@ router = APIRouter(prefix="/documents", tags=["documents"])
     "/uploads",
     response_model=UploadInitiateResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        rate_limit(
+            "uploads.init",
+            limit=settings.uploads_init_burst_limit,
+            window_seconds=settings.uploads_init_window_seconds,
+        )
+    ],
 )
 async def initiate_upload(
     payload: UploadInitiateRequest,

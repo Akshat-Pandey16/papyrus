@@ -103,31 +103,32 @@ async def fail_job(
     job_id: UUID,
     code: str,
     message: str,
-) -> None:
+) -> bool:
     if session is not None:
         repo = JobRepository(session)
         result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
         if result is None:
-            return
+            return False
         await JobEventRepository(session).append(
             job_id=job_id,
             status=JobStatus.FAILED,
             payload={"phase": "failed", "error_code": code, "error_message": message},
         )
         await session.commit()
-        return
+        return True
     sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
     async with sm() as s:
         repo = JobRepository(s)
         result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
         if result is None:
-            return
+            return False
         await JobEventRepository(s).append(
             job_id=job_id,
             status=JobStatus.FAILED,
             payload={"phase": "failed", "error_code": code, "error_message": message},
         )
         await s.commit()
+        return True
 
 
 async def release_lock(redis: Redis, job_id: UUID, task_id: str) -> None:
@@ -163,7 +164,9 @@ class JobTask(Task):
         message = "Processing failed and could not be retried."
 
         async def _terminate() -> None:
-            await fail_job(job_id=job_id, code="internal_error", message=message)
+            marked = await fail_job(job_id=job_id, code="internal_error", message=message)
+            if not marked:
+                return
             await publish(
                 get_redis(),
                 job_id,

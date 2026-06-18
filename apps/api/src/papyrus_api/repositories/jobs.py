@@ -94,15 +94,19 @@ class JobRepository(AsyncRepository[Job]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def count_jobs_today(
-        self,
-        *,
-        organization_id: UUID,
-        since: datetime,
-    ) -> int:
+    async def list_stale_pending(self, *, cutoff: datetime, limit: int = 200) -> list[Job]:
+        stmt = (
+            select(Job)
+            .where(Job.status == JobStatus.PENDING, Job.created_at < cutoff)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def count_inflight_for_org(self, *, organization_id: UUID) -> int:
         stmt = select(func.count(Job.id)).where(
             Job.organization_id == organization_id,
-            Job.created_at >= since,
+            Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING]),
         )
         result = await self.session.execute(stmt)
         return int(result.scalar_one() or 0)
@@ -236,3 +240,13 @@ class JobEventRepository(AsyncRepository[JobEvent]):
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def latest(self, *, job_id: UUID) -> JobEvent | None:
+        stmt = (
+            select(JobEvent)
+            .where(JobEvent.job_id == job_id)
+            .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

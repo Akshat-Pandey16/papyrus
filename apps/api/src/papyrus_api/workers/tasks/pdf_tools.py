@@ -46,6 +46,13 @@ log = structlog.get_logger(__name__)
 ProcessFn = Callable[[Path, Path, dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
+def _max_pages(params: dict[str, Any]) -> int | None:
+    value = params.get("max_pages")
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return None
+
+
 async def _run_simple_job(
     *,
     task_id: str,
@@ -57,7 +64,7 @@ async def _run_simple_job(
 ) -> None:
     redis = get_redis()
     lock_key = f"job:lock:{job_id}"
-    acquired = await redis.set(lock_key, task_id, nx=True, ex=900)
+    acquired = await redis.set(lock_key, task_id, nx=True, ex=settings.job_lock_ttl_seconds)
     if not acquired:
         existing_owner = await redis.get(lock_key)
         if existing_owner != task_id:
@@ -363,6 +370,7 @@ async def _split_process(
     target_content_type = "application/pdf" if combine else "application/zip"
     actual_output = output_path.parent / f"output.{target_ext}"
 
+    max_pages = _max_pages(params)
     result = await anyio.to_thread.run_sync(
         lambda: split_pdf(
             input_path=input_path,
@@ -371,6 +379,7 @@ async def _split_process(
             ranges=ranges,
             every_n=every_n,
             options=options,
+            max_pages=max_pages,
         )
     )
     return {
@@ -394,8 +403,14 @@ async def _rotate_process(
     if not isinstance(rotations_raw, dict):
         raise AppError("Rotation map missing.")
     rotations = {int(k): int(v) for k, v in rotations_raw.items()}
+    max_pages = _max_pages(params)
     result = await anyio.to_thread.run_sync(
-        lambda: rotate_pdf(input_path=input_path, output_path=output_path, rotations=rotations)
+        lambda: rotate_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            rotations=rotations,
+            max_pages=max_pages,
+        )
     )
     return {
         "output_size_bytes": result.output_size_bytes,
@@ -411,8 +426,14 @@ async def _reorder_process(
     if not isinstance(order_raw, list):
         raise AppError("Page order missing.")
     order = [int(p) for p in order_raw]
+    max_pages = _max_pages(params)
     result = await anyio.to_thread.run_sync(
-        lambda: reorder_pdf(input_path=input_path, output_path=output_path, order=order)
+        lambda: reorder_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            order=order,
+            max_pages=max_pages,
+        )
     )
     return {
         "output_size_bytes": result.output_size_bytes,
@@ -425,8 +446,14 @@ async def _ocr_process(
     input_path: Path, output_path: Path, params: dict[str, Any]
 ) -> dict[str, Any]:
     language = str(params.get("language", "eng"))
+    max_pages = _max_pages(params)
     result = await anyio.to_thread.run_sync(
-        lambda: ocr_pdf(input_path=input_path, output_path=output_path, language=language)
+        lambda: ocr_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            language=language,
+            max_pages=max_pages,
+        )
     )
     return {
         "output_size_bytes": result.output_size_bytes,

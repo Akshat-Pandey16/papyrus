@@ -6,8 +6,12 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+import pikepdf
+
+from papyrus_api.core.config import settings
 from papyrus_api.core.errors import AppError, PdfEncryptedError, PdfMalformedError
 from papyrus_api.services.pdf._subprocess import run_capture
+from papyrus_api.services.pdf.limits import enforce_page_cap
 
 _OCR_EXIT_INPUT_ERROR = 2
 _OCR_EXIT_ENCRYPTED = 8
@@ -53,6 +57,19 @@ def ensure_ocr_runtime() -> None:
         )
 
 
+def _probe_page_count(input_path: Path, max_pages: int | None) -> None:
+    try:
+        with pikepdf.open(str(input_path)) as pdf:
+            page_count = len(pdf.pages)
+    except pikepdf.PasswordError as exc:
+        raise PdfEncryptedError(
+            "This PDF is password-protected. Remove the password and retry.",
+        ) from exc
+    except pikepdf.PdfError:
+        return
+    enforce_page_cap(page_count, max_pages)
+
+
 def ocr_pdf(
     *,
     input_path: Path,
@@ -60,6 +77,7 @@ def ocr_pdf(
     language: str = "eng",
     deskew: bool = True,
     optimize: int = 1,
+    max_pages: int | None = None,
 ) -> OcrResult:
     if not input_path.exists():
         raise FileNotFoundError(str(input_path))
@@ -67,6 +85,7 @@ def ocr_pdf(
         raise PdfMalformedError("Input file is empty.")
     lang = _validate_language(language)
     ensure_ocr_runtime()
+    _probe_page_count(input_path, max_pages)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [
@@ -75,6 +94,10 @@ def ocr_pdf(
         lang,
         "--optimize",
         str(optimize),
+        "--jobs",
+        str(max(1, settings.ocr_jobs)),
+        "--max-image-mpixels",
+        str(settings.ocr_max_image_mpixels),
         "--skip-text",
         "--quiet",
     ]

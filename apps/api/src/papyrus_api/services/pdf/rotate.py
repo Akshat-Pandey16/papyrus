@@ -10,6 +10,7 @@ from papyrus_api.core.errors import (
     PdfMalformedError,
     ValidationError,
 )
+from papyrus_api.services.pdf.limits import enforce_page_cap
 
 _VALID_ROTATIONS = {0, 90, 180, 270, -90, -180, -270}
 
@@ -27,6 +28,7 @@ def rotate_pdf(
     input_path: Path,
     output_path: Path,
     rotations: dict[int, int],
+    max_pages: int | None = None,
 ) -> RotateResult:
     if not input_path.exists():
         raise FileNotFoundError(str(input_path))
@@ -48,6 +50,7 @@ def rotate_pdf(
 
     try:
         page_count = len(pdf.pages)
+        enforce_page_cap(page_count, max_pages)
         for raw_page, deg in rotations.items():
             page_idx = raw_page - 1
             if page_idx < 0 or page_idx >= page_count:

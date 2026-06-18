@@ -35,10 +35,14 @@ def set_refresh_cookie(response: Response, token: str) -> None:
 
 
 def clear_refresh_cookie(response: Response) -> None:
+    samesite = _samesite()
     response.delete_cookie(
         key=settings.refresh_cookie_name,
         path=settings.refresh_cookie_path,
         domain=settings.refresh_cookie_domain,
+        secure=samesite == "none" or _cookie_secure(),
+        httponly=True,
+        samesite=samesite,
     )
 
 

@@ -8,6 +8,7 @@ from uuid import UUID
 
 import structlog
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
@@ -17,15 +18,15 @@ from papyrus_api.core.errors import (
     JobNotTerminalError,
     JobOutputExpiredError,
     QuotaExceededError,
+    ServiceUnavailableError,
     ValidationError,
 )
 from papyrus_api.core.filenames import compose_output_filename, safe_filename_stem
 from papyrus_api.core.pagination import decode_cursor, encode_cursor
 from papyrus_api.core.time import utc_now
-from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job
-from papyrus_api.integrations.redis import reserve_daily_quota
+from papyrus_api.integrations.redis import release_daily_quota, reserve_daily_quota
 from papyrus_api.repositories.documents import (
     DocumentVersionRepository,
     StorageObjectRepository,
@@ -57,6 +58,10 @@ class DownloadUrlResult:
 
 def _channel(job_id: UUID) -> str:
     return f"job-events:{job_id}"
+
+
+def _page_cap(is_anonymous: bool) -> int:
+    return settings.anon_max_pages if is_anonymous else settings.user_max_pages
 
 
 def _job_to_out(job: Job, *, phase: str | None) -> JobOut:
@@ -150,52 +155,120 @@ class JobService:
             "created_by_user_id": str(user_id),
             "version_id": str(version.id),
             "zero_retention": zero_retention,
+            "is_anonymous": is_anonymous,
+            "max_pages": _page_cap(is_anonymous),
         }
 
-        job = await self.jobs.create(
+        return await self._persist_and_enqueue(
             organization_id=organization_id,
             kind=JobKind.COMPRESS,
             params=params,
             idempotency_key=idempotency_key,
             input_size_bytes=storage_object.size_bytes,
+            task_name="papyrus.pdf.compress",
         )
 
-        await self.events.append(
-            job_id=job.id,
-            status=JobStatus.PENDING,
-            payload={"phase": "queued"},
-        )
-        await self.session.commit()
+    async def _persist_and_enqueue(
+        self,
+        *,
+        organization_id: UUID,
+        kind: JobKind,
+        params: dict[str, Any],
+        idempotency_key: UUID,
+        input_size_bytes: int | None,
+        task_name: str,
+    ) -> CreateJobResult:
+        try:
+            job = await self.jobs.create(
+                organization_id=organization_id,
+                kind=kind,
+                params=params,
+                idempotency_key=idempotency_key,
+                input_size_bytes=input_size_bytes,
+            )
+            await self.events.append(
+                job_id=job.id,
+                status=JobStatus.PENDING,
+                payload={"phase": "queued"},
+            )
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            await release_daily_quota(
+                self.redis, namespace="jobs", principal_id=str(organization_id)
+            )
+            existing = await self.jobs.get_by_idempotency_key(
+                organization_id=organization_id,
+                idempotency_key=idempotency_key,
+            )
+            if existing is not None:
+                return CreateJobResult(job=existing, replay=True)
+            raise
 
         await self._publish(
             job_id=job.id,
             status=JobStatus.PENDING,
             payload={"phase": "queued"},
         )
-
-        self._enqueue_compress(job.id)
-
-        log.info(
-            "jobs.compress.created",
-            job_id=str(job.id),
-            document_id=str(document.id),
-            level=compression_level,
-            replay=False,
+        await self._enqueue(
+            task_name,
+            job.id,
+            organization_id=organization_id,
         )
-
+        log.info("jobs.created", job_id=str(job.id), kind=kind.value, replay=False)
         return CreateJobResult(job=job, replay=False)
 
-    def _enqueue_compress(self, job_id: UUID) -> None:
+    async def _enqueue(
+        self,
+        task_name: str,
+        job_id: UUID,
+        *,
+        organization_id: UUID,
+    ) -> None:
         try:
             from papyrus_api.workers.celery_app import celery_app
 
             celery_app.send_task(
-                "papyrus.pdf.compress",
+                task_name,
                 args=[str(job_id)],
                 task_id=str(job_id),
             )
-        except Exception:
-            log.warning("jobs.enqueue_failed", job_id=str(job_id))
+        except Exception as exc:
+            await self._abort_enqueue(job_id, organization_id=organization_id)
+            raise ServiceUnavailableError(
+                "Could not queue the job. Please try again in a moment.",
+                details={"retryable": True},
+            ) from exc
+
+    async def _abort_enqueue(self, job_id: UUID, *, organization_id: UUID) -> None:
+        failed = await self.jobs.mark_failed(
+            job_id=job_id,
+            error_code="enqueue_failed",
+            error_message="Could not queue the job.",
+        )
+        if failed is not None:
+            await self.events.append(
+                job_id=job_id,
+                status=JobStatus.FAILED,
+                payload={
+                    "phase": "failed",
+                    "error_code": "enqueue_failed",
+                    "error_message": "Could not queue the job.",
+                },
+            )
+        await self.session.commit()
+        await release_daily_quota(self.redis, namespace="jobs", principal_id=str(organization_id))
+        if failed is not None:
+            await self._publish(
+                job_id=job_id,
+                status=JobStatus.FAILED,
+                payload={
+                    "phase": "failed",
+                    "error_code": "enqueue_failed",
+                    "error_message": "Could not queue the job.",
+                },
+            )
+        log.warning("jobs.enqueue_failed", job_id=str(job_id))
 
     async def create_merge_job(
         self,
@@ -295,39 +368,18 @@ class JobService:
             "merge_options": options or {},
             "created_by_user_id": str(user_id),
             "zero_retention": zero_retention,
+            "is_anonymous": is_anonymous,
+            "max_pages": _page_cap(is_anonymous),
         }
 
-        job = await self.jobs.create(
+        return await self._persist_and_enqueue(
             organization_id=organization_id,
             kind=JobKind.MERGE,
             params=params,
             idempotency_key=idempotency_key,
             input_size_bytes=total_input_bytes,
+            task_name="papyrus.pdf.merge",
         )
-
-        await self.events.append(
-            job_id=job.id,
-            status=JobStatus.PENDING,
-            payload={"phase": "queued"},
-        )
-        await self.session.commit()
-
-        await self._publish(
-            job_id=job.id,
-            status=JobStatus.PENDING,
-            payload={"phase": "queued"},
-        )
-
-        self._enqueue_merge(job.id)
-
-        log.info(
-            "jobs.merge.created",
-            job_id=str(job.id),
-            input_count=len(document_ids),
-            replay=False,
-        )
-
-        return CreateJobResult(job=job, replay=False)
 
     async def create_split_job(
         self,
@@ -479,59 +531,19 @@ class JobService:
             "created_by_user_id": str(user_id),
             "version_id": str(version.id),
             "zero_retention": zero_retention,
+            "is_anonymous": is_anonymous,
+            "max_pages": _page_cap(is_anonymous),
             **extra_params,
         }
 
-        job = await self.jobs.create(
+        return await self._persist_and_enqueue(
             organization_id=organization_id,
             kind=kind,
             params=params,
             idempotency_key=idempotency_key,
             input_size_bytes=storage_object.size_bytes,
+            task_name=task_name,
         )
-        await self.events.append(
-            job_id=job.id,
-            status=JobStatus.PENDING,
-            payload={"phase": "queued"},
-        )
-        await self.session.commit()
-        await self._publish(
-            job_id=job.id,
-            status=JobStatus.PENDING,
-            payload={"phase": "queued"},
-        )
-
-        try:
-            from papyrus_api.workers.celery_app import celery_app
-
-            celery_app.send_task(
-                task_name,
-                args=[str(job.id)],
-                task_id=str(job.id),
-            )
-        except Exception:
-            log.warning("jobs.enqueue_failed", job_id=str(job.id), task=task_name)
-
-        log.info(
-            "jobs.simple.created",
-            job_id=str(job.id),
-            kind=kind.value,
-            document_id=str(document.id),
-            replay=False,
-        )
-        return CreateJobResult(job=job, replay=False)
-
-    def _enqueue_merge(self, job_id: UUID) -> None:
-        try:
-            from papyrus_api.workers.celery_app import celery_app
-
-            celery_app.send_task(
-                "papyrus.pdf.merge",
-                args=[str(job_id)],
-                task_id=str(job_id),
-            )
-        except Exception:
-            log.warning("jobs.enqueue_failed", job_id=str(job_id))
 
     async def get(self, *, organization_id: UUID, job_id: UUID) -> JobOut:
         job = await self.jobs.get_for_org(
@@ -817,7 +829,25 @@ class JobService:
             filename=suggested,
         )
         expires_at = utc_now() + timedelta(seconds=settings.s3_presign_expires_seconds)
+
+        zero_retention = bool(job.params.get("zero_retention")) if job.params else False
+        if zero_retention or settings.zero_retention_mode:
+            self._schedule_output_purge(job.id)
+
         return DownloadUrlResult(url=url, expires_at=expires_at, filename=suggested)
+
+    @staticmethod
+    def _schedule_output_purge(job_id: UUID) -> None:
+        try:
+            from papyrus_api.workers.celery_app import celery_app
+
+            celery_app.send_task(
+                "papyrus.cleanup.purge_job_output",
+                args=[str(job_id)],
+                countdown=settings.zero_retention_grace_seconds,
+            )
+        except Exception:
+            log.warning("jobs.zero_retention.schedule_purge_failed", job_id=str(job_id))
 
     async def append_event(
         self,
@@ -859,13 +889,12 @@ class JobService:
             log.warning("jobs.publish_failed", job_id=str(job_id))
 
     async def _latest_phase(self, *, job_id: UUID) -> str | None:
-        events = await self.events.list_for_job(job_id=job_id, limit=20)
-        for event in reversed(events):
-            payload = event.payload or {}
-            phase = payload.get("phase") if isinstance(payload, dict) else None
-            if isinstance(phase, str):
-                return phase
-        return None
+        event = await self.events.latest(job_id=job_id)
+        if event is None:
+            return None
+        payload = event.payload or {}
+        phase = payload.get("phase") if isinstance(payload, dict) else None
+        return phase if isinstance(phase, str) else None
 
     async def _reserve_quota(
         self,
@@ -873,6 +902,13 @@ class JobService:
         *,
         is_anonymous: bool = False,
     ) -> None:
+        inflight = await self.jobs.count_inflight_for_org(organization_id=organization_id)
+        if inflight >= settings.max_inflight_jobs_per_org:
+            raise QuotaExceededError(
+                "Too many jobs are still in progress. Let some finish, then try again.",
+                details={"max_inflight": settings.max_inflight_jobs_per_org},
+            )
+
         limit = settings.anon_daily_job_quota if is_anonymous else settings.user_daily_job_quota
         allowed, _count = await reserve_daily_quota(
             self.redis,
@@ -991,12 +1027,8 @@ def job_to_out(job: Job, *, phase: str | None) -> JobOut:
 
 
 __all__ = [
-    "_TERMINAL_STATUSES",
     "CreateJobResult",
-    "Document",
-    "DocumentVersion",
     "DownloadUrlResult",
     "JobService",
-    "StorageObject",
     "job_to_out",
 ]

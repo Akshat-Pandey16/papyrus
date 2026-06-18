@@ -27,10 +27,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         BodySizeLimitMiddleware,
-        max_bytes=1_048_576,
+        max_bytes=settings.max_request_body_bytes,
     )
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
@@ -42,6 +41,7 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
         max_age=600,
     )
+    app.add_middleware(SecurityHeadersMiddleware)
 
     register_exception_handlers(app)
     app.include_router(api_router, prefix="/api")

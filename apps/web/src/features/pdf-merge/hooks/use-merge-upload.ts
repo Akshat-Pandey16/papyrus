@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useConfirmUploadMutation, useInitiateUploadMutation } from "@/features/pdf-merge/api";
 import { useMergeStore } from "@/features/pdf-merge/store";
 
@@ -103,9 +104,20 @@ export function useMergeUpload() {
   const start = useCallback(
     async ({ clientBatchId, files }: MergeUploadInput): Promise<MergeUploadResult> => {
       cancelledRef.current.delete(clientBatchId);
-      const documentIds = await Promise.all(
+      await ensureAnonymousSession();
+      const results = await Promise.allSettled(
         files.map(({ clientFileId, file }) => uploadOne(clientBatchId, clientFileId, file)),
       );
+      const documentIds: string[] = [];
+      let firstError: unknown = null;
+      for (const r of results) {
+        if (r.status === "fulfilled") documentIds.push(r.value);
+        else if (firstError === null) firstError = r.reason;
+      }
+      if (firstError !== null) {
+        cancelledRef.current.add(clientBatchId);
+        throw firstError instanceof Error ? firstError : new Error("One or more uploads failed.");
+      }
       return { documentIds };
     },
     [uploadOne],

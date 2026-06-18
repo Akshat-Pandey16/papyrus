@@ -80,12 +80,13 @@ class IdentityService:
         self.refresh_tokens = RefreshTokenRepository(session)
         self.audit = AuditEventRepository(session)
 
-    def _login_fail_key(self, email_norm: str) -> str:
-        return f"auth:login:fail:{email_norm}"
+    def _login_fail_key(self, email_norm: str, ip: str | None) -> str:
+        return f"auth:login:fail:{email_norm}:{ip or 'noip'}"
 
-    async def _login_lock_seconds(self, email_norm: str) -> int | None:
+    async def _login_lock_seconds(self, email_norm: str, ip: str | None) -> int | None:
+        key = self._login_fail_key(email_norm, ip)
         try:
-            raw = await self.redis.get(self._login_fail_key(email_norm))
+            raw = await self.redis.get(key)
         except Exception:
             return None
         if raw is None:
@@ -97,25 +98,23 @@ class IdentityService:
         if count < settings.login_max_failures:
             return None
         try:
-            ttl = int(await self.redis.ttl(self._login_fail_key(email_norm)))
+            ttl = int(await self.redis.ttl(key))
         except Exception:
             ttl = settings.login_lockout_seconds
         return max(ttl, 1)
 
-    async def _record_login_failure(self, email_norm: str) -> None:
+    async def _record_login_failure(self, email_norm: str, ip: str | None) -> None:
+        key = self._login_fail_key(email_norm, ip)
         try:
-            count = int(await self.redis.incr(self._login_fail_key(email_norm)))
+            count = int(await self.redis.incr(key))
             if count == 1:
-                await self.redis.expire(
-                    self._login_fail_key(email_norm),
-                    settings.login_lockout_seconds,
-                )
+                await self.redis.expire(key, settings.login_lockout_seconds)
         except Exception:
             log.warning("auth.login.fail_counter_unavailable")
 
-    async def _clear_login_failures(self, email_norm: str) -> None:
+    async def _clear_login_failures(self, email_norm: str, ip: str | None) -> None:
         try:
-            await self.redis.delete(self._login_fail_key(email_norm))
+            await self.redis.delete(self._login_fail_key(email_norm, ip))
         except Exception:
             log.warning("auth.login.fail_counter_clear_failed")
 
@@ -207,7 +206,8 @@ class IdentityService:
         client: ClientContext | None = None,
     ) -> AuthResult:
         email_norm = email.strip().lower()
-        locked_for = await self._login_lock_seconds(email_norm)
+        ip = client.ip_address if client else None
+        locked_for = await self._login_lock_seconds(email_norm, ip)
         if locked_for is not None:
             raise RateLimitedError(
                 "Too many failed login attempts. Please try again later.",
@@ -217,13 +217,13 @@ class IdentityService:
         user = await self.users.get_by_email(email_norm)
         if user is None or not user.is_active:
             verify_password(password, _DUMMY_PASSWORD_HASH)
-            await self._record_login_failure(email_norm)
+            await self._record_login_failure(email_norm, ip)
             raise AuthenticationError("Invalid email or password.")
         if not verify_password(password, user.password_hash):
-            await self._record_login_failure(email_norm)
+            await self._record_login_failure(email_norm, ip)
             raise AuthenticationError("Invalid email or password.")
 
-        await self._clear_login_failures(email_norm)
+        await self._clear_login_failures(email_norm, ip)
 
         if needs_rehash(user.password_hash):
             await self.users.update_password(user, password_hash=hash_password(password))
@@ -257,8 +257,10 @@ class IdentityService:
 
         now = utc_now()
         absolute_cutoff = now - timedelta(seconds=settings.refresh_absolute_ttl_seconds)
-        if record.created_at < absolute_cutoff:
-            await self.refresh_tokens.revoke_all_for_user(record.user_id)
+        family_origin = await self.refresh_tokens.family_origin(record.family_id)
+        session_started_at = family_origin or record.created_at
+        if session_started_at < absolute_cutoff:
+            await self.refresh_tokens.revoke_family(record.family_id)
             await self.session.commit()
             raise AuthenticationError("Session expired. Please sign in again.")
 
@@ -320,6 +322,7 @@ class IdentityService:
         email_norm = email.strip().lower()
         user = await self.users.get_by_email(email_norm)
         if user is None:
+            hash_opaque_token(secrets.token_urlsafe(48))
             log.info("auth.forgot.unknown_email")
             return None
 
@@ -509,13 +512,10 @@ class IdentityService:
         return user
 
     async def get_session(self, *, user_id: UUID) -> tuple[User, Organization]:
-        user = await self.users.get(user_id)
-        if user is None or not user.is_active:
+        pair = await self.users.get_with_primary_org(user_id)
+        if pair is None:
             raise AuthenticationError("Account is no longer active.")
-        organization = await self.organizations.get_primary_for_user(user.id)
-        if organization is None:
-            raise AuthenticationError("Account is missing a workspace.")
-        return user, organization
+        return pair
 
     async def _unique_org_slug(self, base: str) -> str:
         candidate = _slugify(base)

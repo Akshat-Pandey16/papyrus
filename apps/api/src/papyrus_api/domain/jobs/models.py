@@ -19,6 +19,13 @@ class Job(Base, IdMixin, TenantMixin, TimestampMixin):
         Index("ix_jobs_organization_id_created_at", "organization_id", "created_at"),
         Index("ix_jobs_organization_id_status", "organization_id", "status"),
         Index(
+            "ix_jobs_org_status_created_id",
+            "organization_id",
+            "status",
+            "created_at",
+            "id",
+        ),
+        Index(
             "ix_jobs_pending_runnable",
             "created_at",
             postgresql_where=text("status IN ('PENDING', 'RUNNING')"),

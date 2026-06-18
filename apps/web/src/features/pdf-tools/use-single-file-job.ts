@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { type UploadKind, useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
@@ -40,6 +41,7 @@ export function useSingleFileJobRunner() {
         createdAt: Date.now(),
       });
       try {
+        await ensureAnonymousSession();
         const result = await doUpload({ clientUploadId, file });
         updateUpload(clientUploadId, { documentId: result.documentId });
         const job = await createJob(result.documentId, idempotencyKey);

@@ -73,7 +73,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
     redis = get_redis()
 
     lock_key = f"job:lock:{job_id}"
-    acquired = await redis.set(lock_key, task_id, nx=True, ex=900)
+    acquired = await redis.set(lock_key, task_id, nx=True, ex=settings.job_lock_ttl_seconds)
     if not acquired:
         existing_owner = await redis.get(lock_key)
         if existing_owner != task_id:
@@ -401,7 +401,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
     redis = get_redis()
 
     lock_key = f"job:lock:{job_id}"
-    acquired = await redis.set(lock_key, task_id, nx=True, ex=900)
+    acquired = await redis.set(lock_key, task_id, nx=True, ex=settings.job_lock_ttl_seconds)
     if not acquired:
         existing_owner = await redis.get(lock_key)
         if existing_owner != task_id:
@@ -546,12 +546,21 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
 
             merge_options = _build_merge_options(params)
             inputs_for_thread = list(merge_inputs)
+            merge_max_pages_raw = params.get("max_pages")
+            merge_max_pages = (
+                merge_max_pages_raw
+                if isinstance(merge_max_pages_raw, int)
+                and not isinstance(merge_max_pages_raw, bool)
+                and merge_max_pages_raw > 0
+                else None
+            )
             result = await anyio.to_thread.run_sync(
                 lambda: merge_pdfs(
                     inputs=inputs_for_thread,
                     output_path=output_path,
                     options=merge_options,
                     progress=_on_progress,
+                    max_pages=merge_max_pages,
                 )
             )
 
