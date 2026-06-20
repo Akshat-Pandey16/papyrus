@@ -13,7 +13,7 @@ export function applyTheme(theme: Theme): void {
   root.classList.toggle("dark", resolved === "dark");
   root.style.colorScheme = resolved;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", resolved === "dark" ? "#1c1018" : "#fbeff0");
+  if (meta) meta.setAttribute("content", resolved === "dark" ? "#241b1a" : "#f3ecdf");
 }
 
 export type ThemeOrigin = { x: number; y: number };
@@ -23,11 +23,7 @@ type ViewTransitionDocument = Document & {
   startViewTransition?: (callback: () => void) => ViewTransition;
 };
 
-export function runThemeTransition(
-  theme: Theme,
-  commit: () => void,
-  origin?: ThemeOrigin,
-): void {
+export function runThemeTransition(theme: Theme, commit: () => void, origin?: ThemeOrigin): void {
   const doc = document as ViewTransitionDocument;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced || !doc.startViewTransition) {
@@ -52,10 +48,7 @@ export function runThemeTransition(
     .then(() => {
       document.documentElement.animate(
         {
-          clipPath: [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`,
-          ],
+          clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`],
         },
         {
           duration: 480,

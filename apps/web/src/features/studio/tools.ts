@@ -234,3 +234,36 @@ export const TOOL_PATH = {
 export function isToolId(value: string): value is ToolId {
   return value in TOOLS;
 }
+
+export type ToolCategory = "organize" | "optimize" | "convert" | "secure" | "edit";
+
+export const TOOL_CATEGORIES: { id: ToolCategory; label: string }[] = [
+  { id: "organize", label: "Organize" },
+  { id: "optimize", label: "Optimize" },
+  { id: "convert", label: "Convert" },
+  { id: "secure", label: "Secure" },
+  { id: "edit", label: "Edit & sign" },
+];
+
+export const TOOL_CATEGORY: Record<ToolId, ToolCategory> = {
+  merge: "organize",
+  split: "organize",
+  rotate: "organize",
+  reorder: "organize",
+  compress: "optimize",
+  ocr: "optimize",
+  pdf_to_images: "convert",
+  images_to_pdf: "convert",
+  protect: "secure",
+  unlock: "secure",
+  redact: "secure",
+  watermark: "edit",
+  page_numbers: "edit",
+  crop: "edit",
+  sign: "edit",
+  edit: "edit",
+};
+
+export function toolsInCategory(category: ToolCategory): ToolId[] {
+  return TOOL_ORDER.filter((id) => TOOL_CATEGORY[id] === category);
+}

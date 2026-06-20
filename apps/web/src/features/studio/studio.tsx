@@ -10,6 +10,7 @@ import { ResultsDrawer } from "@/features/studio/results-drawer";
 import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
 import { ToolDock } from "@/features/studio/tool-dock";
+import { ToolLauncher } from "@/features/studio/tool-launcher";
 import { TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
@@ -41,8 +42,20 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   const clearFiles = useStudioStore((s) => s.clearFiles);
 
   const [resultsOpen, setResultsOpen] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setLauncherOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const sessionJobs = useSessionJobs();
   const activeCount = sessionJobs.filter((j) => isActivePhase(j.phase)).length;
@@ -206,10 +219,16 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
 
       <ToolDock
         activeTool={activeTool}
-        onSelect={setActiveTool}
+        onOpenLauncher={() => setLauncherOpen(true)}
         resultsCount={sessionJobs.length}
         activeCount={activeCount}
         onOpenResults={() => setResultsOpen(true)}
+      />
+      <ToolLauncher
+        open={launcherOpen}
+        onOpenChange={setLauncherOpen}
+        activeTool={activeTool}
+        onSelect={setActiveTool}
       />
       <ResultsDrawer open={resultsOpen} onOpenChange={setResultsOpen} />
     </div>

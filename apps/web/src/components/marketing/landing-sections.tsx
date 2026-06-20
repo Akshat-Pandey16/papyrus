@@ -1,15 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowUpRight,
-  Code2,
-  EyeOff,
-  FileSignature,
-  Lock,
-  Server,
-  ShieldCheck,
-  Star,
-  Timer,
-} from "lucide-react";
+import { ArrowUpRight, Code2, EyeOff, Server, ShieldCheck, Star, Timer } from "lucide-react";
 import { motion } from "motion/react";
 import { LogoMark } from "@/components/brand/logo";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +55,7 @@ export function LandingSections() {
         <div className="mx-auto w-full max-w-[1400px]">
           <Reveal className="flex flex-col gap-3">
             <Badge tone="primary" className="self-start">
-              Six tools, one canvas
+              Every PDF tool, one canvas
             </Badge>
             <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
               Drop once. <span className="text-molten">Do anything.</span>
@@ -95,24 +85,6 @@ export function LandingSections() {
                 </Reveal>
               );
             })}
-            {[
-              { icon: FileSignature, label: "Sign" },
-              { icon: Lock, label: "Redact" },
-            ].map((t, i) => (
-              <Reveal key={t.label} delay={(TOOL_ORDER.length + i) * 0.04}>
-                <div className="flex h-full flex-col gap-3 rounded-2xl border border-dashed border-border bg-card/40 p-5">
-                  <span className="grid size-11 place-items-center rounded-2xl bg-muted text-muted-foreground">
-                    <t.icon className="size-5" />
-                  </span>
-                  <span className="font-display text-lg font-semibold text-muted-foreground">
-                    {t.label}
-                  </span>
-                  <Badge tone="muted" className="self-start">
-                    Soon
-                  </Badge>
-                </div>
-              </Reveal>
-            ))}
           </div>
         </div>
       </section>

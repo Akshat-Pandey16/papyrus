@@ -4,9 +4,7 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
-  FileSignature,
   HardDrive,
-  Lock,
   type LucideIcon,
   ScrollText,
 } from "lucide-react";
@@ -109,25 +107,6 @@ function DashboardPage() {
               </motion.div>
             );
           })}
-          {[
-            { icon: FileSignature, label: "Sign" },
-            { icon: Lock, label: "Redact" },
-          ].map((t) => (
-            <div
-              key={t.label}
-              className="flex h-full flex-col gap-3 rounded-2xl border border-dashed border-border bg-card/40 p-5 opacity-70"
-            >
-              <span className="grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <t.icon className="size-5" />
-              </span>
-              <span className="font-display text-base font-semibold text-muted-foreground">
-                {t.label}
-              </span>
-              <Badge tone="muted" className="self-start">
-                Soon
-              </Badge>
-            </div>
-          ))}
         </motion.div>
       </section>
 
