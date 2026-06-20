@@ -12,13 +12,23 @@ import { useStudioStore } from "@/features/studio/store";
 import { ToolDock } from "@/features/studio/tool-dock";
 import { TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
+import { CropTool } from "@/features/studio/tools/crop-tool";
+import { EditTool } from "@/features/studio/tools/edit-tool";
+import { ImagesToPdfTool } from "@/features/studio/tools/images-to-pdf-tool";
 import { MergeTool } from "@/features/studio/tools/merge-tool";
 import { OcrTool } from "@/features/studio/tools/ocr-tool";
+import { PageNumbersTool } from "@/features/studio/tools/page-numbers-tool";
+import { PdfToImagesTool } from "@/features/studio/tools/pdf-to-images-tool";
+import { ProtectTool } from "@/features/studio/tools/protect-tool";
+import { RedactTool } from "@/features/studio/tools/redact-tool";
 import { ReorderTool } from "@/features/studio/tools/reorder-tool";
 import { RotateTool } from "@/features/studio/tools/rotate-tool";
+import { SignTool } from "@/features/studio/tools/sign-tool";
 import { SplitTool } from "@/features/studio/tools/split-tool";
+import { UnlockTool } from "@/features/studio/tools/unlock-tool";
+import { WatermarkTool } from "@/features/studio/tools/watermark-tool";
 import type { SingleToolProps, StudioFile, ToolId } from "@/features/studio/types";
-import { validatePdf } from "@/features/studio/validate";
+import { validateFor } from "@/features/studio/validate";
 import { fadeRise } from "@/lib/motion";
 import { randomUUID } from "@/lib/uuid";
 
@@ -48,13 +58,14 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   }, [initialTool, setActiveTool]);
 
   const multi = TOOLS[activeTool].multi;
+  const accept = TOOLS[activeTool].accept;
   const firstFile = files[0]?.file ?? null;
   const showEmpty = multi ? files.length === 0 : firstFile == null;
 
   const acceptFiles = (incoming: File[]) => {
     const valid: StudioFile[] = [];
     for (const f of incoming) {
-      const err = validatePdf(f);
+      const err = validateFor(accept, f);
       if (err) {
         toast.error(`${f.name}: ${err}`);
         continue;
@@ -103,6 +114,8 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
 
   const renderTool = () => {
     if (activeTool === "merge") return <MergeTool onLaunched={() => setResultsOpen(true)} />;
+    if (activeTool === "images_to_pdf")
+      return <ImagesToPdfTool onLaunched={() => setResultsOpen(true)} />;
     if (!firstFile) return null;
     switch (activeTool) {
       case "compress":
@@ -115,6 +128,24 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
         return <ReorderTool {...singleProps} />;
       case "ocr":
         return <OcrTool {...singleProps} />;
+      case "protect":
+        return <ProtectTool {...singleProps} />;
+      case "unlock":
+        return <UnlockTool {...singleProps} />;
+      case "watermark":
+        return <WatermarkTool {...singleProps} />;
+      case "page_numbers":
+        return <PageNumbersTool {...singleProps} />;
+      case "crop":
+        return <CropTool {...singleProps} />;
+      case "pdf_to_images":
+        return <PdfToImagesTool {...singleProps} />;
+      case "sign":
+        return <SignTool {...singleProps} />;
+      case "redact":
+        return <RedactTool {...singleProps} />;
+      case "edit":
+        return <EditTool {...singleProps} />;
       default:
         return null;
     }
@@ -139,7 +170,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             exit="exit"
             className="flex min-h-[calc(100svh-4rem)] w-full items-stretch px-4 pt-4 pb-24 sm:px-6 lg:px-8"
           >
-            <Dropzone onFiles={acceptFiles} multi={multi} className="flex-1" />
+            <Dropzone onFiles={acceptFiles} multi={multi} accept={accept} className="flex-1" />
           </motion.div>
         ) : (
           <motion.div

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
@@ -25,7 +25,38 @@ JobKindLiteral = Literal[
     "reorder",
     "sign",
     "metadata",
+    "protect",
+    "unlock",
+    "watermark",
+    "page_numbers",
+    "crop",
+    "pdf_to_images",
+    "images_to_pdf",
+    "edit",
 ]
+
+OverlayFontLiteral = Literal[
+    "Helvetica",
+    "Helvetica-Bold",
+    "Helvetica-Oblique",
+    "Helvetica-BoldOblique",
+    "Times-Roman",
+    "Times-Bold",
+    "Times-Italic",
+    "Courier",
+    "Courier-Bold",
+]
+PageNumberPositionLiteral = Literal[
+    "bottom-center",
+    "bottom-right",
+    "bottom-left",
+    "top-center",
+    "top-right",
+    "top-left",
+]
+ImageFormatLiteral = Literal["jpeg", "png"]
+PageSizeLiteral = Literal["auto", "a4", "letter"]
+RgbColor = Annotated[list[float], Field(min_length=3, max_length=3)]
 
 
 class _MutableModel(StrictModel):
@@ -209,6 +240,115 @@ class MergeJobRequest(_MutableModel):
         if len(set(ids)) != len(ids):
             raise ValueError("inputs must not contain duplicate document_ids.")
         return value
+
+
+class ProtectJobRequest(_MutableModel):
+    document_id: UUID
+    password: str = Field(min_length=1, max_length=256)
+    owner_password: str | None = Field(default=None, max_length=256)
+    allow_printing: bool = True
+    allow_copying: bool = False
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class UnlockJobRequest(_MutableModel):
+    document_id: UUID
+    password: str = Field(min_length=1, max_length=256)
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class WatermarkJobRequest(_MutableModel):
+    document_id: UUID
+    text: str = Field(min_length=1, max_length=120)
+    color: RgbColor | None = None
+    opacity: float = Field(default=0.25, ge=0.05, le=1.0)
+    size: float = Field(default=48.0, ge=6.0, le=200.0)
+    rotation: float = Field(default=45.0, ge=-360.0, le=360.0)
+    tile: bool = True
+    font: OverlayFontLiteral = "Helvetica-Bold"
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class PageNumbersJobRequest(_MutableModel):
+    document_id: UUID
+    format: str = Field(default="{n}", min_length=1, max_length=40)
+    position: PageNumberPositionLiteral = "bottom-center"
+    start_at: int = Field(default=1, ge=0, le=1_000_000)
+    size: float = Field(default=11.0, ge=6.0, le=72.0)
+    color: RgbColor | None = None
+    font: OverlayFontLiteral = "Helvetica"
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class CropBoxIn(_MutableModel):
+    x: float = Field(ge=0.0, le=1.0)
+    y: float = Field(ge=0.0, le=1.0)
+    w: float = Field(gt=0.0, le=1.0)
+    h: float = Field(gt=0.0, le=1.0)
+
+
+class CropJobRequest(_MutableModel):
+    document_id: UUID
+    box: CropBoxIn
+    pages: list[int] | None = Field(default=None, max_length=10_000)
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class PdfToImagesJobRequest(_MutableModel):
+    document_id: UUID
+    image_format: ImageFormatLiteral = "jpeg"
+    dpi: int = Field(default=150, ge=36, le=300)
+    quality: int = Field(default=85, ge=30, le=100)
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class ImagesToPdfJobRequest(_MutableModel):
+    document_ids: list[UUID] = Field(min_length=1, max_length=200)
+    page_size: PageSizeLiteral = "auto"
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+    @field_validator("document_ids")
+    @classmethod
+    def _no_duplicates(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("document_ids must not contain duplicates.")
+        return value
+
+
+class RedactJobRequest(_MutableModel):
+    document_id: UUID
+    redactions: list[dict[str, Any]] = Field(min_length=1, max_length=5_000)
+    dpi: int = Field(default=200, ge=72, le=300)
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class ImageRefIn(_MutableModel):
+    ref: str = Field(min_length=1, max_length=64)
+    document_id: UUID
+
+
+class SignJobRequest(_MutableModel):
+    document_id: UUID
+    images: list[ImageRefIn] = Field(default_factory=list, max_length=50)
+    placements: list[dict[str, Any]] = Field(min_length=1, max_length=200)
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class EditJobRequest(_MutableModel):
+    document_id: UUID
+    images: list[ImageRefIn] = Field(default_factory=list, max_length=50)
+    ops: list[dict[str, Any]] = Field(min_length=1, max_length=2_000)
+    idempotency_key: UUID
+    zero_retention: bool = False
 
 
 class JobOut(StrictModel):

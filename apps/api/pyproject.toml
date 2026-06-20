@@ -30,6 +30,9 @@ dependencies = [
     "pikepdf>=9",
     "pillow>=11",
     "anyio>=4.7",
+    "reportlab>=4.2",
+    "pypdfium2>=4.30",
+    "img2pdf>=0.5",
 ]
 
 [project.scripts]

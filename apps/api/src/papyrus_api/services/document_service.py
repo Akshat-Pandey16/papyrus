@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
+    ImageInvalidError,
     PdfSignatureInvalidError,
     QuotaExceededError,
     UploadAlreadyConfirmedError,
@@ -27,10 +28,31 @@ from papyrus_api.services.storage_service import PresignedUpload, StorageService
 log = structlog.get_logger(__name__)
 
 PDF_MAGIC = b"%PDF-"
+_JPEG_MAGIC = b"\xff\xd8\xff"
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+_EXT_BY_CONTENT_TYPE = {
+    "application/pdf": "pdf",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
 
 
 def _hash_filename(name: str) -> str:
     return hashlib.sha256(name.encode("utf-8")).hexdigest()[:16]
+
+
+def _magic_matches(content_type: str, prefix: bytes) -> bool:
+    if content_type == "application/pdf":
+        return prefix.startswith(PDF_MAGIC)
+    if content_type == "image/jpeg":
+        return prefix.startswith(_JPEG_MAGIC)
+    if content_type == "image/png":
+        return prefix.startswith(_PNG_MAGIC)
+    if content_type == "image/webp":
+        return prefix[:4] == b"RIFF" and prefix[8:12] == b"WEBP"
+    return False
 
 
 @dataclass(slots=True, frozen=True)
@@ -124,7 +146,8 @@ class DocumentService:
         )
 
         bucket = settings.s3_bucket_uploads
-        key = f"org/{organization_id}/uploads/{document.id}/{uuid4().hex}.pdf"
+        ext = _EXT_BY_CONTENT_TYPE.get(content_type, "bin")
+        key = f"org/{organization_id}/uploads/{document.id}/{uuid4().hex}.{ext}"
 
         storage_object = await self.storage_objects.create_placeholder(
             bucket=bucket,
@@ -221,15 +244,20 @@ class DocumentService:
             bucket=latest_object_stmt.bucket,
             key=latest_object_stmt.key,
             start=0,
-            end=4,
+            end=15,
         )
-        if not prefix.startswith(PDF_MAGIC):
+        content_type = latest_object_stmt.content_type
+        if not _magic_matches(content_type, prefix):
             await self.storage.delete(
                 bucket=latest_object_stmt.bucket,
                 key=latest_object_stmt.key,
             )
-            raise PdfSignatureInvalidError(
-                "The uploaded file is not a valid PDF document.",
+            if content_type == "application/pdf":
+                raise PdfSignatureInvalidError(
+                    "The uploaded file is not a valid PDF document.",
+                )
+            raise ImageInvalidError(
+                "The uploaded file is not a valid image.",
             )
 
         confirmed = await self.storage_objects.mark_confirmed(

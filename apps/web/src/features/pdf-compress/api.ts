@@ -131,9 +131,11 @@ export const compressKeys = {
   downloadUrl: (jobId: string) => [...compressKeys.all, "download", jobId] as const,
 };
 
+export type UploadContentType = "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
+
 export type InitiateUploadInput = {
   name: string;
-  contentType: "application/pdf";
+  contentType: UploadContentType;
   sizeBytes: number;
 };
 

@@ -13,7 +13,22 @@ export type UploadPhase =
   | "failed"
   | "cancelled";
 
-export type UploadKind = "compress" | "split" | "rotate" | "reorder" | "ocr";
+export type UploadKind =
+  | "compress"
+  | "split"
+  | "rotate"
+  | "reorder"
+  | "ocr"
+  | "protect"
+  | "unlock"
+  | "watermark"
+  | "page_numbers"
+  | "crop"
+  | "pdf_to_images"
+  | "images_to_pdf"
+  | "redact"
+  | "sign"
+  | "edit";
 
 export type UploadEntry = {
   clientUploadId: string;

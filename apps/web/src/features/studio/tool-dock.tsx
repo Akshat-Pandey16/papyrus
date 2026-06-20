@@ -46,7 +46,7 @@ export function ToolDock({
         initial={{ y: 14, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-        className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-0.5 rounded-full border border-border bg-popover/95 p-1 shadow-clay-lg ring-1 ring-primary/15 backdrop-blur-xl sm:gap-1 sm:p-1.5"
+        className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-popover/95 p-1 shadow-clay-lg ring-1 ring-primary/15 backdrop-blur-xl sm:gap-1 sm:p-1.5"
       >
         {TOOL_ORDER.map((id) => {
           const tool = TOOLS[id];

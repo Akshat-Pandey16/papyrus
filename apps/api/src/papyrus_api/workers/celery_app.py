@@ -15,6 +15,7 @@ celery_app = Celery(
         "papyrus_api.workers.tasks.cleanup",
         "papyrus_api.workers.tasks.pdf_pipeline",
         "papyrus_api.workers.tasks.pdf_tools",
+        "papyrus_api.workers.tasks.pdf_compose",
     ],
 )
 
@@ -32,6 +33,9 @@ celery_app.conf.update(
     task_default_queue="default",
     task_routes={
         "papyrus.pdf.ocr": {"queue": "pdf-heavy"},
+        "papyrus.pdf.pdf_to_images": {"queue": "pdf-heavy"},
+        "papyrus.pdf.images_to_pdf": {"queue": "pdf-heavy"},
+        "papyrus.pdf.redact": {"queue": "pdf-heavy"},
         "papyrus.pdf.*": {"queue": "pdf"},
         "papyrus.cleanup.*": {"queue": "cleanup"},
     },

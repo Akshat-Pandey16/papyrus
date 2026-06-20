@@ -119,6 +119,18 @@ class Settings(BaseSettings):
     max_rotate_pages: int = 10_000
     max_split_parts: int = 5_000
 
+    image_allowed_content_types: CsvList = Field(
+        default_factory=lambda: ["image/jpeg", "image/png", "image/webp"]
+    )
+    images_to_pdf_max_count: int = 200
+    pdf_to_images_max_pages: int = 1_000
+    raster_dpi_default: int = 150
+    raster_dpi_max: int = 300
+    raster_max_megapixels: int = 40
+    redact_dpi: int = 200
+    overlay_max_ops: int = 2_000
+    job_secret_ttl_seconds: int = 1_800
+
     max_request_body_bytes: int = 1024 * 1024
     sse_max_streams_per_user: int = 8
     max_inflight_jobs_per_org: int = 25

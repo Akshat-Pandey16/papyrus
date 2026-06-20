@@ -15,7 +15,12 @@ class _MutableModel(StrictModel):
 
 class UploadInitiateRequest(_MutableModel):
     name: str = Field(min_length=1, max_length=255)
-    content_type: Literal["application/pdf"]
+    content_type: Literal[
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    ]
     size_bytes: int = Field(ge=1)
 
 

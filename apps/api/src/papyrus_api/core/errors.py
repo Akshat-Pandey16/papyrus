@@ -110,6 +110,26 @@ class PdfMalformedError(AppError):
     http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
+class PdfWrongPasswordError(AppError):
+    code = "pdf_wrong_password"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class PdfNotEncryptedError(AppError):
+    code = "pdf_not_encrypted"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class ImageInvalidError(AppError):
+    code = "image_invalid"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class ToolNotConfiguredError(AppError):
+    code = "tool_not_configured"
+    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 class TooManyPagesError(AppError):
     code = "too_many_pages"
     http_status = status.HTTP_422_UNPROCESSABLE_CONTENT

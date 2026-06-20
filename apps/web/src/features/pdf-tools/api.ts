@@ -173,6 +173,285 @@ export function useCreateOcrJobMutation() {
   });
 }
 
+type Rgb = [number, number, number];
+
+export type OverlayOp = {
+  type: "text" | "image" | "rect" | "line";
+  page: number;
+  [key: string]: unknown;
+};
+
+export type RedactRect = {
+  page: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+function zr() {
+  return useUiStore.getState().zeroRetention;
+}
+
+export type ProtectJobInput = {
+  documentId: string;
+  password: string;
+  ownerPassword?: string | null;
+  allowPrinting: boolean;
+  allowCopying: boolean;
+  idempotencyKey: string;
+};
+
+export function useCreateProtectJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ProtectJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/protect", {
+        document_id: input.documentId,
+        password: input.password,
+        owner_password: input.ownerPassword ?? null,
+        allow_printing: input.allowPrinting,
+        allow_copying: input.allowCopying,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type UnlockJobInput = {
+  documentId: string;
+  password: string;
+  idempotencyKey: string;
+};
+
+export function useCreateUnlockJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UnlockJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/unlock", {
+        document_id: input.documentId,
+        password: input.password,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type WatermarkJobInput = {
+  documentId: string;
+  text: string;
+  color?: Rgb | null;
+  opacity: number;
+  size: number;
+  rotation: number;
+  tile: boolean;
+  font: string;
+  idempotencyKey: string;
+};
+
+export function useCreateWatermarkJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: WatermarkJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/watermark", {
+        document_id: input.documentId,
+        text: input.text,
+        color: input.color ?? null,
+        opacity: input.opacity,
+        size: input.size,
+        rotation: input.rotation,
+        tile: input.tile,
+        font: input.font,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type PageNumbersJobInput = {
+  documentId: string;
+  format: string;
+  position: string;
+  startAt: number;
+  size: number;
+  color?: Rgb | null;
+  font: string;
+  idempotencyKey: string;
+};
+
+export function useCreatePageNumbersJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: PageNumbersJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/page-numbers", {
+        document_id: input.documentId,
+        format: input.format,
+        position: input.position,
+        start_at: input.startAt,
+        size: input.size,
+        color: input.color ?? null,
+        font: input.font,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type CropJobInput = {
+  documentId: string;
+  box: { x: number; y: number; w: number; h: number };
+  pages?: number[] | null;
+  idempotencyKey: string;
+};
+
+export function useCreateCropJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CropJobInput): Promise<Job> => {
+      const body: Record<string, unknown> = {
+        document_id: input.documentId,
+        box: input.box,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      };
+      if (input.pages && input.pages.length > 0) body.pages = input.pages;
+      const { data } = await apiClient.post<ApiJob>("/jobs/crop", body);
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type PdfToImagesJobInput = {
+  documentId: string;
+  imageFormat: "jpeg" | "png";
+  dpi: number;
+  quality: number;
+  idempotencyKey: string;
+};
+
+export function useCreatePdfToImagesJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: PdfToImagesJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/pdf-to-images", {
+        document_id: input.documentId,
+        image_format: input.imageFormat,
+        dpi: input.dpi,
+        quality: input.quality,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type ImagesToPdfJobInput = {
+  documentIds: string[];
+  pageSize: "auto" | "a4" | "letter";
+  idempotencyKey: string;
+};
+
+export function useCreateImagesToPdfJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ImagesToPdfJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/images-to-pdf", {
+        document_ids: input.documentIds,
+        page_size: input.pageSize,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type RedactJobInput = {
+  documentId: string;
+  redactions: RedactRect[];
+  dpi: number;
+  idempotencyKey: string;
+};
+
+export function useCreateRedactJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RedactJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/redact", {
+        document_id: input.documentId,
+        redactions: input.redactions,
+        dpi: input.dpi,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type SignJobInput = {
+  documentId: string;
+  placements: OverlayOp[];
+  idempotencyKey: string;
+};
+
+export function useCreateSignJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SignJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/sign", {
+        document_id: input.documentId,
+        images: [],
+        placements: input.placements,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
+export type EditJobInput = {
+  documentId: string;
+  ops: OverlayOp[];
+  idempotencyKey: string;
+};
+
+export function useCreateEditJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: EditJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/edit", {
+        document_id: input.documentId,
+        images: [],
+        ops: input.ops,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: zr(),
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => qc.setQueryData(compressKeys.job(job.id), job),
+  });
+}
+
 export function _ensureSharedHooksReExport() {
   return { useConfirmUploadMutation, useInitiateUploadMutation };
 }

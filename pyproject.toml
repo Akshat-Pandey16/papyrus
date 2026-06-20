@@ -59,6 +59,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S", "ANN", "PLR2004"]
+"**/tests/**/*" = ["S", "ANN", "PLR2004"]
 "**/migrations/**" = ["ANN", "I"]
 
 [tool.ruff.lint.isort]
@@ -87,6 +88,9 @@ module = [
     "botocore.*",
     "pikepdf.*",
     "PIL.*",
+    "pypdfium2.*",
+    "img2pdf.*",
+    "reportlab.*",
 ]
 ignore_missing_imports = true
 

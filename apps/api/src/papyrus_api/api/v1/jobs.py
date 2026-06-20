@@ -27,17 +27,27 @@ from papyrus_api.schemas.jobs import (
     CompressEstimateOut,
     CompressEstimateRequest,
     CompressJobRequest,
+    CropJobRequest,
     DownloadUrlOut,
+    EditJobRequest,
+    ImagesToPdfJobRequest,
     JobKindLiteral,
     JobOut,
     JobsListPage,
     JobStatusLiteral,
     MergeJobRequest,
     OcrJobRequest,
+    PageNumbersJobRequest,
+    PdfToImagesJobRequest,
+    ProtectJobRequest,
+    RedactJobRequest,
     ReorderJobRequest,
     RetryJobRequest,
     RotateJobRequest,
+    SignJobRequest,
     SplitJobRequest,
+    UnlockJobRequest,
+    WatermarkJobRequest,
 )
 from papyrus_api.services.job_service import JobService, job_to_out
 
@@ -280,6 +290,313 @@ async def create_ocr_job(
         user_id=user.id,
         document_id=payload.document_id,
         language=payload.language,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/protect",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_protect_job(
+    payload: ProtectJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_protect_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        secret={"user_password": payload.password, "owner_password": payload.owner_password},
+        options={
+            "allow_printing": payload.allow_printing,
+            "allow_copying": payload.allow_copying,
+        },
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/unlock",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_unlock_job(
+    payload: UnlockJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_unlock_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        secret={"password": payload.password},
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/watermark",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_watermark_job(
+    payload: WatermarkJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_watermark_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        options={
+            "text": payload.text,
+            "color": payload.color,
+            "opacity": payload.opacity,
+            "size": payload.size,
+            "rotation": payload.rotation,
+            "tile": payload.tile,
+            "font": payload.font,
+        },
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/page-numbers",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_page_numbers_job(
+    payload: PageNumbersJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_page_numbers_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        options={
+            "format": payload.format,
+            "position": payload.position,
+            "start_at": payload.start_at,
+            "size": payload.size,
+            "color": payload.color,
+            "font": payload.font,
+        },
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/crop",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_crop_job(
+    payload: CropJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_crop_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        options={"box": payload.box.model_dump(), "pages": payload.pages},
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/pdf-to-images",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_pdf_to_images_job(
+    payload: PdfToImagesJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_pdf_to_images_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        options={
+            "image_format": payload.image_format,
+            "dpi": payload.dpi,
+            "quality": payload.quality,
+        },
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/images-to-pdf",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_images_to_pdf_job(
+    payload: ImagesToPdfJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_images_to_pdf_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_ids=payload.document_ids,
+        options={"page_size": payload.page_size},
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/redact",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_redact_job(
+    payload: RedactJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_redact_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        options={"redactions": payload.redactions, "dpi": payload.dpi},
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/sign",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_sign_job(
+    payload: SignJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    image_refs = [(image.ref, image.document_id) for image in payload.images]
+    result = await service.create_sign_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        image_refs=image_refs,
+        placements=payload.placements,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/edit",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_edit_job(
+    payload: EditJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    image_refs = [(image.ref, image.document_id) for image in payload.images]
+    result = await service.create_edit_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        image_refs=image_refs,
+        ops=payload.ops,
         idempotency_key=payload.idempotency_key,
         is_anonymous=user.is_anonymous,
         zero_retention=payload.zero_retention,

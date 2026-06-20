@@ -3,27 +3,40 @@ import { motion } from "motion/react";
 import { type DragEvent, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { maxFileLabel, validatePdf } from "@/features/studio/validate";
+import { maxFileLabel, validateFor } from "@/features/studio/validate";
 import { cn } from "@/lib/utils";
 
 export type DropzoneProps = {
   onFiles: (files: File[]) => void;
   multi?: boolean;
+  accept?: "pdf" | "image";
   disabled?: boolean;
   className?: string;
 };
 
-export function Dropzone({ onFiles, multi = false, disabled = false, className }: DropzoneProps) {
+const ACCEPT_ATTR = {
+  pdf: "application/pdf",
+  image: "image/jpeg,image/png,image/webp",
+};
+
+export function Dropzone({
+  onFiles,
+  multi = false,
+  accept = "pdf",
+  disabled = false,
+  className,
+}: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const inputId = useId();
   const [over, setOver] = useState(false);
+  const noun = accept === "image" ? "image" : "PDF";
 
-  const accept = (list: FileList | null) => {
+  const acceptFiles = (list: FileList | null) => {
     if (!list || disabled) return;
     const valid: File[] = [];
     for (const f of Array.from(list)) {
-      const err = validatePdf(f);
+      const err = validateFor(accept, f);
       if (err) {
         toast.error(`${f.name}: ${err}`);
         continue;
@@ -38,7 +51,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
     e.preventDefault();
     dragDepth.current = 0;
     setOver(false);
-    accept(e.dataTransfer.files);
+    acceptFiles(e.dataTransfer.files);
   };
 
   return (
@@ -46,7 +59,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
     <div
       role="button"
       tabIndex={0}
-      aria-label={multi ? "Drop PDFs or browse" : "Drop a PDF or browse"}
+      aria-label={multi ? `Drop ${noun}s or browse` : `Drop a ${noun} or browse`}
       aria-disabled={disabled}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(e) => {
@@ -88,7 +101,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
         </motion.span>
         <div className="flex flex-col gap-2">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Drop a PDF{multi ? " or a few" : ""} to begin
+            Drop {multi ? `${noun}s` : `a ${noun}`} to begin
           </h2>
           <p className="max-w-md text-sm text-muted-foreground sm:text-base">
             Or click anywhere to browse. Up to {maxFileLabel()} · processed privately · gone in 24h.
@@ -109,11 +122,11 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
         ref={inputRef}
         id={inputId}
         type="file"
-        accept="application/pdf"
+        accept={ACCEPT_ATTR[accept]}
         multiple={multi}
         className="sr-only"
         onChange={(e) => {
-          accept(e.target.files);
+          acceptFiles(e.target.files);
           e.target.value = "";
         }}
       />
