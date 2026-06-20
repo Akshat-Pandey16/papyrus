@@ -13,7 +13,7 @@ export function SheetContent({
 }: ComponentProps<typeof Drawer.Content> & { children: ReactNode }) {
   return (
     <Drawer.Portal>
-      <Drawer.Overlay className="fixed inset-0 z-50 bg-oxblood/45 backdrop-blur-sm" />
+      <Drawer.Overlay className="fixed inset-0 z-50 bg-oxblood/55" />
       <Drawer.Content
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[92svh] flex-col rounded-t-3xl border-t border-border/70 bg-popover text-popover-foreground outline-none",

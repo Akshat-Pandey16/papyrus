@@ -117,15 +117,19 @@ export function StageCanvas({
         onRemove={onRemove}
       />
       {instruction ? <CanvasInstruction>{instruction}</CanvasInstruction> : null}
-      <PageCanvas
-        file={file}
-        maxPages={maxPages}
-        rotations={rotations}
-        onPageClick={onPageClick}
-        selectedPages={selectedPages}
-        selectionOrder={selectionOrder}
-        highlightedPages={highlightedPages}
-      />
+      <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-muted/25 p-3 shadow-clay-sm sm:p-5">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain opacity-[0.04]" />
+        <PageCanvas
+          file={file}
+          maxPages={maxPages}
+          rotations={rotations}
+          onPageClick={onPageClick}
+          selectedPages={selectedPages}
+          selectionOrder={selectionOrder}
+          highlightedPages={highlightedPages}
+          className="relative"
+        />
+      </div>
     </div>
   );
 }

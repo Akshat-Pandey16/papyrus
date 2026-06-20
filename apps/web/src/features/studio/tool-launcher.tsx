@@ -38,6 +38,7 @@ export function ToolLauncher({
 
   const flat = useMemo(() => groups.flatMap((g) => g.ids), [groups]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset the highlighted row whenever the search query changes
   useEffect(() => {
     setCursor(0);
   }, [query]);
@@ -74,7 +75,6 @@ export function ToolLauncher({
         <DialogTitle className="sr-only">Choose a tool</DialogTitle>
         <div className="flex items-center gap-2.5 border-b border-border/60 px-4 py-3">
           <Search className="size-4 shrink-0 text-muted-foreground" />
-          {/* biome-ignore lint/a11y/noAutofocus: command palette focuses its search on open */}
           <input
             autoFocus
             value={query}

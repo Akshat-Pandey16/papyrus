@@ -3,6 +3,7 @@ import { Download, History, ScrollText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useDownloadUrlMutation } from "@/features/pdf-compress/api";
@@ -10,7 +11,7 @@ import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import type { Job, JobKind, JobStatus } from "@/features/pdf-compress/types";
 import { triggerDownload } from "@/features/pdf-tools/download";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
-import { TOOL_ORDER, TOOLS } from "@/features/studio/tools";
+import { TOOL_CATEGORIES, TOOLS, toolsInCategory } from "@/features/studio/tools";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/jobs")({
@@ -59,16 +60,29 @@ function JobsPage() {
         </div>
       </header>
 
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          <Chip active={kind === "all"} onClick={() => setKind("all")}>
-            All tools
-          </Chip>
-          {TOOL_ORDER.map((id) => (
-            <Chip key={id} active={kind === id} onClick={() => setKind(id)}>
-              {TOOLS[id].label}
-            </Chip>
-          ))}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <label htmlFor="tool-filter" className="text-xs font-medium text-muted-foreground">
+            Tool
+          </label>
+          <Select
+            id="tool-filter"
+            size="sm"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as KindFilter)}
+            className="w-48"
+          >
+            <option value="all">All tools</option>
+            {TOOL_CATEGORIES.map((cat) => (
+              <optgroup key={cat.id} label={cat.label}>
+                {toolsInCategory(cat.id).map((id) => (
+                  <option key={id} value={id}>
+                    {TOOLS[id].label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {STATUS_CHIPS.map((c) => (

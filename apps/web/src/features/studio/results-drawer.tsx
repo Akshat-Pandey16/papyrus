@@ -20,7 +20,7 @@ export function ResultsDrawer({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange} direction={direction}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-oxblood/45 backdrop-blur-sm" />
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-oxblood/55" />
         <Drawer.Content
           className={cn(
             "fixed z-50 flex flex-col bg-popover text-popover-foreground outline-none",

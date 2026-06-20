@@ -13,7 +13,7 @@ export function useAutoDownload(job: Job | null): DownloadMutation {
   const triggeredRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!job || job.status !== "succeeded") return;
+    if (job?.status !== "succeeded") return;
     const id = job.id;
     if (triggeredRef.current.has(id)) return;
     triggeredRef.current.add(id);

@@ -180,11 +180,6 @@
     outline-offset: 2px;
   }
 
-  html.custom-cursor,
-  html.custom-cursor * {
-    cursor: none !important;
-  }
-
   /* Theme switch: the new view is revealed via a JS-driven clip-path circle
      (see runThemeTransition). Disabling the default crossfade keeps only one
      full-page layer animating, which avoids jank on heavy pages. */

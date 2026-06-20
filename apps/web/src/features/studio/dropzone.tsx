@@ -11,6 +11,7 @@ export type DropzoneProps = {
   multi?: boolean;
   accept?: "pdf" | "image";
   disabled?: boolean;
+  variant?: "full" | "panel";
   className?: string;
 };
 
@@ -24,13 +25,16 @@ export function Dropzone({
   multi = false,
   accept = "pdf",
   disabled = false,
+  variant = "full",
   className,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const inputId = useId();
   const [over, setOver] = useState(false);
-  const noun = accept === "image" ? "image" : "PDF";
+  const isPanel = variant === "panel";
+  const nouns = accept === "image" ? "images" : "PDFs";
+  const aNoun = accept === "image" ? "an image" : "a PDF";
 
   const acceptFiles = (list: FileList | null) => {
     if (!list || disabled) return;
@@ -59,7 +63,7 @@ export function Dropzone({
     <div
       role="button"
       tabIndex={0}
-      aria-label={multi ? `Drop ${noun}s or browse` : `Drop a ${noun} or browse`}
+      aria-label={multi ? `Drop ${nouns} or browse` : `Drop ${aNoun} or browse`}
       aria-disabled={disabled}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(e) => {
@@ -80,7 +84,8 @@ export function Dropzone({
       }}
       onDrop={onDrop}
       className={cn(
-        "group relative flex min-h-[58svh] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-colors sm:p-10",
+        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors",
+        isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[58svh] p-6 sm:p-10",
         over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
         disabled && "pointer-events-none opacity-60",
         className,
@@ -93,18 +98,33 @@ export function Dropzone({
         className="relative z-0 flex flex-col items-center gap-5"
       >
         <motion.span
-          className="grid size-20 place-items-center rounded-3xl bg-molten text-primary-foreground shadow-ember"
+          className={cn(
+            "grid place-items-center rounded-3xl bg-molten text-primary-foreground shadow-ember",
+            isPanel ? "size-16" : "size-20",
+          )}
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 4.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         >
-          <ScrollText className="size-9" strokeWidth={2} />
+          <ScrollText className={isPanel ? "size-7" : "size-9"} strokeWidth={2} />
         </motion.span>
         <div className="flex flex-col gap-2">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Drop {multi ? `${noun}s` : `a ${noun}`} to begin
+          <h2
+            className={cn(
+              "font-display font-semibold tracking-tight text-balance",
+              isPanel ? "text-2xl" : "text-3xl sm:text-4xl",
+            )}
+          >
+            Drop {multi ? nouns : aNoun} {isPanel ? "here" : "to begin"}
           </h2>
           <p className="max-w-md text-sm text-muted-foreground sm:text-base">
-            Or click anywhere to browse. Up to {maxFileLabel()} · processed privately · gone in 24h.
+            {isPanel ? (
+              <>or click to browse · up to {maxFileLabel()}</>
+            ) : (
+              <>
+                Or click anywhere to browse. Up to {maxFileLabel()} · processed privately · gone in
+                24h.
+              </>
+            )}
           </p>
         </div>
         <Button

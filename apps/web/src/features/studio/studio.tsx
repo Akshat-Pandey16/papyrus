@@ -5,10 +5,10 @@ import { toast } from "sonner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
-import { Dropzone } from "@/features/studio/dropzone";
 import { ResultsDrawer } from "@/features/studio/results-drawer";
 import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
+import { StudioHero } from "@/features/studio/studio-hero";
 import { ToolDock } from "@/features/studio/tool-dock";
 import { ToolLauncher } from "@/features/studio/tool-launcher";
 import { TOOLS } from "@/features/studio/tools";
@@ -181,9 +181,15 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="flex min-h-[calc(100svh-4rem)] w-full items-stretch px-4 pt-4 pb-24 sm:px-6 lg:px-8"
+            className="flex min-h-[calc(100svh-4rem)] w-full items-center pb-24"
           >
-            <Dropzone onFiles={acceptFiles} multi={multi} accept={accept} className="flex-1" />
+            <StudioHero
+              tool={TOOLS[activeTool]}
+              generic={initialTool == null}
+              multi={multi}
+              accept={accept}
+              onFiles={acceptFiles}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -205,7 +211,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none fixed inset-0 z-30 grid place-items-center bg-oxblood/40 backdrop-blur-sm"
+            className="pointer-events-none fixed inset-0 z-30 grid place-items-center bg-oxblood/50"
           >
             <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-primary bg-card/90 px-10 py-8 shadow-clay-lg">
               <ScrollText className="size-10 text-primary" />

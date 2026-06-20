@@ -164,7 +164,7 @@ export function OverlayEditor({
   };
 
   const commitText = () => {
-    if (pendingText && pendingText.value.trim()) {
+    if (pendingText?.value.trim()) {
       setShapes((prev) => [
         ...prev,
         {
@@ -238,7 +238,6 @@ export function OverlayEditor({
       </div>
 
       <div className="relative mx-auto w-full max-w-[760px]">
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: pointer drawing surface */}
         <div
           ref={surfaceRef}
           onPointerDown={onPointerDown}
@@ -320,7 +319,6 @@ export function OverlayEditor({
               className="absolute z-10"
               style={{ left: `${pendingText.x * 100}%`, top: `${pendingText.y * 100}%` }}
             >
-              {/* biome-ignore lint/a11y/noAutofocus: inline text placement needs immediate focus */}
               <Input
                 id={textInputId}
                 autoFocus
