@@ -185,10 +185,19 @@
     cursor: none !important;
   }
 
+  /* Theme switch: the new view is revealed via a JS-driven clip-path circle
+     (see runThemeTransition). Disabling the default crossfade keeps only one
+     full-page layer animating, which avoids jank on heavy pages. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 0.32s;
-    animation-timing-function: var(--ease-clay);
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(root) {
+    z-index: 0;
+  }
+  ::view-transition-new(root) {
+    z-index: 1;
   }
 
   @media (prefers-reduced-motion: reduce) {
