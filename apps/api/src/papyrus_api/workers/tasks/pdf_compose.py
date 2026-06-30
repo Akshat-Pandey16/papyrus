@@ -32,6 +32,7 @@ from papyrus_api.workers.tasks._common import (
     TransientStorageError,
     check_cancelled,
     classify_storage_error,
+    decrypt_input_if_needed,
     discard_output,
     fail_job,
     publish,
@@ -166,6 +167,13 @@ async def _run_compose_job(
                         raise TransientStorageError(str(exc)) from exc
                     raise
                 await scan_input(dest)
+                if item.get("content_type") == "application/pdf":
+                    await decrypt_input_if_needed(
+                        redis=redis,
+                        organization_id=organization_id,
+                        document_id=item.get("document_id"),
+                        input_path=dest,
+                    )
                 downloaded.append({**item, "path": dest})
 
             await check_cancelled(redis, job_id)

@@ -6,6 +6,7 @@ from pathlib import Path
 import pikepdf
 
 from papyrus_api.core.errors import (
+    PdfEncryptedError,
     PdfMalformedError,
     PdfNotEncryptedError,
     PdfWrongPasswordError,
@@ -150,4 +151,44 @@ def unlock_pdf(
     )
 
 
-__all__ = ["SecurityResult", "protect_pdf", "unlock_pdf"]
+def decrypt_for_processing(*, input_path: Path, password: str | None) -> bool:
+    if not input_path.exists() or input_path.stat().st_size == 0:
+        return False
+    try:
+        probe: pikepdf.Pdf | None = pikepdf.open(str(input_path))
+    except pikepdf.PasswordError:
+        probe = None
+    except pikepdf.PdfError as exc:
+        raise PdfMalformedError("This PDF appears to be malformed.") from exc
+
+    if probe is not None:
+        try:
+            if not probe.is_encrypted:
+                return False
+            decrypted = input_path.with_name(f"{input_path.stem}.decrypted.pdf")
+            probe.save(str(decrypted), **_save_kwargs())
+        finally:
+            probe.close()
+        decrypted.replace(input_path)
+        return True
+
+    if not password:
+        raise PdfEncryptedError("This PDF is password-protected.")
+    try:
+        pdf = pikepdf.open(str(input_path), password=password)
+    except pikepdf.PasswordError as exc:
+        raise PdfWrongPasswordError(
+            "The password did not unlock this PDF. Check it and try again.",
+        ) from exc
+    except pikepdf.PdfError as exc:
+        raise PdfMalformedError("This PDF appears to be malformed.") from exc
+    try:
+        decrypted = input_path.with_name(f"{input_path.stem}.decrypted.pdf")
+        pdf.save(str(decrypted), **_save_kwargs())
+    finally:
+        pdf.close()
+    decrypted.replace(input_path)
+    return True
+
+
+__all__ = ["SecurityResult", "decrypt_for_processing", "protect_pdf", "unlock_pdf"]

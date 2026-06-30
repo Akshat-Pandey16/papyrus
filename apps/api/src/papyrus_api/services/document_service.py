@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 import structlog
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
@@ -18,6 +19,7 @@ from papyrus_api.core.errors import (
 )
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
+from papyrus_api.integrations.redis import input_password_key
 from papyrus_api.repositories.documents import (
     DocumentRepository,
     DocumentVersionRepository,
@@ -116,6 +118,26 @@ class DocumentService:
             document_id=str(document.id),
             storage_objects_purged=purged,
             storage_objects_total=len(storage_objects),
+        )
+
+    async def set_input_password(
+        self,
+        *,
+        organization_id: UUID,
+        document_id: UUID,
+        password: str,
+        redis: Redis,
+    ) -> None:
+        document = await self.documents.get_for_org(
+            organization_id=organization_id,
+            document_id=document_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError("Document not found.")
+        await redis.set(
+            input_password_key(organization_id, str(document_id)),
+            password,
+            ex=settings.job_secret_ttl_seconds,
         )
 
     async def initiate_upload(

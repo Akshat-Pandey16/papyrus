@@ -4,11 +4,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Response, status
 
-from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep, rate_limit
+from papyrus_api.api.deps import CurrentPrincipal, DocumentServiceDep, RedisDep, rate_limit
 from papyrus_api.core.config import settings
 from papyrus_api.schemas.documents import (
     ConfirmUploadRequest,
     DocumentOut,
+    DocumentPasswordRequest,
     DocumentVersionOut,
     PresignedUploadOut,
     UploadInitiateRequest,
@@ -88,6 +89,34 @@ async def confirm_upload(
         created_at=confirmed.document.created_at,
         current_version=version,
     )
+
+
+@router.post(
+    "/{document_id}/password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[
+        rate_limit(
+            "documents.password",
+            limit=settings.uploads_init_burst_limit,
+            window_seconds=settings.uploads_init_window_seconds,
+        )
+    ],
+)
+async def set_document_password(
+    document_id: UUID,
+    payload: DocumentPasswordRequest,
+    principal: CurrentPrincipal,
+    service: DocumentServiceDep,
+    redis: RedisDep,
+) -> Response:
+    _user, organization = principal
+    await service.set_input_password(
+        organization_id=organization.id,
+        document_id=document_id,
+        password=payload.password,
+        redis=redis,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

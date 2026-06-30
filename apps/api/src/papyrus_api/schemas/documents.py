@@ -43,6 +43,10 @@ class ConfirmUploadRequest(_MutableModel):
     etag: str | None = None
 
 
+class DocumentPasswordRequest(_MutableModel):
+    password: str = Field(min_length=1, max_length=512)
+
+
 class DocumentVersionOut(StrictModel):
     id: UUID
     version: int

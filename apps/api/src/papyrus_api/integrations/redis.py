@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import UUID
+
 import structlog
 from redis.asyncio import ConnectionPool, Redis
 
@@ -12,6 +14,10 @@ log = structlog.get_logger(__name__)
 def _quota_key(namespace: str, principal_id: str) -> str:
     day = utc_now().strftime("%Y%m%d")
     return f"quota:{namespace}:{day}:{principal_id}"
+
+
+def input_password_key(organization_id: UUID, document_id: str) -> str:
+    return f"doc:pwd:{organization_id}:{document_id}"
 
 
 _pool: ConnectionPool | None = None

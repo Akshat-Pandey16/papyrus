@@ -42,6 +42,7 @@ from papyrus_api.workers.tasks._common import (
     TransientStorageError,
     check_cancelled,
     classify_storage_error,
+    decrypt_input_if_needed,
     discard_output,
     fail_job,
     publish,
@@ -203,6 +204,13 @@ async def _run_simple_job(
 
             await scan_input(input_path)
             await check_cancelled(redis, job_id)
+            if kind_label != "unlock":
+                await decrypt_input_if_needed(
+                    redis=redis,
+                    organization_id=organization_id,
+                    document_id=params.get("document_id"),
+                    input_path=input_path,
+                )
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(

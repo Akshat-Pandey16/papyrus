@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery import Task
@@ -14,6 +15,7 @@ from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.jobs.enums import JobStatus
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
+from papyrus_api.services.pdf.security import decrypt_for_processing
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
@@ -92,6 +94,28 @@ async def refund_job_quota(organization_id: UUID | None) -> None:
 
     await release_daily_quota(
         get_redis(), namespace="jobs", principal_id=str(organization_id)
+    )
+
+
+async def decrypt_input_if_needed(
+    *,
+    redis: Redis,
+    organization_id: UUID | None,
+    document_id: object,
+    input_path: Path,
+) -> bool:
+    if organization_id is None or not isinstance(document_id, str) or not document_id:
+        return False
+    from papyrus_api.integrations.redis import input_password_key
+
+    try:
+        password = await redis.get(input_password_key(organization_id, document_id))
+    except Exception:
+        password = None
+    if not password:
+        return False
+    return await anyio.to_thread.run_sync(
+        lambda: decrypt_for_processing(input_path=input_path, password=password)
     )
 
 
