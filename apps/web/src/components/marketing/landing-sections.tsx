@@ -145,7 +145,11 @@ export function LandingSections() {
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                   <Button asChild size="lg" variant="secondary">
-                    <a href="https://github.com" target="_blank" rel="noreferrer noopener">
+                    <a
+                      href="https://github.com/Akshat-Pandey16/papyrus"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
                       <Star />
                       Star on GitHub
                     </a>
@@ -185,7 +189,7 @@ export function LandingSections() {
               Sign in
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/Akshat-Pandey16/papyrus"
               target="_blank"
               rel="noreferrer noopener"
               className="hover:text-foreground"

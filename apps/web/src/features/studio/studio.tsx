@@ -72,6 +72,16 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
     if (initialTool) setActiveTool(initialTool);
   }, [initialTool, setActiveTool]);
 
+  useEffect(() => {
+    if (!initialTool) return;
+    const meta = TOOLS[initialTool];
+    const noun = meta.accept === "pdf" && !meta.label.includes("PDF") ? " PDF" : "";
+    document.title = `${meta.label}${noun} — Papyrus`;
+    return () => {
+      document.title = "Papyrus";
+    };
+  }, [initialTool]);
+
   const multi = TOOLS[activeTool].multi;
   const accept = TOOLS[activeTool].accept;
   const firstFile = files[0]?.file ?? null;

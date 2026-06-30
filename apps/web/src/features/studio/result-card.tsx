@@ -109,10 +109,18 @@ export function ResultCard({ job }: { job: SessionJob }) {
   };
 
   const onRetry = async () => {
-    if (!job.jobId) return;
-    const next = await retry.mutateAsync({ jobId: job.jobId, idempotencyKey: randomUUID() });
-    if (job.source === "upload") updateUpload(job.key, { jobId: next.id, phase: "queued" });
-    else updateBatch(job.key, { jobId: next.id, phase: "queued" });
+    if (!job.jobId || retry.isPending) return;
+    try {
+      const next = await retry.mutateAsync({ jobId: job.jobId, idempotencyKey: randomUUID() });
+      if (job.source === "upload") updateUpload(job.key, { jobId: next.id, phase: "queued" });
+      else updateBatch(job.key, { jobId: next.id, phase: "queued" });
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code: unknown }).code)
+          : null;
+      toast.error(mapErrorMessage(code, "Could not retry. Please try again."));
+    }
   };
 
   return (
