@@ -23,6 +23,7 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
+from papyrus_api.services.pdf.convert import office_to_pdf
 from papyrus_api.services.pdf.crop import crop_pdf, normalize_box
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.page_numbers import PageNumberOptions, number_pages_pdf
@@ -113,6 +114,7 @@ async def _run_simple_job(
     process: ProcessFn,
     output_extension: str = "pdf",
     output_content_type: str = "application/pdf",
+    decrypt: bool = True,
 ) -> None:
     redis = get_redis()
     lock_key = f"job:lock:{job_id}"
@@ -187,7 +189,13 @@ async def _run_simple_job(
 
         with tempfile.TemporaryDirectory(prefix=f"papyrus-{kind_label}-") as tmp_root:
             tmp_dir = Path(tmp_root)
-            input_path = tmp_dir / "input.pdf"
+            input_name = params.get("input_filename")
+            input_ext = (
+                Path(input_name).suffix.lstrip(".").lower()
+                if isinstance(input_name, str) and "." in input_name
+                else "pdf"
+            )
+            input_path = tmp_dir / f"input.{input_ext or 'pdf'}"
             output_path = tmp_dir / f"output.{output_extension}"
 
             try:
@@ -204,7 +212,7 @@ async def _run_simple_job(
 
             await scan_input(input_path)
             await check_cancelled(redis, job_id)
-            if kind_label != "unlock":
+            if decrypt and kind_label != "unlock":
                 await decrypt_input_if_needed(
                     redis=redis,
                     organization_id=organization_id,
@@ -728,6 +736,7 @@ def _make_task(
     label: str,
     extension: str = "pdf",
     content_type: str = "application/pdf",
+    decrypt: bool = True,
 ) -> Any:
     @celery_app.task(
         name=name,
@@ -750,6 +759,7 @@ def _make_task(
                 process=process,
                 output_extension=extension,
                 output_content_type=content_type,
+                decrypt=decrypt,
             )
         )
         return job_id
@@ -825,4 +835,31 @@ redact_task = _make_task(
     name="papyrus.pdf.redact",
     process=_redact_process,
     label="redact",
+)
+
+
+async def _convert_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    profile_dir = output_path.parent / f"lo-profile-{uuid4().hex}"
+    result = await anyio.to_thread.run_sync(
+        lambda: office_to_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            profile_dir=profile_dir,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+    }
+
+
+convert_task = _make_task(
+    name="papyrus.pdf.convert",
+    process=_convert_process,
+    label="convert",
+    decrypt=False,
 )

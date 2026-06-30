@@ -19,11 +19,22 @@ export function StudioHero({
   tool: ToolMeta;
   generic: boolean;
   multi: boolean;
-  accept: "pdf" | "image";
+  accept: "pdf" | "image" | "office";
   onFiles: (files: File[]) => void;
 }) {
   const Icon = tool.icon;
-  const noun = accept === "image" ? (multi ? "images" : "an image") : multi ? "PDFs" : "a PDF";
+  const noun =
+    accept === "image"
+      ? multi
+        ? "images"
+        : "an image"
+      : accept === "office"
+        ? multi
+          ? "documents"
+          : "a document"
+        : multi
+          ? "PDFs"
+          : "a PDF";
 
   return (
     <div className="mx-auto grid w-full max-w-[1200px] items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 lg:py-14">

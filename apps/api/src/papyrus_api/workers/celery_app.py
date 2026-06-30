@@ -39,6 +39,7 @@ celery_app.conf.update(
         "papyrus.pdf.pdf_to_images": {"queue": "pdf-heavy"},
         "papyrus.pdf.images_to_pdf": {"queue": "pdf-heavy"},
         "papyrus.pdf.redact": {"queue": "pdf-heavy"},
+        "papyrus.pdf.convert": {"queue": "pdf-heavy"},
         "papyrus.pdf.*": {"queue": "pdf"},
         "papyrus.cleanup.*": {"queue": "cleanup"},
     },

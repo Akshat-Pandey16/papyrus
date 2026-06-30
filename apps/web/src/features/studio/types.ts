@@ -14,7 +14,8 @@ export type ToolId =
   | "images_to_pdf"
   | "sign"
   | "redact"
-  | "edit";
+  | "edit"
+  | "convert";
 
 export type StudioFile = {
   id: string;

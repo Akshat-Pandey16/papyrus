@@ -213,6 +213,12 @@ class OcrJobRequest(_MutableModel):
     zero_retention: bool = False
 
 
+class ConvertJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
 class MergeInputSpec(_MutableModel):
     document_id: UUID
     page_ranges: str | None = Field(default=None, max_length=512)

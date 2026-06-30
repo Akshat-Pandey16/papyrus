@@ -28,7 +28,8 @@ export type UploadKind =
   | "images_to_pdf"
   | "redact"
   | "sign"
-  | "edit";
+  | "edit"
+  | "convert";
 
 export type UploadEntry = {
   clientUploadId: string;

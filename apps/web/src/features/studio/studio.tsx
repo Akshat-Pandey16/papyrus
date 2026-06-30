@@ -14,6 +14,7 @@ import { ToolDock } from "@/features/studio/tool-dock";
 import { ToolLauncher } from "@/features/studio/tool-launcher";
 import { TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
+import { ConvertTool } from "@/features/studio/tools/convert-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
 import { EditTool } from "@/features/studio/tools/edit-tool";
 import { ImagesToPdfTool } from "@/features/studio/tools/images-to-pdf-tool";
@@ -132,6 +133,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
       return <ImagesToPdfTool onLaunched={() => setResultsOpen(true)} />;
     if (!firstFile) return null;
     if (activeTool === "unlock") return <UnlockTool {...singleProps} />;
+    if (activeTool === "convert") return <ConvertTool {...singleProps} />;
     const inner = (() => {
       switch (activeTool) {
         case "compress":

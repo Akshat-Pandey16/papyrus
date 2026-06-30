@@ -16,6 +16,7 @@ from papyrus_api.core.errors import (
     PdfSignatureInvalidError,
     UploadAlreadyConfirmedError,
     UploadNotFoundInStorageError,
+    ValidationError,
 )
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
@@ -32,12 +33,35 @@ log = structlog.get_logger(__name__)
 PDF_MAGIC = b"%PDF-"
 _JPEG_MAGIC = b"\xff\xd8\xff"
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+_ZIP_MAGIC = b"PK\x03\x04"
+_OLE_MAGIC = b"\xd0\xcf\x11\xe0"
+
+_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+_PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+_ODT = "application/vnd.oasis.opendocument.text"
+_ODS = "application/vnd.oasis.opendocument.spreadsheet"
+_ODP = "application/vnd.oasis.opendocument.presentation"
+
+_ZIP_OFFICE_TYPES = frozenset({_DOCX, _XLSX, _PPTX, _ODT, _ODS, _ODP})
+_OLE_OFFICE_TYPES = frozenset(
+    {"application/msword", "application/vnd.ms-excel", "application/vnd.ms-powerpoint"}
+)
 
 _EXT_BY_CONTENT_TYPE = {
     "application/pdf": "pdf",
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    _DOCX: "docx",
+    _XLSX: "xlsx",
+    _PPTX: "pptx",
+    _ODT: "odt",
+    _ODS: "ods",
+    _ODP: "odp",
+    "application/msword": "doc",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.ms-powerpoint": "ppt",
 }
 
 
@@ -54,6 +78,10 @@ def _magic_matches(content_type: str, prefix: bytes) -> bool:
         return prefix.startswith(_PNG_MAGIC)
     if content_type == "image/webp":
         return prefix[:4] == b"RIFF" and prefix[8:12] == b"WEBP"
+    if content_type in _ZIP_OFFICE_TYPES:
+        return prefix.startswith(_ZIP_MAGIC)
+    if content_type in _OLE_OFFICE_TYPES:
+        return prefix.startswith(_OLE_MAGIC)
     return False
 
 
@@ -277,6 +305,10 @@ class DocumentService:
             if content_type == "application/pdf":
                 raise PdfSignatureInvalidError(
                     "The uploaded file is not a valid PDF document.",
+                )
+            if content_type in _ZIP_OFFICE_TYPES or content_type in _OLE_OFFICE_TYPES:
+                raise ValidationError(
+                    "The uploaded file does not match the expected document format.",
                 )
             raise ImageInvalidError(
                 "The uploaded file is not a valid image.",

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export type DropzoneProps = {
   onFiles: (files: File[]) => void;
   multi?: boolean;
-  accept?: "pdf" | "image";
+  accept?: "pdf" | "image" | "office";
   disabled?: boolean;
   variant?: "full" | "panel";
   className?: string;
@@ -18,6 +18,7 @@ export type DropzoneProps = {
 const ACCEPT_ATTR = {
   pdf: "application/pdf",
   image: "image/jpeg,image/png,image/webp",
+  office: ".doc,.docx,.odt,.xls,.xlsx,.ods,.ppt,.pptx,.odp",
 };
 
 export function Dropzone({
@@ -33,8 +34,8 @@ export function Dropzone({
   const inputId = useId();
   const [over, setOver] = useState(false);
   const isPanel = variant === "panel";
-  const nouns = accept === "image" ? "images" : "PDFs";
-  const aNoun = accept === "image" ? "an image" : "a PDF";
+  const nouns = accept === "image" ? "images" : accept === "office" ? "documents" : "PDFs";
+  const aNoun = accept === "image" ? "an image" : accept === "office" ? "a document" : "a PDF";
 
   const acceptFiles = (list: FileList | null) => {
     if (!list || disabled) return;

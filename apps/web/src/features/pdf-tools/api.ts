@@ -177,6 +177,28 @@ export function useCreateOcrJobMutation() {
   });
 }
 
+export type ConvertJobInput = {
+  documentId: string;
+  idempotencyKey: string;
+};
+
+export function useCreateConvertJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ConvertJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/convert", {
+        document_id: input.documentId,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => {
+      qc.setQueryData(compressKeys.job(job.id), job);
+    },
+  });
+}
+
 type Rgb = [number, number, number];
 
 export type OverlayOp = {

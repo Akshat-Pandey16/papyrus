@@ -1,5 +1,6 @@
 import {
   Crop,
+  FileType2,
   Hash,
   ImagePlus,
   Images,
@@ -26,7 +27,7 @@ export type ToolMeta = {
   tagline: string;
   icon: LucideIcon;
   multi: boolean;
-  accept: "pdf" | "image";
+  accept: "pdf" | "image" | "office";
   hue: string;
 };
 
@@ -47,6 +48,7 @@ export const TOOL_ORDER: ToolId[] = [
   "edit",
   "pdf_to_images",
   "images_to_pdf",
+  "convert",
 ];
 
 export const TOOLS: Record<ToolId, ToolMeta> = {
@@ -210,6 +212,16 @@ export const TOOLS: Record<ToolId, ToolMeta> = {
     accept: "image",
     hue: "48",
   },
+  convert: {
+    id: "convert",
+    label: "Office to PDF",
+    verb: "Convert",
+    tagline: "Word, Excel, PowerPoint → PDF",
+    icon: FileType2,
+    multi: false,
+    accept: "office",
+    hue: "16",
+  },
 };
 
 export const TOOL_PATH = {
@@ -229,6 +241,7 @@ export const TOOL_PATH = {
   edit: "/tools/edit",
   pdf_to_images: "/tools/pdf-to-images",
   images_to_pdf: "/tools/images-to-pdf",
+  convert: "/tools/convert",
 } as const satisfies Record<ToolId, string>;
 
 export function isToolId(value: string): value is ToolId {
@@ -254,6 +267,7 @@ export const TOOL_CATEGORY: Record<ToolId, ToolCategory> = {
   ocr: "optimize",
   pdf_to_images: "convert",
   images_to_pdf: "convert",
+  convert: "convert",
   protect: "secure",
   unlock: "secure",
   redact: "secure",

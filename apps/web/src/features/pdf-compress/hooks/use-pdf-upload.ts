@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useConfirmUploadMutation, useInitiateUploadMutation } from "@/features/pdf-compress/api";
+import {
+  type UploadContentType,
+  useConfirmUploadMutation,
+  useInitiateUploadMutation,
+} from "@/features/pdf-compress/api";
 import { useUploadStore } from "@/features/pdf-compress/store";
 
 const xhrRegistry = new Map<string, XMLHttpRequest>();
@@ -7,6 +11,7 @@ const xhrRegistry = new Map<string, XMLHttpRequest>();
 export type UploadStartInput = {
   clientUploadId: string;
   file: File;
+  contentType?: UploadContentType;
 };
 
 export type UploadResult = {
@@ -31,12 +36,12 @@ export function usePdfUpload() {
   }, []);
 
   const start = useCallback(
-    async ({ clientUploadId, file }: UploadStartInput): Promise<UploadResult> => {
+    async ({ clientUploadId, file, contentType }: UploadStartInput): Promise<UploadResult> => {
       update(clientUploadId, { phase: "preparing" });
 
       const init = await initiate.mutateAsync({
         name: file.name,
-        contentType: "application/pdf",
+        contentType: contentType ?? "application/pdf",
         sizeBytes: file.size,
       });
 

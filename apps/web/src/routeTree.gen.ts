@@ -32,6 +32,7 @@ import { Route as ToolsMergeRouteImport } from './app/routes/tools/merge'
 import { Route as ToolsImagesToPdfRouteImport } from './app/routes/tools/images-to-pdf'
 import { Route as ToolsEditRouteImport } from './app/routes/tools/edit'
 import { Route as ToolsCropRouteImport } from './app/routes/tools/crop'
+import { Route as ToolsConvertRouteImport } from './app/routes/tools/convert'
 import { Route as ToolsCompressRouteImport } from './app/routes/tools/compress'
 
 const SignupRoute = SignupRouteImport.update({
@@ -149,6 +150,11 @@ const ToolsCropRoute = ToolsCropRouteImport.update({
   path: '/tools/crop',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsConvertRoute = ToolsConvertRouteImport.update({
+  id: '/tools/convert',
+  path: '/tools/convert',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsCompressRoute = ToolsCompressRouteImport.update({
   id: '/tools/compress',
   path: '/tools/compress',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
     | '/tools/images-to-pdf'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
     | '/tools/images-to-pdf'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
     | '/tools/images-to-pdf'
@@ -325,6 +337,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   ToolsCompressRoute: typeof ToolsCompressRoute
+  ToolsConvertRoute: typeof ToolsConvertRoute
   ToolsCropRoute: typeof ToolsCropRoute
   ToolsEditRoute: typeof ToolsEditRoute
   ToolsImagesToPdfRoute: typeof ToolsImagesToPdfRoute
@@ -505,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsCropRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/convert': {
+      id: '/tools/convert'
+      path: '/tools/convert'
+      fullPath: '/tools/convert'
+      preLoaderRoute: typeof ToolsConvertRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/compress': {
       id: '/tools/compress'
       path: '/tools/compress'
@@ -525,6 +545,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   ToolsCompressRoute: ToolsCompressRoute,
+  ToolsConvertRoute: ToolsConvertRoute,
   ToolsCropRoute: ToolsCropRoute,
   ToolsEditRoute: ToolsEditRoute,
   ToolsImagesToPdfRoute: ToolsImagesToPdfRoute,
