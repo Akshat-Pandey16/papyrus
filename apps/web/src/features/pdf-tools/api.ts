@@ -9,6 +9,10 @@ import type { CompressionOptions, Job, PdfVersion } from "@/features/pdf-compres
 import { apiClient } from "@/lib/api/client";
 import { useUiStore } from "@/stores/ui-store";
 
+export async function setDocumentPassword(documentId: string, password: string): Promise<void> {
+  await apiClient.post(`/documents/${documentId}/password`, { password });
+}
+
 export type SplitMode = "ranges" | "every_n" | "single_pages";
 
 export type SplitRange = { from: number; to: number };

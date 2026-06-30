@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
+import { PasswordGate } from "@/features/studio/password-gate";
 import { ResultsDrawer } from "@/features/studio/results-drawer";
 import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
@@ -130,38 +131,45 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
     if (activeTool === "images_to_pdf")
       return <ImagesToPdfTool onLaunched={() => setResultsOpen(true)} />;
     if (!firstFile) return null;
-    switch (activeTool) {
-      case "compress":
-        return <CompressTool {...singleProps} />;
-      case "split":
-        return <SplitTool {...singleProps} />;
-      case "rotate":
-        return <RotateTool {...singleProps} />;
-      case "reorder":
-        return <ReorderTool {...singleProps} />;
-      case "ocr":
-        return <OcrTool {...singleProps} />;
-      case "protect":
-        return <ProtectTool {...singleProps} />;
-      case "unlock":
-        return <UnlockTool {...singleProps} />;
-      case "watermark":
-        return <WatermarkTool {...singleProps} />;
-      case "page_numbers":
-        return <PageNumbersTool {...singleProps} />;
-      case "crop":
-        return <CropTool {...singleProps} />;
-      case "pdf_to_images":
-        return <PdfToImagesTool {...singleProps} />;
-      case "sign":
-        return <SignTool {...singleProps} />;
-      case "redact":
-        return <RedactTool {...singleProps} />;
-      case "edit":
-        return <EditTool {...singleProps} />;
-      default:
-        return null;
-    }
+    if (activeTool === "unlock") return <UnlockTool {...singleProps} />;
+    const inner = (() => {
+      switch (activeTool) {
+        case "compress":
+          return <CompressTool {...singleProps} />;
+        case "split":
+          return <SplitTool {...singleProps} />;
+        case "rotate":
+          return <RotateTool {...singleProps} />;
+        case "reorder":
+          return <ReorderTool {...singleProps} />;
+        case "ocr":
+          return <OcrTool {...singleProps} />;
+        case "protect":
+          return <ProtectTool {...singleProps} />;
+        case "watermark":
+          return <WatermarkTool {...singleProps} />;
+        case "page_numbers":
+          return <PageNumbersTool {...singleProps} />;
+        case "crop":
+          return <CropTool {...singleProps} />;
+        case "pdf_to_images":
+          return <PdfToImagesTool {...singleProps} />;
+        case "sign":
+          return <SignTool {...singleProps} />;
+        case "redact":
+          return <RedactTool {...singleProps} />;
+        case "edit":
+          return <EditTool {...singleProps} />;
+        default:
+          return null;
+      }
+    })();
+    if (!inner) return null;
+    return (
+      <PasswordGate key={firstFile.name + firstFile.size} file={firstFile}>
+        {inner}
+      </PasswordGate>
+    );
   };
 
   return (

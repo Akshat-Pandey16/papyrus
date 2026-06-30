@@ -4,6 +4,8 @@ import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { type UploadKind, useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
+import { setDocumentPassword } from "@/features/pdf-tools/api";
+import { getFilePassword } from "@/features/studio/page-canvas";
 import { ApiError } from "@/lib/api/client";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { randomUUID } from "@/lib/uuid";
@@ -44,6 +46,8 @@ export function useSingleFileJobRunner() {
         await ensureAnonymousSession();
         const result = await doUpload({ clientUploadId, file });
         updateUpload(clientUploadId, { documentId: result.documentId });
+        const password = getFilePassword(file);
+        if (password) await setDocumentPassword(result.documentId, password);
         const job = await createJob(result.documentId, idempotencyKey);
         updateUpload(clientUploadId, { jobId: job.id, phase: "queued" });
         return { clientUploadId, jobId: job.id };

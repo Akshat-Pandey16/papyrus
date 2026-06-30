@@ -62,6 +62,42 @@ const PREVIEW_TOO_LARGE = "preview_too_large";
 
 const renderCache = new Map<File, Map<number, string>>();
 const docCache = new Map<File, Promise<PdfDoc>>();
+const filePasswords = new Map<File, string>();
+
+export function getFilePassword(file: File): string | undefined {
+  return filePasswords.get(file);
+}
+
+export function setFilePassword(file: File, password: string): void {
+  filePasswords.set(file, password);
+  evictFile(file);
+}
+
+export function isPasswordException(err: unknown): boolean {
+  return Boolean(err) && (err as { name?: string }).name === "PasswordException";
+}
+
+export async function probePdfNeedsPassword(file: File): Promise<boolean> {
+  try {
+    await getCachedDoc(file);
+    return false;
+  } catch (err) {
+    if (isPasswordException(err)) return true;
+    throw err;
+  }
+}
+
+export async function verifyPdfPassword(file: File, password: string): Promise<boolean> {
+  const pdfjs = await loadPdfjs();
+  const data = await file.arrayBuffer();
+  try {
+    const doc = (await pdfjs.getDocument({ data, password }).promise) as unknown as PdfDoc;
+    void doc.destroy().catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function evictFile(file: File): void {
   const urls = renderCache.get(file);
@@ -81,10 +117,12 @@ export function getCachedDoc(file: File): Promise<PdfDoc> {
 function getDoc(file: File): Promise<PdfDoc> {
   let p = docCache.get(file);
   if (!p) {
+    const password = filePasswords.get(file);
     p = (async () => {
       const pdfjs = await loadPdfjs();
       const data = await file.arrayBuffer();
-      return (await pdfjs.getDocument({ data }).promise) as unknown as PdfDoc;
+      const params = password === undefined ? { data } : { data, password };
+      return (await pdfjs.getDocument(params).promise) as unknown as PdfDoc;
     })();
     docCache.set(file, p);
     while (docCache.size > DOC_CACHE_FILES) {
