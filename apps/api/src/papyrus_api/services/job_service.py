@@ -1293,6 +1293,7 @@ class JobService:
         *,
         is_anonymous: bool = False,
     ) -> None:
+        await self.jobs.lock_org_for_reservation(organization_id=organization_id)
         inflight = await self.jobs.count_inflight_for_org(organization_id=organization_id)
         if inflight >= settings.max_inflight_jobs_per_org:
             raise QuotaExceededError(

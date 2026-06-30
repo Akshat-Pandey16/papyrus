@@ -251,7 +251,9 @@ class IdentityService:
     ) -> AuthResult:
         if not refresh_token:
             raise AuthenticationError("Missing refresh token.")
-        record = await self.refresh_tokens.get_by_hash(hash_opaque_token(refresh_token))
+        record = await self.refresh_tokens.get_by_hash(
+            hash_opaque_token(refresh_token), for_update=True
+        )
         if record is None:
             raise AuthenticationError("Invalid refresh token.")
 

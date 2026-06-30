@@ -42,6 +42,7 @@ from papyrus_api.workers.tasks._common import (
     TransientStorageError,
     check_cancelled,
     classify_storage_error,
+    discard_output,
     fail_job,
     publish,
     purge_input,
@@ -276,6 +277,7 @@ async def _run_simple_job(
                 )
                 if succeeded is None:
                     await session.rollback()
+                    await discard_output(storage, output_bucket, output_key)
                     log.info("jobs.tool.succeed_blocked", job_id=str(job_id))
                     return
                 event_payload = {

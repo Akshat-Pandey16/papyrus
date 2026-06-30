@@ -27,7 +27,7 @@ from papyrus_api.repositories.users import (
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
-from papyrus_api.workers.tasks._common import publish
+from papyrus_api.workers.tasks._common import publish, refund_job_quota
 
 log = structlog.get_logger(__name__)
 
@@ -217,6 +217,7 @@ async def _reap_stale_pending() -> int:
         stale = await repo.list_stale_pending(cutoff=cutoff)
         reaped: list[UUID] = []
         for job in stale:
+            organization_id = job.organization_id
             marked = await repo.mark_failed(
                 job_id=job.id,
                 error_code="enqueue_lost",
@@ -226,11 +227,47 @@ async def _reap_stale_pending() -> int:
                 continue
             await events.append(job_id=job.id, status=JobStatus.FAILED, payload=payload)
             reaped.append(job.id)
+            await refund_job_quota(organization_id)
             failed += 1
         await session.commit()
     for job_id in reaped:
         await publish(redis, job_id, JobStatus.FAILED, payload)
     log.info("cleanup.stale_pending.run", failed=failed)
+    return failed
+
+
+async def _reap_stale_running() -> int:
+    sessionmaker = get_sessionmaker()
+    redis = get_redis()
+    cutoff = utc_now() - timedelta(seconds=settings.running_job_timeout_seconds)
+    failed = 0
+    payload = {
+        "phase": "failed",
+        "error_code": "job_timeout",
+        "error_message": "The job stopped responding. Please try again.",
+    }
+    reaped: list[UUID] = []
+    async with sessionmaker() as session:
+        repo = JobRepository(session)
+        events = JobEventRepository(session)
+        stale = await repo.list_stale_running(cutoff=cutoff)
+        for job in stale:
+            organization_id = job.organization_id
+            marked = await repo.mark_failed(
+                job_id=job.id,
+                error_code="job_timeout",
+                error_message="The job stopped responding.",
+            )
+            if marked is None:
+                continue
+            await events.append(job_id=job.id, status=JobStatus.FAILED, payload=payload)
+            reaped.append(job.id)
+            await refund_job_quota(organization_id)
+            failed += 1
+        await session.commit()
+    for job_id in reaped:
+        await publish(redis, job_id, JobStatus.FAILED, payload)
+    log.info("cleanup.stale_running.run", failed=failed)
     return failed
 
 
@@ -292,6 +329,12 @@ def purge_auth_tokens() -> int:
 def reap_stale_pending() -> int:
     log.info("cleanup.reap_stale_pending.start")
     return run_async(_reap_stale_pending())
+
+
+@celery_app.task(name="papyrus.cleanup.reap_stale_running")
+def reap_stale_running() -> int:
+    log.info("cleanup.reap_stale_running.start")
+    return run_async(_reap_stale_running())
 
 
 @celery_app.task(name="papyrus.cleanup.purge_job_output")

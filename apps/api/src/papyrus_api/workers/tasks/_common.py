@@ -72,6 +72,29 @@ async def purge_input(
         log.warning("jobs.zero_retention.input_purge_failed", bucket=bucket, error=str(exc))
 
 
+async def discard_output(
+    storage: StorageService,
+    bucket: str | None,
+    key: str | None,
+) -> None:
+    if not bucket or not key:
+        return
+    try:
+        await storage.delete(bucket=bucket, key=key)
+    except Exception as exc:
+        log.warning("jobs.output.discard_failed", bucket=bucket, error=str(exc))
+
+
+async def refund_job_quota(organization_id: UUID | None) -> None:
+    if organization_id is None:
+        return
+    from papyrus_api.integrations.redis import get_redis, release_daily_quota
+
+    await release_daily_quota(
+        get_redis(), namespace="jobs", principal_id=str(organization_id)
+    )
+
+
 async def check_cancelled(redis: Redis, job_id: UUID) -> None:
     try:
         flag = await redis.get(f"job:cancel:{job_id}")
@@ -104,31 +127,30 @@ async def fail_job(
     code: str,
     message: str,
 ) -> bool:
-    if session is not None:
-        repo = JobRepository(session)
-        result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
-        if result is None:
-            return False
-        await JobEventRepository(session).append(
-            job_id=job_id,
-            status=JobStatus.FAILED,
-            payload={"phase": "failed", "error_code": code, "error_message": message},
-        )
-        await session.commit()
-        return True
-    sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
-    async with sm() as s:
+    async def _mark(s: AsyncSession) -> UUID | None:
         repo = JobRepository(s)
         result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
         if result is None:
-            return False
+            return None
+        organization_id = result.organization_id
         await JobEventRepository(s).append(
             job_id=job_id,
             status=JobStatus.FAILED,
             payload={"phase": "failed", "error_code": code, "error_message": message},
         )
         await s.commit()
-        return True
+        return organization_id
+
+    if session is not None:
+        organization_id = await _mark(session)
+    else:
+        sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
+        async with sm() as s:
+            organization_id = await _mark(s)
+    if organization_id is None:
+        return False
+    await refund_job_quota(organization_id)
+    return True
 
 
 async def release_lock(redis: Redis, job_id: UUID, task_id: str) -> None:
