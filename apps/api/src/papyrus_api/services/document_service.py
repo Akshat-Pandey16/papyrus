@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
+    FileTooLargeError,
     ImageInvalidError,
     PdfSignatureInvalidError,
-    QuotaExceededError,
     UploadAlreadyConfirmedError,
     UploadNotFoundInStorageError,
 )
@@ -130,7 +130,7 @@ class DocumentService:
     ) -> InitiateResult:
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={
                     "max_bytes": max_bytes,
@@ -232,7 +232,7 @@ class DocumentService:
                 bucket=latest_object_stmt.bucket,
                 key=latest_object_stmt.key,
             )
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "Uploaded file exceeds the maximum allowed size.",
                 details={
                     "max_bytes": settings.user_max_file_bytes,

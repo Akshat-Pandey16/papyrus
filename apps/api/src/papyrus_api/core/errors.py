@@ -145,6 +145,11 @@ class PayloadTooLargeError(AppError):
     http_status = status.HTTP_413_CONTENT_TOO_LARGE
 
 
+class FileTooLargeError(AppError):
+    code = "file_too_large"
+    http_status = status.HTTP_413_CONTENT_TOO_LARGE
+
+
 class ServiceUnavailableError(AppError):
     code = "service_unavailable"
     http_status = status.HTTP_503_SERVICE_UNAVAILABLE

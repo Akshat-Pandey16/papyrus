@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
+    FileTooLargeError,
     JobNotFoundError,
     JobNotTerminalError,
     JobOutputExpiredError,
@@ -163,7 +164,7 @@ class JobService:
 
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )
@@ -357,7 +358,7 @@ class JobService:
                 )
             document, version, storage_object = triple
             if storage_object.size_bytes > max_bytes:
-                raise QuotaExceededError(
+                raise FileTooLargeError(
                     "One of the files exceeds the maximum allowed size.",
                     details={
                         "max_bytes": max_bytes,
@@ -727,7 +728,7 @@ class JobService:
                 )
             document, version, storage_object = triple
             if storage_object.size_bytes > max_bytes:
-                raise QuotaExceededError(
+                raise FileTooLargeError(
                     "One of the files exceeds the maximum allowed size.",
                     details={"max_bytes": max_bytes, "anonymous": is_anonymous},
                 )
@@ -886,7 +887,7 @@ class JobService:
 
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )

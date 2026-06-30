@@ -97,7 +97,7 @@ export function OverlayEditor({
     let active = true;
     setLoading(true);
     setSrc(null);
-    renderPage(page)
+    renderPage(page + 1)
       .then((url) => {
         if (active) setSrc(url);
       })

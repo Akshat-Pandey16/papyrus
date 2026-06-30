@@ -136,6 +136,8 @@ class Settings(BaseSettings):
     max_inflight_jobs_per_org: int = 25
     job_lock_ttl_seconds: int = 1800
     pending_job_timeout_seconds: int = 900
+    running_job_timeout_seconds: int = 1_200
+    worker_max_memory_per_child_kb: int = 1_500_000
 
     subprocess_cpu_seconds: int = 0
     subprocess_memory_limit_mb: int = 0
