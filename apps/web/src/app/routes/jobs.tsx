@@ -45,7 +45,7 @@ function JobsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1400px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
       <header className="flex items-center gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-clay-sm">
           <History className="size-6" />

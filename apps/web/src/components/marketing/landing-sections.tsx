@@ -52,7 +52,7 @@ export function LandingSections() {
   return (
     <div className="relative w-full">
       <section className="w-full px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto w-full max-w-[1400px]">
+        <div className="mx-auto w-full max-w-[1760px]">
           <Reveal className="flex flex-col gap-3">
             <Badge tone="primary" className="self-start">
               Every PDF tool, one canvas
@@ -91,7 +91,7 @@ export function LandingSections() {
 
       <section className="relative w-full overflow-hidden border-y border-border/60 bg-card/50 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain opacity-[0.04]" />
-        <div className="relative mx-auto w-full max-w-[1400px]">
+        <div className="relative mx-auto w-full max-w-[1760px]">
           <Reveal className="flex max-w-2xl flex-col gap-3">
             <span className="flex items-center gap-2 text-sm font-medium text-primary">
               <ShieldCheck className="size-4" />
@@ -118,7 +118,7 @@ export function LandingSections() {
       </section>
 
       <section className="w-full px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="mx-auto w-full max-w-[1400px]">
+        <div className="mx-auto w-full max-w-[1760px]">
           <Reveal>
             <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-molten p-8 text-primary-foreground shadow-ember sm:p-12">
               <div
@@ -169,7 +169,7 @@ export function LandingSections() {
       </section>
 
       <footer className="w-full border-t border-border/60 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-col items-start justify-between gap-5 text-sm text-muted-foreground sm:flex-row sm:items-center">
+        <div className="mx-auto flex w-full max-w-[1760px] flex-col items-start justify-between gap-5 text-sm text-muted-foreground sm:flex-row sm:items-center">
           <div className="flex items-center gap-2.5">
             <LogoMark className="size-7" />
             <span className="font-display font-semibold text-foreground">Papyrus</span>

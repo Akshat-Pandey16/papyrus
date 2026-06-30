@@ -40,7 +40,7 @@ function DashboardPage() {
   const totalBytes = recentJobs.reduce((sum, j) => sum + (j.outputSizeBytes ?? 0), 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1760px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
       <header className="relative overflow-hidden rounded-3xl border border-border/70 bg-molten p-6 text-primary-foreground shadow-ember sm:p-8">
         <div
           aria-hidden

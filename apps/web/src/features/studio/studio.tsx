@@ -208,7 +208,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pt-8"
+            className="w-full px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-8 2xl:px-16"
           >
             {renderTool()}
           </motion.div>

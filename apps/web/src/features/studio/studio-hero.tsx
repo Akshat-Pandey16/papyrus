@@ -37,7 +37,7 @@ export function StudioHero({
           : "a PDF";
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 lg:py-14">
+    <div className="grid w-full items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16 lg:px-10 lg:py-14 2xl:px-16">
       <div className="order-2 flex flex-col items-start gap-6 text-left lg:order-1">
         <Badge tone="primary" className="gap-1.5">
           <span className="relative flex size-1.5">
