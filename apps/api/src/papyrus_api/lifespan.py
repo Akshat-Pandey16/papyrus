@@ -17,6 +17,8 @@ log = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     log.info("app.startup")
+    for warning in settings.production_warnings():
+        log.warning("config.production_warning", detail=warning)
     init_engine()
     init_redis()
     for bucket in (settings.s3_bucket_uploads, settings.s3_bucket_outputs):

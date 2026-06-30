@@ -78,10 +78,13 @@ class Settings(BaseSettings):
     s3_lifecycle_expiry_days: int = 1
 
     clamav_enabled: bool = False
+    clamav_fail_closed: bool = True
     clamav_host: str = "localhost"
     clamav_port: int = 3310
     clamav_timeout_seconds: int = 30
     clamav_max_scan_bytes: int = 200 * 1024 * 1024
+
+    anon_mint_daily_limit_per_ip: int = 50
 
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_issuer: str = "papyrus"
@@ -184,6 +187,26 @@ class Settings(BaseSettings):
         if self.token_pepper is not None and self.token_pepper.get_secret_value() in weak:
             raise ValueError("token_pepper must be a strong value when set.")
         return self
+
+    def production_warnings(self) -> list[str]:
+        if self.papyrus_env is not Environment.PRODUCTION:
+            return []
+        warnings: list[str] = []
+        if not self.trusted_proxies:
+            warnings.append(
+                "TRUSTED_PROXIES is empty: behind a reverse proxy every client shares one "
+                "rate-limit/lockout bucket. Set it to your proxy/ingress CIDR."
+            )
+        if self.s3_sse is None:
+            warnings.append(
+                "S3_SSE is unset: uploaded files are stored unencrypted at rest. "
+                "Set S3_SSE=AES256 (or aws:kms) for encryption at rest."
+            )
+        if not self.clamav_enabled:
+            warnings.append(
+                "CLAMAV_ENABLED is false: uploads are not malware-scanned in production."
+            )
+        return warnings
 
     @property
     def is_development(self) -> bool:

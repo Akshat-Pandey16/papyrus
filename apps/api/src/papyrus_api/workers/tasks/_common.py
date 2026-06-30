@@ -151,30 +151,49 @@ async def fail_job(
     code: str,
     message: str,
 ) -> bool:
-    async def _mark(s: AsyncSession) -> UUID | None:
+    async def _mark(s: AsyncSession) -> tuple[UUID, dict[str, Any]] | None:
         repo = JobRepository(s)
         result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
         if result is None:
             return None
         organization_id = result.organization_id
+        params = dict(result.params or {})
         await JobEventRepository(s).append(
             job_id=job_id,
             status=JobStatus.FAILED,
             payload={"phase": "failed", "error_code": code, "error_message": message},
         )
         await s.commit()
-        return organization_id
+        return organization_id, params
 
     if session is not None:
-        organization_id = await _mark(session)
+        marked = await _mark(session)
     else:
         sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
         async with sm() as s:
-            organization_id = await _mark(s)
-    if organization_id is None:
+            marked = await _mark(s)
+    if marked is None:
         return False
+    organization_id, params = marked
     await refund_job_quota(organization_id)
+    await _purge_inputs_if_zero_retention(params)
     return True
+
+
+async def _purge_inputs_if_zero_retention(params: dict[str, Any]) -> None:
+    from papyrus_api.core.config import settings
+    from papyrus_api.services.storage_service import StorageService
+
+    if not (settings.zero_retention_mode or params.get("zero_retention")):
+        return
+    storage = StorageService()
+    inputs = params.get("inputs")
+    if isinstance(inputs, list):
+        for item in inputs:
+            if isinstance(item, dict):
+                await purge_input(storage, item.get("input_bucket"), item.get("input_key"))
+    else:
+        await purge_input(storage, params.get("input_bucket"), params.get("input_key"))
 
 
 async def release_lock(redis: Redis, job_id: UUID, task_id: str) -> None:
