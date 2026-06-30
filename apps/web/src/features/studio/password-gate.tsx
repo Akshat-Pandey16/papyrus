@@ -45,8 +45,7 @@ export function PasswordGate({ file, children }: { file: File; children: ReactNo
     };
   }, [file]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async () => {
     if (!password || busy) return;
     setBusy(true);
     setError(null);
@@ -81,7 +80,13 @@ export function PasswordGate({ file, children }: { file: File; children: ReactNo
           Enter the password to unlock it. It's used only to process your file and is never stored.
         </p>
       </div>
-      <form onSubmit={submit} className="flex w-full flex-col gap-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+        className="flex w-full flex-col gap-3"
+      >
         <Input
           id={inputId}
           type="password"

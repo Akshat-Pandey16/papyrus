@@ -74,7 +74,7 @@ def get_compress_estimate_service(
     session: DbSession,
     storage: StorageServiceDep,
 ) -> CompressEstimateService:
-    return CompressEstimateService(session, storage)
+    return CompressEstimateService(session, storage, get_redis())
 
 
 CompressEstimateServiceDep = Annotated[

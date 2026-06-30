@@ -20,8 +20,10 @@ import type {
   CompressionLevel,
   CompressionOptions,
 } from "@/features/pdf-compress/types";
+import { setDocumentPassword } from "@/features/pdf-tools/api";
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-frame";
+import { getFilePassword } from "@/features/studio/page-canvas";
 import { StageCanvas } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
@@ -70,10 +72,16 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
     setEstimate(null);
   };
 
+  const applyPassword = async (documentId: string) => {
+    const pw = getFilePassword(file);
+    if (pw) await setDocumentPassword(documentId, pw);
+  };
+
   const ensureUploaded = async (): Promise<string | null> => {
     if (uploadedDocId) return uploadedDocId;
     try {
       const result = await start({ clientUploadId: randomUUID(), file });
+      await applyPassword(result.documentId);
       setUploadedDocId(result.documentId);
       return result.documentId;
     } catch (err) {
@@ -121,6 +129,7 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
       if (!documentId) {
         const result = await start({ clientUploadId, file });
         documentId = result.documentId;
+        await applyPassword(documentId);
         setUploadedDocId(documentId);
       } else {
         updateUpload(clientUploadId, { documentId, phase: "queued" });
