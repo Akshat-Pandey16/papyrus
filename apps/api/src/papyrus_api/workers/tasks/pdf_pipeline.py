@@ -208,6 +208,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
 
             assert level is not None
             assert compress_options is not None
+            max_pages = params.get("max_pages")
             result = await anyio.to_thread.run_sync(
                 lambda: compress_pdf(
                     input_path=input_path,
@@ -215,6 +216,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     level=level,
                     options=compress_options,
                     progress=_on_progress,
+                    max_pages=max_pages if isinstance(max_pages, int) else None,
                 )
             )
 

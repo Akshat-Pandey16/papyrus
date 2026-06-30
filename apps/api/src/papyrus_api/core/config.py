@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     database_max_overflow: int = 20
     database_pool_timeout: int = 30
     database_echo: bool = False
+    worker_database_pool_size: int = 2
+    worker_database_max_overflow: int = 2
 
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = 50
@@ -142,7 +144,7 @@ class Settings(BaseSettings):
     running_job_timeout_seconds: int = 1_200
     worker_max_memory_per_child_kb: int = 1_500_000
 
-    subprocess_cpu_seconds: int = 0
+    subprocess_cpu_seconds: int = 900
     subprocess_memory_limit_mb: int = 0
     ocr_jobs: int = 1
     ocr_max_image_mpixels: int = 256

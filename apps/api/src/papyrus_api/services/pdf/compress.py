@@ -13,6 +13,7 @@ import pikepdf
 from PIL import Image, ImageFile, UnidentifiedImageError
 
 from papyrus_api.core.errors import PdfEncryptedError, PdfMalformedError
+from papyrus_api.services.pdf.limits import enforce_page_cap
 
 ImageFile.LOAD_TRUNCATED_IMAGES = False
 _MAX_IMAGE_PIXELS = 100_000_000
@@ -682,12 +683,22 @@ def compress_pdf(
     level: CompressionLevel,
     options: CompressOptions | None = None,
     progress: ProgressCallback = None,
+    max_pages: int | None = None,
 ) -> CompressResult:
     if not input_path.exists():
         raise FileNotFoundError(str(input_path))
     if input_path.stat().st_size == 0:
         raise PdfMalformedError("Input file is empty.")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if max_pages is not None:
+        try:
+            with pikepdf.open(str(input_path)) as probe:
+                enforce_page_cap(len(probe.pages), max_pages)
+        except pikepdf.PasswordError as exc:
+            raise PdfEncryptedError("PDF is password-protected.") from exc
+        except pikepdf.PdfError as exc:
+            raise PdfMalformedError("This PDF appears to be malformed.") from exc
 
     if options is None:
         options = options_for_level(level)

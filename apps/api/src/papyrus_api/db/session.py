@@ -15,14 +15,14 @@ _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
-def init_engine() -> None:
+def init_engine(*, pool_size: int | None = None, max_overflow: int | None = None) -> None:
     global _engine, _sessionmaker
     if _engine is not None:
         return
     _engine = create_async_engine(
         settings.database_url,
-        pool_size=settings.database_pool_size,
-        max_overflow=settings.database_max_overflow,
+        pool_size=settings.database_pool_size if pool_size is None else pool_size,
+        max_overflow=settings.database_max_overflow if max_overflow is None else max_overflow,
         pool_timeout=settings.database_pool_timeout,
         pool_pre_ping=True,
         echo=settings.database_echo,
