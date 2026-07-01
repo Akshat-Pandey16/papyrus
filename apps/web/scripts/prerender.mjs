@@ -163,7 +163,7 @@ function render(template, page) {
 function main() {
   const indexPath = join(DIST, "index.html");
   if (!existsSync(indexPath)) {
-    console.error("[prerender] dist/index.html not found — run vite build first.");
+    process.stderr.write("[prerender] dist/index.html not found — run vite build first.\n");
     process.exit(1);
   }
   const template = readFileSync(indexPath, "utf8");
@@ -204,9 +204,9 @@ function main() {
     `User-agent: *\nAllow: /\nDisallow: /dashboard\nDisallow: /settings\nDisallow: /jobs\n\nSitemap: ${sitemapUrl}\n`,
   );
 
-  console.log(
+  process.stdout.write(
     `[prerender] wrote ${count} pages (${Object.keys(content).length} rich) + sitemap.xml + robots.txt` +
-      (SITE_URL ? ` for ${SITE_URL}` : " (relative URLs; set SITE_URL for absolute)"),
+      (SITE_URL ? ` for ${SITE_URL}\n` : " (relative URLs; set SITE_URL for absolute)\n"),
   );
 }
 
