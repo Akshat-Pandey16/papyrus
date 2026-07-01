@@ -51,6 +51,7 @@ type PdfPage = {
 type PdfDoc = {
   numPages: number;
   getPage(n: number): Promise<PdfPage>;
+  getMetadata(): Promise<{ info?: Record<string, unknown>; metadata?: unknown }>;
   destroy(): Promise<void>;
   cleanup(): void;
 };

@@ -35,6 +35,10 @@ JobKindLiteral = Literal[
     "edit",
     "repair",
     "grayscale",
+    "extract_text",
+    "pdfa",
+    "flatten",
+    "nup",
 ]
 
 OverlayFontLiteral = Literal[
@@ -229,6 +233,45 @@ class RepairJobRequest(_MutableModel):
 
 class GrayscaleJobRequest(_MutableModel):
     document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class ExtractTextJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class PdfaJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class FlattenJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+PagesPerSheetLiteral = Literal[2, 4, 6, 9, 16]
+
+
+class NupJobRequest(_MutableModel):
+    document_id: UUID
+    pages_per_sheet: PagesPerSheetLiteral = 4
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class MetadataJobRequest(_MutableModel):
+    document_id: UUID
+    title: str | None = Field(default=None, max_length=500)
+    author: str | None = Field(default=None, max_length=500)
+    subject: str | None = Field(default=None, max_length=1000)
+    keywords: str | None = Field(default=None, max_length=2000)
+    strip_all: bool = False
     idempotency_key: UUID
     zero_retention: bool = False
 

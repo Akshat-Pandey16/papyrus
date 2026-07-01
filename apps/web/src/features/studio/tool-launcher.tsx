@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { TOOL_CATEGORIES, TOOL_CATEGORY, TOOLS, toolsInCategory } from "@/features/studio/tools";
 import type { ToolId } from "@/features/studio/types";
@@ -116,12 +116,8 @@ export function ToolLauncher({
                       )}
                     >
                       <span
-                        className={cn(
-                          "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
-                          focused
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-primary/10 text-primary",
-                        )}
+                        className="tool-tile grid size-9 shrink-0 place-items-center rounded-lg"
+                        style={{ "--tool-hue": tool.hue } as CSSProperties}
                       >
                         <Icon className="size-[1.05rem]" strokeWidth={2.1} />
                       </span>

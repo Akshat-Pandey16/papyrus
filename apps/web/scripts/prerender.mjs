@@ -28,6 +28,12 @@ const TOOLS = [
   { slug: "/tools/images-to-pdf", label: "Images to PDF" },
   { slug: "/tools/grayscale", label: "Grayscale PDF" },
   { slug: "/tools/repair", label: "Repair PDF" },
+  { slug: "/tools/extract-text", label: "Extract text from PDF" },
+  { slug: "/tools/pdfa", label: "PDF to PDF/A" },
+  { slug: "/tools/flatten", label: "Flatten PDF" },
+  { slug: "/tools/n-up", label: "N-up — pages per sheet" },
+  { slug: "/tools/pdf-to-powerpoint", label: "PDF to PowerPoint" },
+  { slug: "/tools/metadata", label: "Edit PDF metadata" },
 ];
 
 function esc(value) {

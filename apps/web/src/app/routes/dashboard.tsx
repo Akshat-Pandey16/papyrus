@@ -7,13 +7,14 @@ import {
   type LucideIcon,
   ScrollText,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
 import { formatBytes } from "@/features/pdf-compress/format";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
-import { TOOLS } from "@/features/studio/tools";
+import { TOOLS, toolHue } from "@/features/studio/tools";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -102,7 +103,10 @@ function DashboardPage() {
                 )}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                  <span
+                    className="tool-tile grid size-9 shrink-0 place-items-center rounded-xl"
+                    style={{ "--tool-hue": toolHue(job.kind) } as CSSProperties}
+                  >
                     <ToolIcon kind={job.kind} />
                   </span>
                   <div className="flex min-w-0 flex-col">

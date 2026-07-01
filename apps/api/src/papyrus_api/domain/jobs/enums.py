@@ -24,6 +24,10 @@ class JobKind(StrEnum):
     EDIT = "edit"
     REPAIR = "repair"
     GRAYSCALE = "grayscale"
+    EXTRACT_TEXT = "extract_text"
+    PDFA = "pdfa"
+    FLATTEN = "flatten"
+    NUP = "nup"
 
 
 class JobStatus(StrEnum):

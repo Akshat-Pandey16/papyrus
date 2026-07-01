@@ -18,7 +18,13 @@ export type ToolId =
   | "convert"
   | "pdf_to_word"
   | "repair"
-  | "grayscale";
+  | "grayscale"
+  | "extract_text"
+  | "pdfa"
+  | "flatten"
+  | "nup"
+  | "pdf_to_powerpoint"
+  | "metadata";
 
 export type StudioFile = {
   id: string;

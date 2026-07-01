@@ -241,6 +241,78 @@ export function useCreateGrayscaleJobMutation() {
   return useSimpleDocumentJobMutation("/jobs/grayscale");
 }
 
+export function useCreateExtractTextJobMutation() {
+  return useSimpleDocumentJobMutation("/jobs/extract-text");
+}
+
+export function useCreatePdfaJobMutation() {
+  return useSimpleDocumentJobMutation("/jobs/pdfa");
+}
+
+export function useCreateFlattenJobMutation() {
+  return useSimpleDocumentJobMutation("/jobs/flatten");
+}
+
+export function useCreatePdfToPowerpointJobMutation() {
+  return useSimpleDocumentJobMutation("/jobs/pdf-to-powerpoint");
+}
+
+export type NupJobInput = {
+  documentId: string;
+  pagesPerSheet: number;
+  idempotencyKey: string;
+};
+
+export function useCreateNupJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: NupJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/nup", {
+        document_id: input.documentId,
+        pages_per_sheet: input.pagesPerSheet,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => {
+      qc.setQueryData(compressKeys.job(job.id), job);
+    },
+  });
+}
+
+export type MetadataJobInput = {
+  documentId: string;
+  title: string | null;
+  author: string | null;
+  subject: string | null;
+  keywords: string | null;
+  stripAll: boolean;
+  idempotencyKey: string;
+};
+
+export function useCreateMetadataJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: MetadataJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/metadata", {
+        document_id: input.documentId,
+        title: input.title,
+        author: input.author,
+        subject: input.subject,
+        keywords: input.keywords,
+        strip_all: input.stripAll,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => {
+      qc.setQueryData(compressKeys.job(job.id), job);
+    },
+  });
+}
+
 type Rgb = [number, number, number];
 
 export type OverlayOp = {

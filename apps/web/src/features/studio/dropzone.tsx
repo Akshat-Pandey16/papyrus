@@ -11,7 +11,7 @@ export type DropzoneProps = {
   multi?: boolean;
   accept?: "pdf" | "image" | "office";
   disabled?: boolean;
-  variant?: "full" | "panel";
+  variant?: "full" | "panel" | "sheet";
   showHeading?: boolean;
   className?: string;
 };
@@ -36,6 +36,7 @@ export function Dropzone({
   const inputId = useId();
   const [over, setOver] = useState(false);
   const isPanel = variant === "panel";
+  const isSheet = variant === "sheet";
   const nouns = accept === "image" ? "images" : accept === "office" ? "documents" : "PDFs";
   const aNoun = accept === "image" ? "an image" : accept === "office" ? "a document" : "a PDF";
 
@@ -87,16 +88,38 @@ export function Dropzone({
       }}
       onDrop={onDrop}
       className={cn(
-        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors",
-        isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[44svh] p-6 sm:p-10",
-        over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden text-center transition-[transform,box-shadow,border-color] duration-300 ease-[var(--ease-clay)]",
+        isSheet
+          ? cn(
+              "min-h-[25rem] rounded-[1.75rem] border bg-card p-8 shadow-clay-lg sm:p-10",
+              over
+                ? "-translate-y-1.5 border-primary/60 ring-2 ring-primary/25"
+                : "border-border/70 hover:-translate-y-1",
+            )
+          : cn(
+              "rounded-3xl border-2 border-dashed",
+              isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[44svh] p-6 sm:p-10",
+              over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+            ),
         disabled && "pointer-events-none opacity-60",
         className,
       )}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain opacity-[0.05]" />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-grain",
+          isSheet ? "opacity-[0.04]" : "opacity-[0.05]",
+        )}
+      />
+      {isSheet ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <span className="absolute inset-y-6 left-9 w-px bg-primary/20" />
+          <span className="absolute top-6 right-6 size-9 rounded-bl-2xl border-t border-l border-border/70 bg-muted/40" />
+        </div>
+      ) : null}
       <motion.div
-        animate={{ scale: over ? 1.05 : 1, rotate: over ? -1.5 : 0 }}
+        animate={{ scale: over ? 1.04 : 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         className="relative z-0 flex flex-col items-center gap-5"
       >
@@ -116,11 +139,11 @@ export function Dropzone({
                 isPanel ? "text-2xl" : "text-3xl sm:text-4xl",
               )}
             >
-              Drop {multi ? nouns : aNoun} {isPanel ? "here" : "to begin"}
+              Drop {multi ? nouns : aNoun} {isPanel || isSheet ? "here" : "to begin"}
             </h2>
           ) : null}
           <p className="max-w-md text-sm text-muted-foreground sm:text-base">
-            {isPanel ? (
+            {isPanel || isSheet ? (
               <>or click to browse · up to {maxFileLabel()}</>
             ) : (
               <>

@@ -15,6 +15,7 @@ OFFICE_EXTENSIONS = frozenset(
 )
 
 DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+PPTX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 
 def soffice_available() -> bool:
@@ -110,11 +111,55 @@ def pdf_to_word(*, input_path: Path, output_path: Path, profile_dir: Path) -> Co
     )
 
 
+def pdf_to_pptx(*, input_path: Path, output_path: Path, profile_dir: Path) -> ConvertResult:
+    if _SOFFICE is None:
+        raise ToolNotConfiguredError(
+            "Document conversion is not available on this server.",
+        )
+    if not input_path.exists() or input_path.stat().st_size == 0:
+        raise PdfMalformedError("Input file is empty.")
+
+    out_dir = output_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    profile_dir.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        _SOFFICE,
+        "--headless",
+        "--norestore",
+        "--nologo",
+        "--nofirststartwizard",
+        f"-env:UserInstallation=file://{profile_dir}",
+        "--infilter=impress_pdf_import",
+        "--convert-to",
+        "pptx",
+        "--outdir",
+        str(out_dir),
+        str(input_path),
+    ]
+    result = run_capture(cmd, timeout=_CONVERT_TIMEOUT_SECONDS)
+    produced = out_dir / f"{input_path.stem}.pptx"
+    if result.returncode != 0 or not produced.exists() or produced.stat().st_size == 0:
+        raise ValidationError(
+            "Could not convert this PDF to PowerPoint. Scanned or complex PDFs "
+            "may come through as images rather than editable slides.",
+        )
+    if produced != output_path:
+        produced.replace(output_path)
+    return ConvertResult(
+        output_path=output_path,
+        output_size_bytes=output_path.stat().st_size,
+        input_size_bytes=input_path.stat().st_size,
+    )
+
+
 __all__ = [
     "DOCX_CONTENT_TYPE",
     "OFFICE_EXTENSIONS",
+    "PPTX_CONTENT_TYPE",
     "ConvertResult",
     "office_to_pdf",
+    "pdf_to_pptx",
     "pdf_to_word",
     "soffice_available",
 ]

@@ -63,7 +63,11 @@ export type JobKind =
   | "images_to_pdf"
   | "edit"
   | "repair"
-  | "grayscale";
+  | "grayscale"
+  | "extract_text"
+  | "pdfa"
+  | "flatten"
+  | "nup";
 
 export type Job = {
   id: string;

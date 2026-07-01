@@ -558,5 +558,201 @@
         "a": "Yes. PDF repair is free with no signup or ads, and your file is deleted within 24 hours."
       }
     ]
+  },
+  {
+    "slug": "/tools/extract-text",
+    "title": "Extract Text from PDF (PDF to TXT) — Papyrus",
+    "metaDescription": "Extract text from any PDF and download it as a clean .txt file. Free, private, and no signup — just drop your PDF and get the text back.",
+    "h1": "Pull the text out of your PDF",
+    "intro": "Drop in a PDF and get its text back as a plain .txt file, ready to copy, search, or reuse anywhere. It works right in your browser with no account and no ads. Your file is auto-deleted within 24 hours, so nothing lingers after you leave.",
+    "steps": [
+      "Drop your PDF",
+      "Extract the text",
+      "Download your .txt file"
+    ],
+    "faqs": [
+      {
+        "q": "Is it free?",
+        "a": "Yes, extracting text is completely free. There are no ads, no watermarks, and no paywall."
+      },
+      {
+        "q": "Is it private and safe?",
+        "a": "Yes. Files are processed for the task and then auto-deleted within 24 hours, and we don't log your file contents. Papyrus is also open-source and self-hostable if you'd rather run it yourself."
+      },
+      {
+        "q": "Do I need an account?",
+        "a": "No. You can drop a PDF and extract its text anonymously without signing up."
+      },
+      {
+        "q": "It only returned a few characters or nothing at all. Why?",
+        "a": "That usually means your PDF is a scan or an image, which has no selectable text to pull out. Run it through OCR first to make the text machine-readable, then extract it here."
+      },
+      {
+        "q": "Will the layout, tables, and formatting be preserved?",
+        "a": "No. The output is plain text, so columns, tables, and styling are flattened into a simple .txt file. It's best for getting the words out, not for reproducing the original layout."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/pdfa",
+    "title": "Convert PDF to PDF/A — Papyrus",
+    "metaDescription": "Convert PDF to PDF/A for long-term archiving, free and with no signup. Make compliant, self-contained files privately — uploads auto-delete within 24 hours.",
+    "h1": "Convert PDF to PDF/A",
+    "intro": "Convert a regular PDF into PDF/A, the ISO 19005 format built for long-term archiving and records that need to open the same way years from now. Papyrus embeds fonts and standardizes the file so it stays self-contained. It's free, needs no signup, and your file is processed privately and auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Convert to PDF/A and let Papyrus embed fonts and standardize the file",
+      "Download your archival PDF/A automatically when it's done"
+    ],
+    "faqs": [
+      {
+        "q": "What is PDF/A and when do I need it?",
+        "a": "PDF/A is an ISO 19005 version of PDF made for long-term archiving, so documents stay readable and self-contained over time. It's often required for legal, government, and records-retention compliance."
+      },
+      {
+        "q": "Will converting to PDF/A change how my document looks?",
+        "a": "To make the file self-contained and compliant, the conversion embeds fonts and may adjust colors or substitute fonts, so the result can look slightly different from the original. It also removes elements that aren't allowed in PDF/A, like certain encryption or external references."
+      },
+      {
+        "q": "Is converting to PDF/A free and private?",
+        "a": "Yes. PDF/A conversion is completely free with no signup and no ads. Your file is processed privately and automatically deleted within 24 hours, with a zero-retention option available."
+      },
+      {
+        "q": "Do I need an account to use it?",
+        "a": "No. You can convert a PDF to PDF/A anonymously with no account. Anonymous use is capped at 25MB, 500 pages, and 10 jobs per day, and signing in raises those limits."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/flatten",
+    "title": "Flatten PDF — Papyrus",
+    "metaDescription": "Flatten PDF forms and annotations online for free, no signup. Lock in filled fields and comments so they can't be changed. Private, files auto-deleted in 24h.",
+    "h1": "Flatten PDF",
+    "intro": "Flatten a PDF to bake its form fields, annotations, and comments straight into the page so they look the same everywhere and can't be edited. Papyrus is free, needs no signup, and keeps your file private — it's automatically deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Flatten to merge form fields and annotations into the page",
+      "Download your flattened PDF automatically"
+    ],
+    "faqs": [
+      {
+        "q": "What does flattening a PDF actually do?",
+        "a": "It merges interactive elements — filled form fields, checkboxes, comments, and annotations — directly into the page content. They stay visible exactly as they are, but become part of the page instead of separate editable layers."
+      },
+      {
+        "q": "Can I still edit the form fields after flattening?",
+        "a": "No. Flattening makes form fields and annotations permanent and uneditable on purpose, so the values are locked in. Keep a copy of the original if you might need to change anything later."
+      },
+      {
+        "q": "Why would I flatten a PDF?",
+        "a": "It's useful for locking in a completed form before sharing it, making sure annotations show up the same in every viewer, and preventing accidental changes to filled-in values."
+      },
+      {
+        "q": "Is flattening a PDF free and private?",
+        "a": "Yes. Flattening is completely free with no signup and no ads. Your file is processed privately and automatically deleted within 24 hours, with a zero-retention option available."
+      },
+      {
+        "q": "Is there a file size or page limit?",
+        "a": "Anonymous users can flatten files up to 25MB and 500 pages, with 10 jobs per day. Signing in raises those limits, but you can start instantly with no account."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/n-up",
+    "title": "N-up PDF — pages per sheet — Papyrus",
+    "metaDescription": "Put multiple PDF pages on one sheet (2, 4, 6, 9, or 16-up) online, free with no signup. Great for handouts and saving paper. Private, files auto-deleted in 24h.",
+    "h1": "N-up PDF: multiple pages per sheet",
+    "intro": "N-up arranges several PDF pages side by side on a single sheet — 2, 4, 6, 9, or 16 per page — so you can print handouts, thumbnails, or drafts with far less paper. Your original pages stay intact; they're just scaled down and tiled onto larger sheets. It's free, needs no signup, and your file is processed privately and auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Choose how many pages to fit per sheet — 2, 4, 6, 9, or 16-up",
+      "Run it and your N-up PDF downloads automatically, ready to print"
+    ],
+    "faqs": [
+      {
+        "q": "What does N-up actually do?",
+        "a": "It places multiple pages of your PDF onto one larger sheet, shrinking each page to fit. A 4-up layout puts 4 pages on a single sheet in a grid. Nothing is deleted — it's a print-friendly arrangement, ideal for handouts, proofs, and saving paper and ink."
+      },
+      {
+        "q": "How many pages can I fit on one sheet?",
+        "a": "You can choose 2, 4, 6, 9, or 16 pages per sheet. More pages per sheet means each one is scaled smaller, so 2-up or 4-up stays comfortably readable while 16-up is best for thumbnails and overviews."
+      },
+      {
+        "q": "Is the N-up tool free and do I need an account?",
+        "a": "Yes, it's completely free with no ads and no signup. You can use it anonymously with limits of 25MB, 500 pages, and 10 jobs per day; signing in raises those limits."
+      },
+      {
+        "q": "Are my files kept private?",
+        "a": "Yes. Your PDF is processed privately, never used for ads or tracking, and automatically deleted within 24 hours, with a zero-retention option available. Papyrus is also open-source and self-hostable."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/pdf-to-powerpoint",
+    "title": "PDF to PowerPoint (PPTX) — Papyrus",
+    "metaDescription": "Convert PDF to an editable PowerPoint (.pptx) online, free with no signup. Private processing, no ads, and your files auto-delete within 24 hours.",
+    "h1": "PDF to PowerPoint",
+    "intro": "Turn a PDF into a PowerPoint presentation you can open and edit in PowerPoint, Keynote, or Google Slides. Papyrus maps each PDF page to a slide, and it's free, needs no signup, and keeps your file private — deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Convert to PowerPoint",
+      "Download the .pptx and open it in PowerPoint, Keynote, or Google Slides"
+    ],
+    "faqs": [
+      {
+        "q": "Is converting PDF to PowerPoint free?",
+        "a": "Yes. PDF to PowerPoint conversion on Papyrus is free with no ads and no signup. Anonymous users can convert files up to 25MB and 500 pages, with up to 10 jobs a day."
+      },
+      {
+        "q": "Will the slides be fully editable?",
+        "a": "It depends on the PDF. Clean, text-based pages come through with editable text you can rework in PowerPoint. Complex or heavily designed pages may arrive as a full-page image per slide rather than editable text, so treat those slides as pictures you can crop or annotate but not retype."
+      },
+      {
+        "q": "Is it private and safe?",
+        "a": "Yes. Your file is processed privately, we never log its contents, and it's automatically deleted within 24 hours, with a zero-retention option available. Papyrus is also open-source and self-hostable if you'd rather run it yourself."
+      },
+      {
+        "q": "Do I need an account?",
+        "a": "No. You can convert a PDF to PowerPoint anonymously with no signup. Anonymous use is capped at 25MB, 500 pages, and 10 jobs per day, and signing in raises those limits."
+      },
+      {
+        "q": "Can I convert a scanned PDF to PowerPoint?",
+        "a": "You can, but scanned or image-only pages have no selectable text, so each slide will be an image. Run our OCR tool first if you need the text to be editable, then convert."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/metadata",
+    "title": "Edit or Remove PDF Metadata — Papyrus",
+    "metaDescription": "Edit or strip PDF metadata online, free and private. Change Title, Author, Subject, and Keywords or wipe them clean. No signup, no account, files auto-delete.",
+    "h1": "Edit or Remove PDF Metadata",
+    "intro": "Every PDF carries hidden details behind the scenes — the author name, the software that made it, and creation and modification timestamps that you may not want to share. Papyrus lets you edit the Title, Author, Subject, and Keywords or strip that hidden information entirely before you send the file on. It's free, needs no account, and your upload is deleted automatically within 24 hours.",
+    "steps": [
+      "Drop your PDF onto the page — no signup, up to 25MB and 500 pages.",
+      "Edit the Title, Author, Subject, and Keywords fields, or clear them to remove the hidden metadata.",
+      "Download the cleaned PDF, which is deleted from our servers within 24 hours."
+    ],
+    "faqs": [
+      {
+        "q": "Is it free?",
+        "a": "Yes. Editing and removing PDF metadata is completely free, with no ads and no watermarks. Anonymous users can run up to 10 jobs a day on files up to 25MB and 500 pages."
+      },
+      {
+        "q": "Is it private and safe?",
+        "a": "Yes. Papyrus is built privacy-first: your file is used only to process your request and is deleted automatically within 24 hours. That's the whole point of this tool — stripping the hidden author, software, and timestamp details before you share a document."
+      },
+      {
+        "q": "Do I need an account?",
+        "a": "No. You can drop a file and edit or remove its metadata straight away without signing up. Papyrus is also open source and self-hostable if you'd rather run it yourself."
+      },
+      {
+        "q": "Which metadata fields can I change?",
+        "a": "You can edit the standard document fields — Title, Author, Subject, and Keywords — or clear them so no author or descriptive information remains in the file."
+      },
+      {
+        "q": "Can I fully remove hidden information before sharing?",
+        "a": "Yes. Clear the metadata fields and the visible Title, Author, Subject, and Keywords are stripped, so the details you don't want to share don't travel with the PDF."
+      }
+    ]
   }
 ]

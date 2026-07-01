@@ -1,22 +1,28 @@
 import {
+  Archive,
   Contrast,
   Crop,
+  FileCog,
   FileOutput,
+  FileText,
   FileType2,
   Hash,
   ImagePlus,
   Images,
   Layers,
+  LayoutGrid,
   ListOrdered,
   Lock,
   LockOpen,
   type LucideIcon,
   PencilLine,
+  Presentation,
   RotateCw,
   ScanLine,
   Scissors,
   Signature,
   SquareDashedBottom,
+  SquareStack,
   Stamp,
   Wand2,
   Wrench,
@@ -40,9 +46,11 @@ export const TOOL_ORDER: ToolId[] = [
   "split",
   "rotate",
   "reorder",
+  "nup",
   "ocr",
   "protect",
   "unlock",
+  "metadata",
   "watermark",
   "page_numbers",
   "crop",
@@ -53,7 +61,11 @@ export const TOOL_ORDER: ToolId[] = [
   "images_to_pdf",
   "convert",
   "pdf_to_word",
+  "pdf_to_powerpoint",
+  "extract_text",
   "grayscale",
+  "pdfa",
+  "flatten",
   "repair",
 ];
 
@@ -258,6 +270,66 @@ export const TOOLS: Record<ToolId, ToolMeta> = {
     accept: "pdf",
     hue: "36",
   },
+  extract_text: {
+    id: "extract_text",
+    label: "Extract text",
+    verb: "Extract",
+    tagline: "Pull plain text out of a PDF",
+    icon: FileText,
+    multi: false,
+    accept: "pdf",
+    hue: "204",
+  },
+  pdfa: {
+    id: "pdfa",
+    label: "PDF to PDF/A",
+    verb: "Convert",
+    tagline: "Make an archival PDF/A for the long term",
+    icon: Archive,
+    multi: false,
+    accept: "pdf",
+    hue: "168",
+  },
+  flatten: {
+    id: "flatten",
+    label: "Flatten PDF",
+    verb: "Flatten",
+    tagline: "Bake in forms, annotations & stamps",
+    icon: SquareStack,
+    multi: false,
+    accept: "pdf",
+    hue: "288",
+  },
+  nup: {
+    id: "nup",
+    label: "Pages per sheet",
+    verb: "Combine",
+    tagline: "Print 2, 4 or more pages on one sheet",
+    icon: LayoutGrid,
+    multi: false,
+    accept: "pdf",
+    hue: "112",
+  },
+  pdf_to_powerpoint: {
+    id: "pdf_to_powerpoint",
+    label: "PDF to PowerPoint",
+    verb: "Convert",
+    tagline: "Turn a PDF into editable slides",
+    icon: Presentation,
+    multi: false,
+    accept: "pdf",
+    hue: "24",
+  },
+  metadata: {
+    id: "metadata",
+    label: "Edit metadata",
+    verb: "Save",
+    tagline: "Change or strip document properties",
+    icon: FileCog,
+    multi: false,
+    accept: "pdf",
+    hue: "256",
+  },
 };
 
 export const TOOL_PATH = {
@@ -281,10 +353,20 @@ export const TOOL_PATH = {
   pdf_to_word: "/tools/pdf-to-word",
   grayscale: "/tools/grayscale",
   repair: "/tools/repair",
+  extract_text: "/tools/extract-text",
+  pdfa: "/tools/pdfa",
+  flatten: "/tools/flatten",
+  nup: "/tools/n-up",
+  pdf_to_powerpoint: "/tools/pdf-to-powerpoint",
+  metadata: "/tools/metadata",
 } as const satisfies Record<ToolId, string>;
 
 export function isToolId(value: string): value is ToolId {
   return value in TOOLS;
+}
+
+export function toolHue(kind: string): string {
+  return isToolId(kind) ? TOOLS[kind].hue : "150";
 }
 
 export type ToolCategory = "organize" | "optimize" | "convert" | "secure" | "edit";
@@ -318,6 +400,12 @@ export const TOOL_CATEGORY: Record<ToolId, ToolCategory> = {
   edit: "edit",
   grayscale: "optimize",
   repair: "optimize",
+  extract_text: "convert",
+  pdfa: "optimize",
+  flatten: "edit",
+  nup: "organize",
+  pdf_to_powerpoint: "convert",
+  metadata: "secure",
 };
 
 export function toolsInCategory(category: ToolCategory): ToolId[] {

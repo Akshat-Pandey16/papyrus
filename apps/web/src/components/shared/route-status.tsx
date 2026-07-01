@@ -20,9 +20,11 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     queryReset.reset();
   }, [queryReset]);
   return (
-    <div className="grid min-h-[50vh] place-items-center px-6">
+    <div className="grid min-h-[60vh] place-items-center px-6">
       <div className="flex max-w-md flex-col gap-4 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">This page hit a snag</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
+          This page hit a snag.
+        </h1>
         <p className="text-sm text-muted-foreground">
           {error.message || "An unexpected error occurred."}
         </p>
@@ -39,15 +41,15 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
 
 export function RouteNotFound() {
   return (
-    <div className="grid min-h-[50vh] place-items-center px-6">
+    <div className="grid min-h-[70vh] place-items-center px-6">
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
-        <p className="text-5xl font-bold tracking-tight text-muted-foreground">404</p>
-        <h1 className="text-lg font-semibold">Page not found</h1>
+        <p className="font-display text-8xl font-semibold tracking-tight text-primary/25">404</p>
+        <h1 className="font-display text-2xl font-semibold">This page slipped out.</h1>
         <p className="text-sm text-muted-foreground">
           The page you&apos;re looking for doesn&apos;t exist or has moved.
         </p>
         <Button asChild>
-          <Link to="/">Back to home</Link>
+          <Link to="/">Back to the workshop</Link>
         </Button>
       </div>
     </div>

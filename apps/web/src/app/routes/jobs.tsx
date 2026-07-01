@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, History, ScrollText } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -11,7 +11,7 @@ import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import type { Job, JobKind, JobStatus } from "@/features/pdf-compress/types";
 import { triggerDownload } from "@/features/pdf-tools/download";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
-import { TOOL_CATEGORIES, TOOLS, toolsInCategory } from "@/features/studio/tools";
+import { TOOL_CATEGORIES, TOOLS, toolHue, toolsInCategory } from "@/features/studio/tools";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/jobs")({
@@ -184,7 +184,10 @@ function JobRow({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+        <span
+          className="tool-tile grid size-9 shrink-0 place-items-center rounded-xl"
+          style={{ "--tool-hue": toolHue(job.kind) } as CSSProperties}
+        >
           <Icon className="size-4" />
         </span>
         <div className="flex min-w-0 flex-col">

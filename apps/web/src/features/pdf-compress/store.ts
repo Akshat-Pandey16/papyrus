@@ -31,7 +31,12 @@ export type UploadKind =
   | "edit"
   | "convert"
   | "repair"
-  | "grayscale";
+  | "grayscale"
+  | "extract_text"
+  | "pdfa"
+  | "flatten"
+  | "nup"
+  | "metadata";
 
 export type UploadEntry = {
   clientUploadId: string;

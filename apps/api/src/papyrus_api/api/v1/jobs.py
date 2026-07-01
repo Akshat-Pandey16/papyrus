@@ -31,6 +31,8 @@ from papyrus_api.schemas.jobs import (
     CropJobRequest,
     DownloadUrlOut,
     EditJobRequest,
+    ExtractTextJobRequest,
+    FlattenJobRequest,
     GrayscaleJobRequest,
     ImagesToPdfJobRequest,
     JobKindLiteral,
@@ -38,8 +40,11 @@ from papyrus_api.schemas.jobs import (
     JobsListPage,
     JobStatusLiteral,
     MergeJobRequest,
+    MetadataJobRequest,
+    NupJobRequest,
     OcrJobRequest,
     PageNumbersJobRequest,
+    PdfaJobRequest,
     PdfToImagesJobRequest,
     ProtectJobRequest,
     RedactJobRequest,
@@ -314,6 +319,174 @@ async def create_grayscale_job(
 ) -> JobOut:
     user, organization = principal
     result = await service.create_grayscale_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/pdf-to-powerpoint",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_pdf_to_powerpoint_job(
+    payload: ConvertJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_pdf_to_pptx_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/metadata",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_metadata_job(
+    payload: MetadataJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_metadata_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        title=payload.title,
+        author=payload.author,
+        subject=payload.subject,
+        keywords=payload.keywords,
+        strip_all=payload.strip_all,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/nup",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_nup_job(
+    payload: NupJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_nup_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        pages_per_sheet=payload.pages_per_sheet,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/extract-text",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_extract_text_job(
+    payload: ExtractTextJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_extract_text_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/pdfa",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_pdfa_job(
+    payload: PdfaJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_pdfa_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/flatten",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_flatten_job(
+    payload: FlattenJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_flatten_job(
         organization_id=organization.id,
         user_id=user.id,
         document_id=payload.document_id,

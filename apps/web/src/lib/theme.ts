@@ -13,7 +13,7 @@ export function applyTheme(theme: Theme): void {
   root.classList.toggle("dark", resolved === "dark");
   root.style.colorScheme = resolved;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", resolved === "dark" ? "#241b1a" : "#f3ecdf");
+  if (meta) meta.setAttribute("content", resolved === "dark" ? "#161c18" : "#edf1ea");
 }
 
 export type ThemeOrigin = { x: number; y: number };

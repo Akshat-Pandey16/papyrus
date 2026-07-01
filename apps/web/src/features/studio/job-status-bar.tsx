@@ -1,6 +1,5 @@
 import { ArrowRight, Check, Download, TriangleAlert, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
@@ -23,14 +22,13 @@ const PHASE_LABEL: Record<string, string> = {
 
 export function JobStatusBar() {
   const jobs = useSessionJobs();
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-  const job = jobs[0] ?? null;
+  const dismissedJobKeys = useStudioChrome((s) => s.dismissedJobKeys);
+  const dismissJob = useStudioChrome((s) => s.dismissJob);
+  const job = jobs.find((j) => !dismissedJobKeys.includes(j.key)) ?? null;
 
   return (
     <AnimatePresence mode="wait">
-      {job && job.key !== dismissedKey ? (
-        <StatusRow key={job.key} job={job} onDismiss={() => setDismissedKey(job.key)} />
-      ) : null}
+      {job ? <StatusRow key={job.key} job={job} onDismiss={() => dismissJob(job.key)} /> : null}
     </AnimatePresence>
   );
 }

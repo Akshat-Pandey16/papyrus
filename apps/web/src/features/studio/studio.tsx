@@ -16,13 +16,19 @@ import { CompressTool } from "@/features/studio/tools/compress-tool";
 import { ConvertTool } from "@/features/studio/tools/convert-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
 import { EditTool } from "@/features/studio/tools/edit-tool";
+import { ExtractTextTool } from "@/features/studio/tools/extract-text-tool";
+import { FlattenTool } from "@/features/studio/tools/flatten-tool";
 import { GrayscaleTool } from "@/features/studio/tools/grayscale-tool";
 import { ImagesToPdfTool } from "@/features/studio/tools/images-to-pdf-tool";
 import { MergeTool } from "@/features/studio/tools/merge-tool";
+import { MetadataTool } from "@/features/studio/tools/metadata-tool";
+import { NupTool } from "@/features/studio/tools/nup-tool";
 import { OcrTool } from "@/features/studio/tools/ocr-tool";
 import { PageNumbersTool } from "@/features/studio/tools/page-numbers-tool";
 import { PdfToImagesTool } from "@/features/studio/tools/pdf-to-images-tool";
+import { PdfToPowerpointTool } from "@/features/studio/tools/pdf-to-powerpoint-tool";
 import { PdfToWordTool } from "@/features/studio/tools/pdf-to-word-tool";
+import { PdfaTool } from "@/features/studio/tools/pdfa-tool";
 import { ProtectTool } from "@/features/studio/tools/protect-tool";
 import { RedactTool } from "@/features/studio/tools/redact-tool";
 import { ReorderTool } from "@/features/studio/tools/reorder-tool";
@@ -180,6 +186,18 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
           return <GrayscaleTool {...singleProps} />;
         case "repair":
           return <RepairTool {...singleProps} />;
+        case "extract_text":
+          return <ExtractTextTool {...singleProps} />;
+        case "pdfa":
+          return <PdfaTool {...singleProps} />;
+        case "flatten":
+          return <FlattenTool {...singleProps} />;
+        case "nup":
+          return <NupTool {...singleProps} />;
+        case "metadata":
+          return <MetadataTool {...singleProps} />;
+        case "pdf_to_powerpoint":
+          return <PdfToPowerpointTool {...singleProps} />;
         case "sign":
           return <SignTool {...singleProps} />;
         case "redact":
@@ -215,7 +233,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="flex min-h-[calc(100svh-4rem)] w-full items-center pb-24"
+            className="w-full pb-16"
           >
             <StudioHero
               tool={TOOLS[activeTool]}

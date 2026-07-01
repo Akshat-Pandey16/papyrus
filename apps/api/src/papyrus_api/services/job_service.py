@@ -68,6 +68,8 @@ _SIMPLE_RETRY_TASKS: dict[JobKind, str] = {
     JobKind.CROP: "papyrus.pdf.crop",
     JobKind.PDF_TO_IMAGES: "papyrus.pdf.pdf_to_images",
     JobKind.REDACT: "papyrus.pdf.redact",
+    JobKind.NUP: "papyrus.pdf.nup",
+    JobKind.METADATA: "papyrus.pdf.metadata",
 }
 
 _SIMPLE_RETRY_KEYS: dict[JobKind, frozenset[str]] = {
@@ -76,6 +78,8 @@ _SIMPLE_RETRY_KEYS: dict[JobKind, frozenset[str]] = {
     JobKind.CROP: frozenset({"box", "pages"}),
     JobKind.PDF_TO_IMAGES: frozenset({"image_format", "dpi", "quality"}),
     JobKind.REDACT: frozenset({"redactions", "dpi"}),
+    JobKind.NUP: frozenset({"pages_per_sheet"}),
+    JobKind.METADATA: frozenset({"strip_all", "title", "author", "subject", "keywords"}),
 }
 
 
@@ -676,6 +680,150 @@ class JobService:
             kind=JobKind.GRAYSCALE,
             extra_params={},
             task_name="papyrus.pdf.grayscale",
+        )
+
+    async def create_extract_text_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.EXTRACT_TEXT,
+            extra_params={},
+            task_name="papyrus.pdf.extract_text",
+        )
+
+    async def create_pdfa_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.PDFA,
+            extra_params={},
+            task_name="papyrus.pdf.pdfa",
+        )
+
+    async def create_flatten_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.FLATTEN,
+            extra_params={},
+            task_name="papyrus.pdf.flatten",
+        )
+
+    async def create_nup_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        pages_per_sheet: int,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.NUP,
+            extra_params={"pages_per_sheet": pages_per_sheet},
+            task_name="papyrus.pdf.nup",
+        )
+
+    async def create_metadata_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        title: str | None,
+        author: str | None,
+        subject: str | None,
+        keywords: str | None,
+        strip_all: bool,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.METADATA,
+            extra_params={
+                "strip_all": strip_all,
+                "title": title,
+                "author": author,
+                "subject": subject,
+                "keywords": keywords,
+            },
+            task_name="papyrus.pdf.metadata",
+        )
+
+    async def create_pdf_to_pptx_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.CONVERT,
+            extra_params={"target_format": "pptx"},
+            task_name="papyrus.pdf.pdf_to_pptx",
         )
 
     async def create_watermark_job(
@@ -1478,6 +1626,17 @@ _SUFFIX_BY_KIND: dict[JobKind, str] = {
     JobKind.CONVERT: "converted",
     JobKind.REPAIR: "repaired",
     JobKind.GRAYSCALE: "grayscale",
+    JobKind.EXTRACT_TEXT: "text",
+    JobKind.PDFA: "pdfa",
+    JobKind.FLATTEN: "flattened",
+    JobKind.NUP: "n-up",
+    JobKind.METADATA: "metadata",
+}
+
+_CONVERT_TARGET_EXT: dict[str, str] = {
+    "docx": "docx",
+    "pptx": "pptx",
+    "xlsx": "xlsx",
 }
 
 
@@ -1523,7 +1682,11 @@ def _suggest_output_filename_for(job: Job) -> str:
         ext = "zip"
     elif job.kind == JobKind.CONVERT:
         suffix = "converted"
-        ext = "docx" if params.get("target_format") == "docx" else "pdf"
+        target = params.get("target_format")
+        ext = _CONVERT_TARGET_EXT.get(target, "pdf") if isinstance(target, str) else "pdf"
+    elif job.kind == JobKind.EXTRACT_TEXT:
+        suffix = "text"
+        ext = "txt"
     else:
         suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
         ext = "pdf"

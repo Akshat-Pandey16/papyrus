@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Papyrus">
   <defs>
     <linearGradient id="m" x1="64" y1="40" x2="448" y2="472" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E5379B"/>
-      <stop offset="1" stop-color="#E1466A"/>
+      <stop stop-color="#5A926B"/>
+      <stop offset="1" stop-color="#3E6A52"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="128" fill="url(#m)"/>

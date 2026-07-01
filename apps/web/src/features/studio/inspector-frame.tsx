@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { PrivacyToggle } from "@/features/studio/privacy-toggle";
 import { TOOLS } from "@/features/studio/tools";
 import type { ToolId } from "@/features/studio/types";
@@ -17,7 +17,10 @@ export function InspectorFrame({
   return (
     <div className="flex max-h-full flex-col">
       <header className="flex items-center gap-3 border-b border-border/60 p-5 pb-4">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+        <span
+          className="tool-tile grid size-11 shrink-0 place-items-center rounded-xl"
+          style={{ "--tool-hue": tool.hue } as CSSProperties}
+        >
           <Icon className="size-5" strokeWidth={2.1} />
         </span>
         <div className="min-w-0">

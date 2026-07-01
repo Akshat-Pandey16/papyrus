@@ -23,12 +23,23 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
-from papyrus_api.services.pdf.convert import DOCX_CONTENT_TYPE, office_to_pdf, pdf_to_word
+from papyrus_api.services.pdf.convert import (
+    DOCX_CONTENT_TYPE,
+    PPTX_CONTENT_TYPE,
+    office_to_pdf,
+    pdf_to_pptx,
+    pdf_to_word,
+)
 from papyrus_api.services.pdf.crop import crop_pdf, normalize_box
+from papyrus_api.services.pdf.extract_text import extract_text_pdf
+from papyrus_api.services.pdf.flatten import flatten_pdf
 from papyrus_api.services.pdf.grayscale import grayscale_pdf
+from papyrus_api.services.pdf.metadata import set_metadata_pdf
+from papyrus_api.services.pdf.nup import nup_pdf
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.page_numbers import PageNumberOptions, number_pages_pdf
 from papyrus_api.services.pdf.pdf_to_images import ImageFormat, pdf_to_images
+from papyrus_api.services.pdf.pdfa import pdfa_pdf
 from papyrus_api.services.pdf.redact import redact_pdf, redactions_from_payload
 from papyrus_api.services.pdf.reorder import reorder_pdf
 from papyrus_api.services.pdf.repair import repair_pdf
@@ -942,4 +953,177 @@ grayscale_task = _make_task(
     name="papyrus.pdf.grayscale",
     process=_grayscale_process,
     label="grayscale",
+)
+
+
+async def _extract_text_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    result = await anyio.to_thread.run_sync(
+        lambda: extract_text_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "char_count": result.char_count,
+    }
+
+
+extract_text_task = _make_task(
+    name="papyrus.pdf.extract_text",
+    process=_extract_text_process,
+    label="extract_text",
+    extension="txt",
+    content_type="text/plain; charset=utf-8",
+)
+
+
+async def _pdfa_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    result = await anyio.to_thread.run_sync(
+        lambda: pdfa_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+pdfa_task = _make_task(
+    name="papyrus.pdf.pdfa",
+    process=_pdfa_process,
+    label="pdfa",
+)
+
+
+async def _flatten_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    result = await anyio.to_thread.run_sync(
+        lambda: flatten_pdf(input_path=input_path, output_path=output_path)
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+flatten_task = _make_task(
+    name="papyrus.pdf.flatten",
+    process=_flatten_process,
+    label="flatten",
+)
+
+
+_NUP_ALLOWED = frozenset({2, 4, 6, 9, 16})
+
+
+async def _nup_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    raw = params.get("pages_per_sheet")
+    pages_per_sheet = raw if isinstance(raw, int) and raw in _NUP_ALLOWED else 4
+    result = await anyio.to_thread.run_sync(
+        lambda: nup_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            pages_per_sheet=pages_per_sheet,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "source_page_count": result.source_page_count,
+    }
+
+
+nup_task = _make_task(
+    name="papyrus.pdf.nup",
+    process=_nup_process,
+    label="nup",
+)
+
+
+async def _pdf_to_pptx_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    profile_dir = output_path.parent / f"lo-profile-{uuid4().hex}"
+    result = await anyio.to_thread.run_sync(
+        lambda: pdf_to_pptx(
+            input_path=input_path,
+            output_path=output_path,
+            profile_dir=profile_dir,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+    }
+
+
+pdf_to_pptx_task = _make_task(
+    name="papyrus.pdf.pdf_to_pptx",
+    process=_pdf_to_pptx_process,
+    label="pdf_to_pptx",
+    extension="pptx",
+    content_type=PPTX_CONTENT_TYPE,
+)
+
+
+async def _metadata_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    title = params.get("title")
+    author = params.get("author")
+    subject = params.get("subject")
+    keywords = params.get("keywords")
+    result = await anyio.to_thread.run_sync(
+        lambda: set_metadata_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            title=title if isinstance(title, str) else None,
+            author=author if isinstance(author, str) else None,
+            subject=subject if isinstance(subject, str) else None,
+            keywords=keywords if isinstance(keywords, str) else None,
+            strip_all=bool(params.get("strip_all")),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "stripped": result.stripped,
+    }
+
+
+metadata_task = _make_task(
+    name="papyrus.pdf.metadata",
+    process=_metadata_process,
+    label="metadata",
 )

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
+import type { CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -20,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import { useJobQuery } from "@/features/pdf-tools/api";
 import { isActivePhase, type SessionJob } from "@/features/studio/session-jobs";
+import { toolHue } from "@/features/studio/tools";
 import { useJobActions } from "@/features/studio/use-job-actions";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
@@ -85,8 +87,11 @@ export function ResultCard({ job }: { job: SessionJob }) {
               ? "bg-success/15 text-success"
               : failed
                 ? "bg-destructive/12 text-destructive"
-                : "bg-primary/12 text-primary",
+                : "tool-tile",
           )}
+          style={
+            succeeded || failed ? undefined : ({ "--tool-hue": toolHue(job.kind) } as CSSProperties)
+          }
         >
           {succeeded ? (
             <Check className="size-5" />
