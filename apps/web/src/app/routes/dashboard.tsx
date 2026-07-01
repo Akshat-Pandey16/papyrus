@@ -1,7 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   ArrowRight,
-  ArrowUpRight,
   CheckCircle2,
   Clock,
   HardDrive,
@@ -14,8 +13,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { formatBytes } from "@/features/pdf-compress/format";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
-import { TOOL_CATEGORIES, TOOL_PATH, TOOLS, toolsInCategory } from "@/features/studio/tools";
-import type { ToolId } from "@/features/studio/types";
+import { TOOLS } from "@/features/studio/tools";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -41,35 +39,24 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1760px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
-      <header className="relative overflow-hidden rounded-3xl border border-border/70 bg-molten p-6 text-primary-foreground shadow-ember sm:p-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-25"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 8% 0%, rgba(255,255,255,0.5) 0, transparent 40%), radial-gradient(circle at 100% 120%, rgba(255,255,255,0.28) 0, transparent 42%)",
-          }}
-        />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-grain opacity-[0.06]" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wide text-primary-foreground/75 uppercase">
-              {organization?.name ?? "Workspace"}
-            </span>
-            <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-              Welcome back, {greeting}.
-            </h1>
-            <p className="text-[0.95rem] text-primary-foreground/85">
-              Your jobs and downloads, all in one place. Jump back into the canvas anytime.
-            </p>
-          </div>
-          <Button asChild variant="secondary" size="lg" className="shrink-0">
-            <Link to="/">
-              <ScrollText />
-              Open the Studio
-            </Link>
-          </Button>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {organization?.name ?? "Workspace"}
+          </span>
+          <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+            Welcome back, {greeting}.
+          </h1>
+          <p className="text-[0.95rem] text-muted-foreground">
+            Your jobs and downloads, all in one place.
+          </p>
         </div>
+        <Button asChild size="lg" className="shrink-0">
+          <Link to="/">
+            <ScrollText />
+            Open Studio
+          </Link>
+        </Button>
       </header>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -87,22 +74,6 @@ function DashboardPage() {
         />
         <StatCard label="Plan" value="Free" hint="Up to 500 MB per file" icon={CheckCircle2} />
       </div>
-
-      <section className="mt-10 flex flex-col gap-7">
-        <SectionHeader title="Tools" subtitle="Grouped the way you think about them." />
-        {TOOL_CATEGORIES.map((cat) => (
-          <div key={cat.id} className="flex flex-col gap-3">
-            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              {cat.label}
-            </h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {toolsInCategory(cat.id).map((id) => (
-                <ToolCard key={id} id={id} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
 
       <section className="mt-10 flex flex-col gap-4">
         <SectionHeader
@@ -158,26 +129,6 @@ function DashboardPage() {
   );
 }
 
-function ToolCard({ id }: { id: ToolId }) {
-  const tool = TOOLS[id];
-  const Icon = tool.icon;
-  return (
-    <Link
-      to={TOOL_PATH[id]}
-      className="group flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-clay-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-clay"
-    >
-      <span className="grid size-10 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-molten group-hover:text-primary-foreground">
-        <Icon className="size-5" />
-      </span>
-      <span className="font-display text-base font-semibold">{tool.verb}</span>
-      <span className="text-xs text-muted-foreground">{tool.tagline}</span>
-      <span className="mt-auto inline-flex items-center text-xs font-medium text-primary/80 transition-colors group-hover:text-primary">
-        Open <ArrowUpRight className="ml-0.5 size-3" />
-      </span>
-    </Link>
-  );
-}
-
 function ToolIcon({ kind }: { kind: Job["kind"] }) {
   const tool = kind in TOOLS ? TOOLS[kind as keyof typeof TOOLS] : null;
   const Icon = tool?.icon ?? ScrollText;
@@ -216,7 +167,7 @@ function StatCard({
   icon: LucideIcon;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4 shadow-clay-sm">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between text-muted-foreground">
         <span className="text-xs font-medium tracking-wide uppercase">{label}</span>
         <Icon className="size-4" />
@@ -277,8 +228,8 @@ function EmptyState() {
           Run your first PDF tool to see activity here.
         </span>
       </div>
-      <Button asChild size="sm" variant="molten">
-        <Link to="/">Open the Studio</Link>
+      <Button asChild size="sm">
+        <Link to="/">Open Studio</Link>
       </Button>
     </div>
   );

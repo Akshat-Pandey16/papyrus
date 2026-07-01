@@ -1,4 +1,5 @@
 import {
+  Contrast,
   Crop,
   FileOutput,
   FileType2,
@@ -18,6 +19,7 @@ import {
   SquareDashedBottom,
   Stamp,
   Wand2,
+  Wrench,
 } from "lucide-react";
 import type { ToolId } from "@/features/studio/types";
 
@@ -51,6 +53,8 @@ export const TOOL_ORDER: ToolId[] = [
   "images_to_pdf",
   "convert",
   "pdf_to_word",
+  "grayscale",
+  "repair",
 ];
 
 export const TOOLS: Record<ToolId, ToolMeta> = {
@@ -234,6 +238,26 @@ export const TOOLS: Record<ToolId, ToolMeta> = {
     accept: "pdf",
     hue: "212",
   },
+  grayscale: {
+    id: "grayscale",
+    label: "Grayscale PDF",
+    verb: "Grayscale",
+    tagline: "Convert every page to black & white",
+    icon: Contrast,
+    multi: false,
+    accept: "pdf",
+    hue: "0",
+  },
+  repair: {
+    id: "repair",
+    label: "Repair PDF",
+    verb: "Repair",
+    tagline: "Recover a damaged or unreadable PDF",
+    icon: Wrench,
+    multi: false,
+    accept: "pdf",
+    hue: "36",
+  },
 };
 
 export const TOOL_PATH = {
@@ -255,6 +279,8 @@ export const TOOL_PATH = {
   images_to_pdf: "/tools/images-to-pdf",
   convert: "/tools/convert",
   pdf_to_word: "/tools/pdf-to-word",
+  grayscale: "/tools/grayscale",
+  repair: "/tools/repair",
 } as const satisfies Record<ToolId, string>;
 
 export function isToolId(value: string): value is ToolId {
@@ -290,6 +316,8 @@ export const TOOL_CATEGORY: Record<ToolId, ToolCategory> = {
   crop: "edit",
   sign: "edit",
   edit: "edit",
+  grayscale: "optimize",
+  repair: "optimize",
 };
 
 export function toolsInCategory(category: ToolCategory): ToolId[] {

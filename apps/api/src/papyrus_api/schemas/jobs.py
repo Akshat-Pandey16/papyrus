@@ -33,6 +33,8 @@ JobKindLiteral = Literal[
     "pdf_to_images",
     "images_to_pdf",
     "edit",
+    "repair",
+    "grayscale",
 ]
 
 OverlayFontLiteral = Literal[
@@ -214,6 +216,18 @@ class OcrJobRequest(_MutableModel):
 
 
 class ConvertJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class RepairJobRequest(_MutableModel):
+    document_id: UUID
+    idempotency_key: UUID
+    zero_retention: bool = False
+
+
+class GrayscaleJobRequest(_MutableModel):
     document_id: UUID
     idempotency_key: UUID
     zero_retention: bool = False

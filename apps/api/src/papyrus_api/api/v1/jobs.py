@@ -31,6 +31,7 @@ from papyrus_api.schemas.jobs import (
     CropJobRequest,
     DownloadUrlOut,
     EditJobRequest,
+    GrayscaleJobRequest,
     ImagesToPdfJobRequest,
     JobKindLiteral,
     JobOut,
@@ -43,6 +44,7 @@ from papyrus_api.schemas.jobs import (
     ProtectJobRequest,
     RedactJobRequest,
     ReorderJobRequest,
+    RepairJobRequest,
     RetryJobRequest,
     RotateJobRequest,
     SignJobRequest,
@@ -258,6 +260,60 @@ async def create_pdf_to_word_job(
 ) -> JobOut:
     user, organization = principal
     result = await service.create_pdf_to_word_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/repair",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_repair_job(
+    payload: RepairJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_repair_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
+    "/grayscale",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_grayscale_job(
+    payload: GrayscaleJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_grayscale_job(
         organization_id=organization.id,
         user_id=user.id,
         document_id=payload.document_id,

@@ -45,9 +45,9 @@ function JobsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
+    <div className="mx-auto w-full max-w-[1760px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
       <header className="flex items-center gap-3">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-clay-sm">
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
           <History className="size-6" />
         </span>
         <div>
@@ -262,7 +262,7 @@ function Skeleton() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-molten text-primary-foreground">
+      <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
         <History className="size-6" />
       </span>
       <div className="flex flex-col gap-1">
@@ -271,8 +271,8 @@ function EmptyState() {
           Run any PDF tool and your jobs will show up here.
         </span>
       </div>
-      <Button asChild size="sm" variant="molten">
-        <Link to="/">Open the Studio</Link>
+      <Button asChild size="sm">
+        <Link to="/">Open Studio</Link>
       </Button>
     </div>
   );

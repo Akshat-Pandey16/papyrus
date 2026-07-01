@@ -29,7 +29,9 @@ export type UploadKind =
   | "redact"
   | "sign"
   | "edit"
-  | "convert";
+  | "convert"
+  | "repair"
+  | "grayscale";
 
 export type UploadEntry = {
   clientUploadId: string;

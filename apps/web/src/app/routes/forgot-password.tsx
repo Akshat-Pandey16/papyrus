@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useForgotPasswordMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
+import { SuccessBanner } from "@/features/auth/components/success-banner";
 import { type ForgotPasswordInput, forgotPasswordSchema } from "@/features/auth/schemas";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -55,14 +55,11 @@ function ForgotPasswordPage() {
     >
       {submitted ? (
         <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <p className="leading-relaxed">
-              If an account exists for that email, we've sent password reset instructions. Check
-              your inbox.
-            </p>
-          </div>
-          {debugToken ? (
+          <SuccessBanner>
+            If an account exists for that email, we've sent password reset instructions. Check your
+            inbox.
+          </SuccessBanner>
+          {import.meta.env.DEV && debugToken ? (
             <Button
               variant="outline"
               onClick={() =>

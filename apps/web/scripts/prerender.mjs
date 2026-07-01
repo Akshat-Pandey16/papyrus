@@ -26,6 +26,8 @@ const TOOLS = [
   { slug: "/tools/edit", label: "Edit PDF" },
   { slug: "/tools/pdf-to-images", label: "PDF to JPG" },
   { slug: "/tools/images-to-pdf", label: "Images to PDF" },
+  { slug: "/tools/grayscale", label: "Grayscale PDF" },
+  { slug: "/tools/repair", label: "Repair PDF" },
 ];
 
 function esc(value) {

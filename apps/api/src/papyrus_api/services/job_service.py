@@ -634,6 +634,50 @@ class JobService:
             task_name="papyrus.pdf.pdf_to_word",
         )
 
+    async def create_repair_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.REPAIR,
+            extra_params={},
+            task_name="papyrus.pdf.repair",
+        )
+
+    async def create_grayscale_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.GRAYSCALE,
+            extra_params={},
+            task_name="papyrus.pdf.grayscale",
+        )
+
     async def create_watermark_job(
         self,
         *,
@@ -1432,6 +1476,8 @@ _SUFFIX_BY_KIND: dict[JobKind, str] = {
     JobKind.REDACT: "redacted",
     JobKind.EDIT: "edited",
     JobKind.CONVERT: "converted",
+    JobKind.REPAIR: "repaired",
+    JobKind.GRAYSCALE: "grayscale",
 }
 
 

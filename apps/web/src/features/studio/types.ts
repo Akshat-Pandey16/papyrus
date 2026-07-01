@@ -16,7 +16,9 @@ export type ToolId =
   | "redact"
   | "edit"
   | "convert"
-  | "pdf_to_word";
+  | "pdf_to_word"
+  | "repair"
+  | "grayscale";
 
 export type StudioFile = {
   id: string;

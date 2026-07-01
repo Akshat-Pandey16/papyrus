@@ -25,11 +25,13 @@ from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
 from papyrus_api.services.pdf.convert import DOCX_CONTENT_TYPE, office_to_pdf, pdf_to_word
 from papyrus_api.services.pdf.crop import crop_pdf, normalize_box
+from papyrus_api.services.pdf.grayscale import grayscale_pdf
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
 from papyrus_api.services.pdf.page_numbers import PageNumberOptions, number_pages_pdf
 from papyrus_api.services.pdf.pdf_to_images import ImageFormat, pdf_to_images
 from papyrus_api.services.pdf.redact import redact_pdf, redactions_from_payload
 from papyrus_api.services.pdf.reorder import reorder_pdf
+from papyrus_api.services.pdf.repair import repair_pdf
 from papyrus_api.services.pdf.rotate import rotate_pdf
 from papyrus_api.services.pdf.security import protect_pdf, unlock_pdf
 from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
@@ -890,4 +892,54 @@ pdf_to_word_task = _make_task(
     label="pdf_to_word",
     extension="docx",
     content_type=DOCX_CONTENT_TYPE,
+)
+
+
+async def _repair_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    result = await anyio.to_thread.run_sync(
+        lambda: repair_pdf(input_path=input_path, output_path=output_path)
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+repair_task = _make_task(
+    name="papyrus.pdf.repair",
+    process=_repair_process,
+    label="repair",
+    decrypt=False,
+)
+
+
+async def _grayscale_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    max_pages = params.get("max_pages")
+    result = await anyio.to_thread.run_sync(
+        lambda: grayscale_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            max_pages=max_pages if isinstance(max_pages, int) else None,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+grayscale_task = _make_task(
+    name="papyrus.pdf.grayscale",
+    process=_grayscale_process,
+    label="grayscale",
 )

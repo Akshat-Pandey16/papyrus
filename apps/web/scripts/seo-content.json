@@ -514,5 +514,49 @@
         "a": "Scanned or image-only PDFs have no selectable text, so run OCR first to make the text recognizable, then convert to Word."
       }
     ]
+  },
+  {
+    "slug": "/tools/grayscale",
+    "title": "Grayscale PDF — free & private — Papyrus",
+    "metaDescription": "Convert a PDF to grayscale (black & white) online, free with no signup. Great for printing and smaller files. Private, files deleted in 24h.",
+    "h1": "Grayscale PDF",
+    "intro": "Convert every page of a PDF to grayscale — ideal for black-and-white printing and shrinking color-heavy scans. Free, no signup, and private.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Grayscale PDF",
+      "Download your black-and-white PDF"
+    ],
+    "faqs": [
+      {
+        "q": "Does grayscale make the PDF smaller?",
+        "a": "Often yes — color-heavy pages and scans usually get noticeably smaller once color data is removed, while text stays crisp."
+      },
+      {
+        "q": "Is it free and private?",
+        "a": "Yes. Grayscale conversion is free with no ads or signup, and your file is deleted within 24 hours."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/repair",
+    "title": "Repair PDF — fix a broken PDF — Papyrus",
+    "metaDescription": "Repair a damaged or corrupt PDF online, free with no signup. Rebuild broken files so they open again. Private, files auto-deleted in 24 hours.",
+    "h1": "Repair PDF",
+    "intro": "Recover a damaged, corrupt, or unreadable PDF by rebuilding its internal structure so it opens again. Free, no signup, and private.",
+    "steps": [
+      "Drop the broken PDF into the box above",
+      "Click Repair PDF",
+      "Download the recovered file"
+    ],
+    "faqs": [
+      {
+        "q": "What kinds of damage can this fix?",
+        "a": "It reconstructs the PDF structure — broken cross-reference tables, truncated files, and many \"file is corrupt\" errors. Content that was fully lost can't be recovered."
+      },
+      {
+        "q": "Is repairing a PDF free?",
+        "a": "Yes. PDF repair is free with no signup or ads, and your file is deleted within 24 hours."
+      }
+    ]
   }
 ]

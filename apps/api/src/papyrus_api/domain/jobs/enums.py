@@ -22,6 +22,8 @@ class JobKind(StrEnum):
     PDF_TO_IMAGES = "pdf_to_images"
     IMAGES_TO_PDF = "images_to_pdf"
     EDIT = "edit"
+    REPAIR = "repair"
+    GRAYSCALE = "grayscale"
 
 
 class JobStatus(StrEnum):

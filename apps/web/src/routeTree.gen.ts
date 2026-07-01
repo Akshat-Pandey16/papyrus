@@ -22,6 +22,7 @@ import { Route as ToolsUnlockRouteImport } from './app/routes/tools/unlock'
 import { Route as ToolsSplitRouteImport } from './app/routes/tools/split'
 import { Route as ToolsSignRouteImport } from './app/routes/tools/sign'
 import { Route as ToolsRotateRouteImport } from './app/routes/tools/rotate'
+import { Route as ToolsRepairRouteImport } from './app/routes/tools/repair'
 import { Route as ToolsReorderRouteImport } from './app/routes/tools/reorder'
 import { Route as ToolsRedactRouteImport } from './app/routes/tools/redact'
 import { Route as ToolsProtectRouteImport } from './app/routes/tools/protect'
@@ -31,6 +32,7 @@ import { Route as ToolsPageNumbersRouteImport } from './app/routes/tools/page-nu
 import { Route as ToolsOcrRouteImport } from './app/routes/tools/ocr'
 import { Route as ToolsMergeRouteImport } from './app/routes/tools/merge'
 import { Route as ToolsImagesToPdfRouteImport } from './app/routes/tools/images-to-pdf'
+import { Route as ToolsGrayscaleRouteImport } from './app/routes/tools/grayscale'
 import { Route as ToolsEditRouteImport } from './app/routes/tools/edit'
 import { Route as ToolsCropRouteImport } from './app/routes/tools/crop'
 import { Route as ToolsConvertRouteImport } from './app/routes/tools/convert'
@@ -101,6 +103,11 @@ const ToolsRotateRoute = ToolsRotateRouteImport.update({
   path: '/tools/rotate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsRepairRoute = ToolsRepairRouteImport.update({
+  id: '/tools/repair',
+  path: '/tools/repair',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsReorderRoute = ToolsReorderRouteImport.update({
   id: '/tools/reorder',
   path: '/tools/reorder',
@@ -146,6 +153,11 @@ const ToolsImagesToPdfRoute = ToolsImagesToPdfRouteImport.update({
   path: '/tools/images-to-pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsGrayscaleRoute = ToolsGrayscaleRouteImport.update({
+  id: '/tools/grayscale',
+  path: '/tools/grayscale',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsEditRoute = ToolsEditRouteImport.update({
   id: '/tools/edit',
   path: '/tools/edit',
@@ -180,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
@@ -189,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
   '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
@@ -208,6 +222,7 @@ export interface FileRoutesByTo {
   '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
@@ -217,6 +232,7 @@ export interface FileRoutesByTo {
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
   '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
@@ -237,6 +253,7 @@ export interface FileRoutesById {
   '/tools/convert': typeof ToolsConvertRoute
   '/tools/crop': typeof ToolsCropRoute
   '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
   '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
@@ -246,6 +263,7 @@ export interface FileRoutesById {
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
   '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
@@ -267,6 +285,7 @@ export interface FileRouteTypes {
     | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
+    | '/tools/grayscale'
     | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
@@ -276,6 +295,7 @@ export interface FileRouteTypes {
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
     | '/tools/sign'
     | '/tools/split'
@@ -295,6 +315,7 @@ export interface FileRouteTypes {
     | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
+    | '/tools/grayscale'
     | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
@@ -304,6 +325,7 @@ export interface FileRouteTypes {
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
     | '/tools/sign'
     | '/tools/split'
@@ -323,6 +345,7 @@ export interface FileRouteTypes {
     | '/tools/convert'
     | '/tools/crop'
     | '/tools/edit'
+    | '/tools/grayscale'
     | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
@@ -332,6 +355,7 @@ export interface FileRouteTypes {
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
     | '/tools/sign'
     | '/tools/split'
@@ -352,6 +376,7 @@ export interface RootRouteChildren {
   ToolsConvertRoute: typeof ToolsConvertRoute
   ToolsCropRoute: typeof ToolsCropRoute
   ToolsEditRoute: typeof ToolsEditRoute
+  ToolsGrayscaleRoute: typeof ToolsGrayscaleRoute
   ToolsImagesToPdfRoute: typeof ToolsImagesToPdfRoute
   ToolsMergeRoute: typeof ToolsMergeRoute
   ToolsOcrRoute: typeof ToolsOcrRoute
@@ -361,6 +386,7 @@ export interface RootRouteChildren {
   ToolsProtectRoute: typeof ToolsProtectRoute
   ToolsRedactRoute: typeof ToolsRedactRoute
   ToolsReorderRoute: typeof ToolsReorderRoute
+  ToolsRepairRoute: typeof ToolsRepairRoute
   ToolsRotateRoute: typeof ToolsRotateRoute
   ToolsSignRoute: typeof ToolsSignRoute
   ToolsSplitRoute: typeof ToolsSplitRoute
@@ -461,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsRotateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/repair': {
+      id: '/tools/repair'
+      path: '/tools/repair'
+      fullPath: '/tools/repair'
+      preLoaderRoute: typeof ToolsRepairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/reorder': {
       id: '/tools/reorder'
       path: '/tools/reorder'
@@ -524,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsImagesToPdfRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/grayscale': {
+      id: '/tools/grayscale'
+      path: '/tools/grayscale'
+      fullPath: '/tools/grayscale'
+      preLoaderRoute: typeof ToolsGrayscaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/edit': {
       id: '/tools/edit'
       path: '/tools/edit'
@@ -568,6 +608,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsConvertRoute: ToolsConvertRoute,
   ToolsCropRoute: ToolsCropRoute,
   ToolsEditRoute: ToolsEditRoute,
+  ToolsGrayscaleRoute: ToolsGrayscaleRoute,
   ToolsImagesToPdfRoute: ToolsImagesToPdfRoute,
   ToolsMergeRoute: ToolsMergeRoute,
   ToolsOcrRoute: ToolsOcrRoute,
@@ -577,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsProtectRoute: ToolsProtectRoute,
   ToolsRedactRoute: ToolsRedactRoute,
   ToolsReorderRoute: ToolsReorderRoute,
+  ToolsRepairRoute: ToolsRepairRoute,
   ToolsRotateRoute: ToolsRotateRoute,
   ToolsSignRoute: ToolsSignRoute,
   ToolsSplitRoute: ToolsSplitRoute,

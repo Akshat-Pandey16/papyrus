@@ -108,9 +108,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card p-6 shadow-clay">
+    <section className="flex flex-col gap-5 rounded-2xl border border-border/70 bg-card p-6">
       <header className="flex items-start gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-clay-sm">
+        <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
           {icon}
         </div>
         <div className="flex flex-col">
@@ -239,7 +239,7 @@ function EmailVerificationPanel() {
       <Button onClick={onSend} disabled={request.isPending} className="self-start">
         {request.isPending ? "Sending…" : "Send verification email"}
       </Button>
-      {debugToken ? (
+      {import.meta.env.DEV && debugToken ? (
         <p className="rounded-md bg-foreground/5 p-3 text-xs">
           Dev mode debug token: <code className="break-all">{debugToken}</code>
         </p>

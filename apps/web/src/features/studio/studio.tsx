@@ -16,6 +16,7 @@ import { CompressTool } from "@/features/studio/tools/compress-tool";
 import { ConvertTool } from "@/features/studio/tools/convert-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
 import { EditTool } from "@/features/studio/tools/edit-tool";
+import { GrayscaleTool } from "@/features/studio/tools/grayscale-tool";
 import { ImagesToPdfTool } from "@/features/studio/tools/images-to-pdf-tool";
 import { MergeTool } from "@/features/studio/tools/merge-tool";
 import { OcrTool } from "@/features/studio/tools/ocr-tool";
@@ -25,6 +26,7 @@ import { PdfToWordTool } from "@/features/studio/tools/pdf-to-word-tool";
 import { ProtectTool } from "@/features/studio/tools/protect-tool";
 import { RedactTool } from "@/features/studio/tools/redact-tool";
 import { ReorderTool } from "@/features/studio/tools/reorder-tool";
+import { RepairTool } from "@/features/studio/tools/repair-tool";
 import { RotateTool } from "@/features/studio/tools/rotate-tool";
 import { SignTool } from "@/features/studio/tools/sign-tool";
 import { SplitTool } from "@/features/studio/tools/split-tool";
@@ -174,6 +176,10 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
           return <PdfToImagesTool {...singleProps} />;
         case "pdf_to_word":
           return <PdfToWordTool {...singleProps} />;
+        case "grayscale":
+          return <GrayscaleTool {...singleProps} />;
+        case "repair":
+          return <RepairTool {...singleProps} />;
         case "sign":
           return <SignTool {...singleProps} />;
         case "redact":

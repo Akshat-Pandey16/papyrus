@@ -41,6 +41,7 @@ celery_app.conf.update(
         "papyrus.pdf.redact": {"queue": "pdf-heavy"},
         "papyrus.pdf.convert": {"queue": "pdf-heavy"},
         "papyrus.pdf.pdf_to_word": {"queue": "pdf-heavy"},
+        "papyrus.pdf.grayscale": {"queue": "pdf-heavy"},
         "papyrus.pdf.*": {"queue": "pdf"},
         "papyrus.cleanup.*": {"queue": "cleanup"},
     },
