@@ -199,6 +199,23 @@ export function useCreateConvertJobMutation() {
   });
 }
 
+export function useCreatePdfToWordJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ConvertJobInput): Promise<Job> => {
+      const { data } = await apiClient.post<ApiJob>("/jobs/pdf-to-word", {
+        document_id: input.documentId,
+        idempotency_key: input.idempotencyKey,
+        zero_retention: useUiStore.getState().zeroRetention,
+      });
+      return mapJob(data);
+    },
+    onSuccess: (job) => {
+      qc.setQueryData(compressKeys.job(job.id), job);
+    },
+  });
+}
+
 type Rgb = [number, number, number];
 
 export type OverlayOp = {

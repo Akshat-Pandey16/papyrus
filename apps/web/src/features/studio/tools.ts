@@ -1,5 +1,6 @@
 import {
   Crop,
+  FileOutput,
   FileType2,
   Hash,
   ImagePlus,
@@ -49,6 +50,7 @@ export const TOOL_ORDER: ToolId[] = [
   "pdf_to_images",
   "images_to_pdf",
   "convert",
+  "pdf_to_word",
 ];
 
 export const TOOLS: Record<ToolId, ToolMeta> = {
@@ -222,6 +224,16 @@ export const TOOLS: Record<ToolId, ToolMeta> = {
     accept: "office",
     hue: "16",
   },
+  pdf_to_word: {
+    id: "pdf_to_word",
+    label: "PDF to Word",
+    verb: "Convert",
+    tagline: "Turn a PDF into an editable Word doc",
+    icon: FileOutput,
+    multi: false,
+    accept: "pdf",
+    hue: "212",
+  },
 };
 
 export const TOOL_PATH = {
@@ -242,6 +254,7 @@ export const TOOL_PATH = {
   pdf_to_images: "/tools/pdf-to-images",
   images_to_pdf: "/tools/images-to-pdf",
   convert: "/tools/convert",
+  pdf_to_word: "/tools/pdf-to-word",
 } as const satisfies Record<ToolId, string>;
 
 export function isToolId(value: string): value is ToolId {
@@ -268,6 +281,7 @@ export const TOOL_CATEGORY: Record<ToolId, ToolCategory> = {
   pdf_to_images: "convert",
   images_to_pdf: "convert",
   convert: "convert",
+  pdf_to_word: "convert",
   protect: "secure",
   unlock: "secure",
   redact: "secure",

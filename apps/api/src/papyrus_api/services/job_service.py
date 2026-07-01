@@ -608,8 +608,30 @@ class JobService:
             is_anonymous=is_anonymous,
             zero_retention=zero_retention,
             kind=JobKind.CONVERT,
-            extra_params={},
+            extra_params={"target_format": "pdf"},
             task_name="papyrus.pdf.convert",
+        )
+
+    async def create_pdf_to_word_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.CONVERT,
+            extra_params={"target_format": "docx"},
+            task_name="papyrus.pdf.pdf_to_word",
         )
 
     async def create_watermark_job(
@@ -1453,6 +1475,9 @@ def _suggest_output_filename_for(job: Job) -> str:
     elif job.kind == JobKind.PDF_TO_IMAGES:
         suffix = "images"
         ext = "zip"
+    elif job.kind == JobKind.CONVERT:
+        suffix = "converted"
+        ext = "docx" if params.get("target_format") == "docx" else "pdf"
     else:
         suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
         ext = "pdf"

@@ -25,6 +25,7 @@ import { Route as ToolsRotateRouteImport } from './app/routes/tools/rotate'
 import { Route as ToolsReorderRouteImport } from './app/routes/tools/reorder'
 import { Route as ToolsRedactRouteImport } from './app/routes/tools/redact'
 import { Route as ToolsProtectRouteImport } from './app/routes/tools/protect'
+import { Route as ToolsPdfToWordRouteImport } from './app/routes/tools/pdf-to-word'
 import { Route as ToolsPdfToImagesRouteImport } from './app/routes/tools/pdf-to-images'
 import { Route as ToolsPageNumbersRouteImport } from './app/routes/tools/page-numbers'
 import { Route as ToolsOcrRouteImport } from './app/routes/tools/ocr'
@@ -115,6 +116,11 @@ const ToolsProtectRoute = ToolsProtectRouteImport.update({
   path: '/tools/protect',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsPdfToWordRoute = ToolsPdfToWordRouteImport.update({
+  id: '/tools/pdf-to-word',
+  path: '/tools/pdf-to-word',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsPdfToImagesRoute = ToolsPdfToImagesRouteImport.update({
   id: '/tools/pdf-to-images',
   path: '/tools/pdf-to-images',
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/tools/ocr': typeof ToolsOcrRoute
   '/tools/page-numbers': typeof ToolsPageNumbersRoute
   '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/tools/ocr': typeof ToolsOcrRoute
   '/tools/page-numbers': typeof ToolsPageNumbersRoute
   '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/tools/ocr': typeof ToolsOcrRoute
   '/tools/page-numbers': typeof ToolsPageNumbersRoute
   '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
   '/tools/protect': typeof ToolsProtectRoute
   '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
     | '/tools/ocr'
     | '/tools/page-numbers'
     | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/tools/ocr'
     | '/tools/page-numbers'
     | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/tools/ocr'
     | '/tools/page-numbers'
     | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
     | '/tools/protect'
     | '/tools/redact'
     | '/tools/reorder'
@@ -345,6 +357,7 @@ export interface RootRouteChildren {
   ToolsOcrRoute: typeof ToolsOcrRoute
   ToolsPageNumbersRoute: typeof ToolsPageNumbersRoute
   ToolsPdfToImagesRoute: typeof ToolsPdfToImagesRoute
+  ToolsPdfToWordRoute: typeof ToolsPdfToWordRoute
   ToolsProtectRoute: typeof ToolsProtectRoute
   ToolsRedactRoute: typeof ToolsRedactRoute
   ToolsReorderRoute: typeof ToolsReorderRoute
@@ -469,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsProtectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/pdf-to-word': {
+      id: '/tools/pdf-to-word'
+      path: '/tools/pdf-to-word'
+      fullPath: '/tools/pdf-to-word'
+      preLoaderRoute: typeof ToolsPdfToWordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/pdf-to-images': {
       id: '/tools/pdf-to-images'
       path: '/tools/pdf-to-images'
@@ -553,6 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsOcrRoute: ToolsOcrRoute,
   ToolsPageNumbersRoute: ToolsPageNumbersRoute,
   ToolsPdfToImagesRoute: ToolsPdfToImagesRoute,
+  ToolsPdfToWordRoute: ToolsPdfToWordRoute,
   ToolsProtectRoute: ToolsProtectRoute,
   ToolsRedactRoute: ToolsRedactRoute,
   ToolsReorderRoute: ToolsReorderRoute,

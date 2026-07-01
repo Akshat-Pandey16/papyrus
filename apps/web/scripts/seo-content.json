@@ -488,5 +488,31 @@
         "a": "Yes. Processing is private, we don't log file content, and your uploaded file is automatically deleted within 24 hours. Anonymous use is capped at 25MB per file and 10 jobs a day."
       }
     ]
+  },
+  {
+    "slug": "/tools/pdf-to-word",
+    "title": "PDF to Word — free, private — Papyrus",
+    "metaDescription": "Convert PDF to an editable Word document (.docx) online, free with no signup. Private processing, files auto-deleted in 24 hours.",
+    "h1": "PDF to Word",
+    "intro": "Turn a PDF into an editable Word document you can open in Word, Google Docs, or LibreOffice. Free, no signup, and private — your file is deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Convert to Word",
+      "Edit the downloaded .docx in Word, Google Docs, or LibreOffice"
+    ],
+    "faqs": [
+      {
+        "q": "Is converting PDF to Word free?",
+        "a": "Yes. PDF to Word conversion on Papyrus is free with no ads and no signup. Anonymous users can convert files up to 25MB and 500 pages."
+      },
+      {
+        "q": "Will the layout and text be editable?",
+        "a": "Text-based PDFs convert to fully editable Word text with their layout and images preserved as closely as possible. Complex layouts may need small tweaks after converting."
+      },
+      {
+        "q": "Can I convert a scanned PDF to Word?",
+        "a": "Scanned or image-only PDFs have no selectable text, so run OCR first to make the text recognizable, then convert to Word."
+      }
+    ]
   }
 ]

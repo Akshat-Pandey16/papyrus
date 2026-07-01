@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
 import { useJobQuery } from "@/features/pdf-tools/api";
+import { useStudioChrome } from "@/features/studio/chrome-store";
 import { isActivePhase, type SessionJob, useSessionJobs } from "@/features/studio/session-jobs";
 import { useJobActions } from "@/features/studio/use-job-actions";
 import { mapErrorMessage } from "@/lib/api/error-message";
@@ -20,7 +21,7 @@ const PHASE_LABEL: Record<string, string> = {
   running: "Working",
 };
 
-export function JobStatusBar({ onOpenResults }: { onOpenResults: () => void }) {
+export function JobStatusBar() {
   const jobs = useSessionJobs();
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const job = jobs[0] ?? null;
@@ -28,28 +29,16 @@ export function JobStatusBar({ onOpenResults }: { onOpenResults: () => void }) {
   return (
     <AnimatePresence mode="wait">
       {job && job.key !== dismissedKey ? (
-        <StatusRow
-          key={job.key}
-          job={job}
-          onOpenResults={onOpenResults}
-          onDismiss={() => setDismissedKey(job.key)}
-        />
+        <StatusRow key={job.key} job={job} onDismiss={() => setDismissedKey(job.key)} />
       ) : null}
     </AnimatePresence>
   );
 }
 
-function StatusRow({
-  job,
-  onOpenResults,
-  onDismiss,
-}: {
-  job: SessionJob;
-  onOpenResults: () => void;
-  onDismiss: () => void;
-}) {
+function StatusRow({ job, onDismiss }: { job: SessionJob; onDismiss: () => void }) {
   const { data: remote } = useJobQuery(job.jobId ?? null);
   const { download, retry, expired, onDownload, onCancel, onRetry } = useJobActions(job);
+  const openResults = useStudioChrome((s) => s.setResultsOpen);
 
   const status = remote?.status;
   const phase = job.phase;
@@ -152,7 +141,7 @@ function StatusRow({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onOpenResults}
+                onClick={() => openResults(true)}
                 className="hidden sm:inline-flex"
               >
                 All results

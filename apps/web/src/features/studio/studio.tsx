@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { ScrollText } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
@@ -9,14 +8,10 @@ import { useMergeStore } from "@/features/pdf-merge/store";
 import { JobAnnouncer } from "@/features/studio/job-announcer";
 import { JobStatusBar } from "@/features/studio/job-status-bar";
 import { PasswordGate } from "@/features/studio/password-gate";
-import { ResultsDrawer } from "@/features/studio/results-drawer";
-import { useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
 import { StudioErrorBoundary } from "@/features/studio/studio-error-boundary";
 import { StudioHero } from "@/features/studio/studio-hero";
-import { ToolDock } from "@/features/studio/tool-dock";
-import { ToolLauncher } from "@/features/studio/tool-launcher";
-import { TOOL_PATH, TOOLS } from "@/features/studio/tools";
+import { TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
 import { ConvertTool } from "@/features/studio/tools/convert-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
@@ -26,6 +21,7 @@ import { MergeTool } from "@/features/studio/tools/merge-tool";
 import { OcrTool } from "@/features/studio/tools/ocr-tool";
 import { PageNumbersTool } from "@/features/studio/tools/page-numbers-tool";
 import { PdfToImagesTool } from "@/features/studio/tools/pdf-to-images-tool";
+import { PdfToWordTool } from "@/features/studio/tools/pdf-to-word-tool";
 import { ProtectTool } from "@/features/studio/tools/protect-tool";
 import { RedactTool } from "@/features/studio/tools/redact-tool";
 import { ReorderTool } from "@/features/studio/tools/reorder-tool";
@@ -47,25 +43,9 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   const addFiles = useStudioStore((s) => s.addFiles);
   const clearFiles = useStudioStore((s) => s.clearFiles);
 
-  const [resultsOpen, setResultsOpen] = useState(false);
-  const [launcherOpen, setLauncherOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
-  const navigate = useNavigate();
   const prevAccept = useRef(TOOLS[activeTool].accept);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setLauncherOpen((o) => !o);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const sessionJobs = useSessionJobs();
 
   useEffect(() => {
     void ensureAnonymousSession();
@@ -192,6 +172,8 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
           return <CropTool {...singleProps} />;
         case "pdf_to_images":
           return <PdfToImagesTool {...singleProps} />;
+        case "pdf_to_word":
+          return <PdfToWordTool {...singleProps} />;
         case "sign":
           return <SignTool {...singleProps} />;
         case "redact":
@@ -247,7 +229,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             className="w-full px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-8 2xl:px-16"
           >
             <div className="mb-5 empty:hidden">
-              <JobStatusBar onOpenResults={() => setResultsOpen(true)} />
+              <JobStatusBar />
             </div>
             <StudioErrorBoundary key={activeTool}>{renderTool()}</StudioErrorBoundary>
           </motion.div>
@@ -272,21 +254,6 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
         ) : null}
       </AnimatePresence>
 
-      <ToolDock
-        activeTool={activeTool}
-        onOpenLauncher={() => setLauncherOpen(true)}
-        resultsCount={sessionJobs.length}
-        onOpenResults={() => setResultsOpen(true)}
-      />
-      <ToolLauncher
-        open={launcherOpen}
-        onOpenChange={setLauncherOpen}
-        activeTool={activeTool}
-        onSelect={(id) => {
-          void navigate({ to: TOOL_PATH[id] });
-        }}
-      />
-      <ResultsDrawer open={resultsOpen} onOpenChange={setResultsOpen} />
       <JobAnnouncer />
     </div>
   );

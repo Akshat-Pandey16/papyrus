@@ -12,6 +12,7 @@ const TOOLS = [
   { slug: "/tools/merge", label: "Merge PDF" },
   { slug: "/tools/split", label: "Split PDF" },
   { slug: "/tools/convert", label: "Office to PDF" },
+  { slug: "/tools/pdf-to-word", label: "PDF to Word" },
   { slug: "/tools/rotate", label: "Rotate PDF" },
   { slug: "/tools/reorder", label: "Organize PDF pages" },
   { slug: "/tools/ocr", label: "OCR PDF" },

@@ -245,6 +245,33 @@ async def create_convert_job(
 
 
 @router.post(
+    "/pdf-to-word",
+    response_model=JobOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_SUBMIT_LIMITS,
+)
+async def create_pdf_to_word_job(
+    payload: ConvertJobRequest,
+    principal: CurrentPrincipal,
+    service: JobServiceDep,
+    response: Response,
+) -> JobOut:
+    user, organization = principal
+    result = await service.create_pdf_to_word_job(
+        organization_id=organization.id,
+        user_id=user.id,
+        document_id=payload.document_id,
+        idempotency_key=payload.idempotency_key,
+        is_anonymous=user.is_anonymous,
+        zero_retention=payload.zero_retention,
+    )
+    if result.replay:
+        response.status_code = status.HTTP_200_OK
+    phase = "queued" if result.job.status == JobStatus.PENDING else None
+    return job_to_out(result.job, phase=phase)
+
+
+@router.post(
     "/rotate",
     response_model=JobOut,
     status_code=status.HTTP_201_CREATED,

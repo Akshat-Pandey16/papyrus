@@ -1,7 +1,6 @@
 import { Code2, Timer, Zap } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Dropzone } from "@/features/studio/dropzone";
-import type { ToolMeta } from "@/features/studio/tools";
+import { TOOL_ORDER, type ToolMeta } from "@/features/studio/tools";
 
 const TRUST = [
   { icon: Zap, label: "No sign-up" },
@@ -22,7 +21,6 @@ export function StudioHero({
   accept: "pdf" | "image" | "office";
   onFiles: (files: File[]) => void;
 }) {
-  const Icon = tool.icon;
   const noun =
     accept === "image"
       ? multi
@@ -37,71 +35,44 @@ export function StudioHero({
           : "a PDF";
 
   return (
-    <div className="grid w-full items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16 lg:px-10 lg:py-14 2xl:px-16">
-      <div className="order-2 flex flex-col items-start gap-6 text-left lg:order-1">
-        <Badge tone="primary" className="gap-1.5">
-          <span className="relative flex size-1.5">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
-            <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-          </span>
-          {generic ? "16 tools · zero friction" : tool.label}
-        </Badge>
-
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-4 py-10 text-center sm:py-14">
+      <div className="flex flex-col items-center gap-4">
+        <span className="inline-flex items-center rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
+          {generic ? `${TOOL_ORDER.length} tools · no sign-up` : tool.label}
+        </span>
         <h1 className="font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
           {generic ? (
-            <>
-              Every PDF task,
-              <br className="hidden sm:block" />{" "}
-              <span className="text-molten">one quiet drop.</span>
-            </>
+            "Every PDF task, one quiet drop."
           ) : (
             <>
-              <span className="text-molten">{tool.verb}</span> {noun}.
+              <span className="text-primary">{tool.verb}</span> {noun}.
             </>
           )}
         </h1>
-
-        <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+        <p className="max-w-md text-base leading-relaxed text-muted-foreground">
           {generic
-            ? "Compress, merge, sign, redact and more. Drop a file and it just works — no account, nothing to wrangle, nothing left behind."
-            : `${tool.tagline}. Drop your file and run it in seconds — no account, nothing kept.`}
+            ? "Drop a file and it just works — no account, nothing to wrangle, nothing left behind."
+            : `${tool.tagline}. No account, nothing kept.`}
         </p>
-
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
-          {TRUST.map((t) => (
-            <span
-              key={t.label}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/70"
-            >
-              <t.icon className="size-4 text-primary" strokeWidth={2.2} />
-              {t.label}
-            </span>
-          ))}
-        </div>
-
-        {generic ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="size-4" strokeWidth={2.1} />
-            </span>
-            <span>
-              Starts with <span className="font-medium text-foreground">{tool.label}</span> — press{" "}
-              <kbd className="rounded-md border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                ⌘K
-              </kbd>{" "}
-              to switch.
-            </span>
-          </div>
-        ) : null}
       </div>
 
       <Dropzone
         onFiles={onFiles}
         multi={multi}
         accept={accept}
-        variant="panel"
-        className="order-1 w-full lg:order-2"
+        variant="full"
+        showHeading={false}
+        className="w-full"
       />
+
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+        {TRUST.map((t) => (
+          <span key={t.label} className="inline-flex items-center gap-1.5">
+            <t.icon className="size-4 text-primary/80" strokeWidth={2.2} />
+            {t.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

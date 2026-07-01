@@ -12,6 +12,7 @@ export type DropzoneProps = {
   accept?: "pdf" | "image" | "office";
   disabled?: boolean;
   variant?: "full" | "panel";
+  showHeading?: boolean;
   className?: string;
 };
 
@@ -27,6 +28,7 @@ export function Dropzone({
   accept = "pdf",
   disabled = false,
   variant = "full",
+  showHeading = true,
   className,
 }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,7 +88,7 @@ export function Dropzone({
       onDrop={onDrop}
       className={cn(
         "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors",
-        isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[58svh] p-6 sm:p-10",
+        isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[44svh] p-6 sm:p-10",
         over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
         disabled && "pointer-events-none opacity-60",
         className,
@@ -98,25 +100,25 @@ export function Dropzone({
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         className="relative z-0 flex flex-col items-center gap-5"
       >
-        <motion.span
+        <span
           className={cn(
             "grid place-items-center rounded-3xl bg-molten text-primary-foreground shadow-ember",
             isPanel ? "size-16" : "size-20",
           )}
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 4.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         >
           <ScrollText className={isPanel ? "size-7" : "size-9"} strokeWidth={2} />
-        </motion.span>
+        </span>
         <div className="flex flex-col gap-2">
-          <h2
-            className={cn(
-              "font-display font-semibold tracking-tight text-balance",
-              isPanel ? "text-2xl" : "text-3xl sm:text-4xl",
-            )}
-          >
-            Drop {multi ? nouns : aNoun} {isPanel ? "here" : "to begin"}
-          </h2>
+          {showHeading ? (
+            <h2
+              className={cn(
+                "font-display font-semibold tracking-tight text-balance",
+                isPanel ? "text-2xl" : "text-3xl sm:text-4xl",
+              )}
+            >
+              Drop {multi ? nouns : aNoun} {isPanel ? "here" : "to begin"}
+            </h2>
+          ) : null}
           <p className="max-w-md text-sm text-muted-foreground sm:text-base">
             {isPanel ? (
               <>or click to browse · up to {maxFileLabel()}</>
