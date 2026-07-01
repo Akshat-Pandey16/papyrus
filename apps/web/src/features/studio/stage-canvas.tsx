@@ -43,7 +43,12 @@ export function CanvasHeader({
           {pageCount != null ? ` · ${pageCount} page${pageCount === 1 ? "" : "s"}` : ""}
         </p>
       </div>
-      <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()} className="shrink-0">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => inputRef.current?.click()}
+        className="shrink-0"
+      >
         <RefreshCw />
         <span className="hidden sm:inline">Replace</span>
       </Button>

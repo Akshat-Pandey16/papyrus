@@ -70,8 +70,8 @@ export function PasswordGate({ file, children }: { file: File; children: ReactNo
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-5 rounded-3xl border border-border/70 bg-card p-8 text-center shadow-clay-sm">
-      <span className="grid size-14 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-ember">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-5 rounded-2xl border border-border/70 bg-card p-8 text-center">
+      <span className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
         <Lock className="size-6" />
       </span>
       <div className="flex flex-col gap-1.5">

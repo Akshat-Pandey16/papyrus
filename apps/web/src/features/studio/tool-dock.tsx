@@ -11,7 +11,6 @@ export type ToolDockProps = {
   activeTool: ToolId;
   onOpenLauncher: () => void;
   resultsCount: number;
-  activeCount: number;
   onOpenResults: () => void;
 };
 
@@ -19,7 +18,6 @@ export function ToolDock({
   activeTool,
   onOpenLauncher,
   resultsCount,
-  activeCount,
   onOpenResults,
 }: ToolDockProps) {
   const hoverable = useMediaQuery("(hover: hover)");
@@ -38,7 +36,7 @@ export function ToolDock({
         <span
           className={cn(
             "absolute -top-0.5 -right-0.5 grid min-w-[18px] place-items-center rounded-full px-1 font-mono text-[10px] font-bold text-primary-foreground shadow-clay-sm",
-            activeCount > 0 ? "animate-pulse bg-molten" : "bg-primary",
+            "bg-primary",
           )}
         >
           {resultsCount}
@@ -55,7 +53,7 @@ export function ToolDock({
         transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
         className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/70 bg-popover/95 p-1.5 shadow-clay-lg ring-1 ring-primary/12 backdrop-blur-xl"
       >
-        <span className="flex items-center gap-2 rounded-full bg-molten py-1.5 pr-3 pl-2.5 text-primary-foreground shadow-clay-sm">
+        <span className="flex items-center gap-2 rounded-full bg-primary/12 py-1.5 pr-3 pl-2.5 text-primary">
           <Icon className="size-[1.05rem]" strokeWidth={2.2} />
           <span className="text-sm font-semibold">{tool.label}</span>
         </span>

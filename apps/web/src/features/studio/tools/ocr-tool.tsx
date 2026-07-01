@@ -11,6 +11,7 @@ import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-fr
 import { StageCanvas } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
+import { useUiStore } from "@/stores/ui-store";
 
 const LANGUAGES = [
   { code: "eng", label: "English" },
@@ -29,7 +30,9 @@ const LANGUAGES = [
 
 export function OcrTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToolProps) {
   const { pageCount } = useFilePageCount(file);
-  const [language, setLanguage] = useState("eng");
+  const savedLanguage = useUiStore((s) => s.toolPrefs.ocrLanguage);
+  const setToolPref = useUiStore((s) => s.setToolPref);
+  const [language, setLanguage] = useState(savedLanguage ?? "eng");
   const create = useCreateOcrJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
 
@@ -77,7 +80,10 @@ export function OcrTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToo
               <Select
                 id="ocr-language"
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => {
+                  setLanguage(e.target.value);
+                  setToolPref("ocrLanguage", e.target.value);
+                }}
               >
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>

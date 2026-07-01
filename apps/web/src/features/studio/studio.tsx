@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { ScrollText } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type DragEvent, useEffect, useRef, useState } from "react";
@@ -5,15 +6,17 @@ import { toast } from "sonner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
+import { JobAnnouncer } from "@/features/studio/job-announcer";
+import { JobStatusBar } from "@/features/studio/job-status-bar";
 import { PasswordGate } from "@/features/studio/password-gate";
 import { ResultsDrawer } from "@/features/studio/results-drawer";
-import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
+import { useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
 import { StudioErrorBoundary } from "@/features/studio/studio-error-boundary";
 import { StudioHero } from "@/features/studio/studio-hero";
 import { ToolDock } from "@/features/studio/tool-dock";
 import { ToolLauncher } from "@/features/studio/tool-launcher";
-import { TOOLS } from "@/features/studio/tools";
+import { TOOL_PATH, TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
 import { ConvertTool } from "@/features/studio/tools/convert-tool";
 import { CropTool } from "@/features/studio/tools/crop-tool";
@@ -48,6 +51,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
+  const navigate = useNavigate();
   const prevAccept = useRef(TOOLS[activeTool].accept);
 
   useEffect(() => {
@@ -62,7 +66,6 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   }, []);
 
   const sessionJobs = useSessionJobs();
-  const activeCount = sessionJobs.filter((j) => isActivePhase(j.phase)).length;
 
   useEffect(() => {
     void ensureAnonymousSession();
@@ -152,17 +155,18 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
     acceptFiles(Array.from(e.dataTransfer.files));
   };
 
+  const onLaunched = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
   const singleProps: SingleToolProps = {
     file: firstFile as File,
     onReplaceFile: (f) => setFiles([{ id: randomUUID(), file: f }]),
     onRemove: () => clearFiles(),
-    onLaunched: () => setResultsOpen(true),
+    onLaunched,
   };
 
   const renderTool = () => {
-    if (activeTool === "merge") return <MergeTool onLaunched={() => setResultsOpen(true)} />;
-    if (activeTool === "images_to_pdf")
-      return <ImagesToPdfTool onLaunched={() => setResultsOpen(true)} />;
+    if (activeTool === "merge") return <MergeTool onLaunched={onLaunched} />;
+    if (activeTool === "images_to_pdf") return <ImagesToPdfTool onLaunched={onLaunched} />;
     if (!firstFile) return null;
     if (activeTool === "unlock") return <UnlockTool {...singleProps} />;
     if (activeTool === "convert") return <ConvertTool {...singleProps} />;
@@ -242,6 +246,9 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             exit="exit"
             className="w-full px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-8 2xl:px-16"
           >
+            <div className="mb-5 empty:hidden">
+              <JobStatusBar onOpenResults={() => setResultsOpen(true)} />
+            </div>
             <StudioErrorBoundary key={activeTool}>{renderTool()}</StudioErrorBoundary>
           </motion.div>
         )}
@@ -269,16 +276,18 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
         activeTool={activeTool}
         onOpenLauncher={() => setLauncherOpen(true)}
         resultsCount={sessionJobs.length}
-        activeCount={activeCount}
         onOpenResults={() => setResultsOpen(true)}
       />
       <ToolLauncher
         open={launcherOpen}
         onOpenChange={setLauncherOpen}
         activeTool={activeTool}
-        onSelect={setActiveTool}
+        onSelect={(id) => {
+          void navigate({ to: TOOL_PATH[id] });
+        }}
       />
       <ResultsDrawer open={resultsOpen} onOpenChange={setResultsOpen} />
+      <JobAnnouncer />
     </div>
   );
 }

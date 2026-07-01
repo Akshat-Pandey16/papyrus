@@ -29,8 +29,8 @@ export function ConvertTool({ file, onReplaceFile, onRemove, onLaunched }: Singl
 
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-6 pt-6">
-      <div className="flex w-full flex-col items-center gap-5 rounded-3xl border border-border/70 bg-card p-8 text-center shadow-clay-sm">
-        <span className="grid size-16 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-ember">
+      <div className="flex w-full flex-col items-center gap-5 rounded-2xl border border-border/70 bg-card p-8 text-center">
+        <span className="grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary">
           <FileType2 className="size-8" />
         </span>
         <div className="flex flex-col gap-1">

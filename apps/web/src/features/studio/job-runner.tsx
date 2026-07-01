@@ -10,17 +10,23 @@ import { useInvalidateJobsFeed } from "@/features/pdf-tools/jobs-feed";
 import type { SessionJob } from "@/features/studio/session-jobs";
 
 const TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
-const CONFETTI_COLORS = ["#E1466A", "#E5379B", "#F0B23C", "#ffffff"];
+const CONFETTI_COLORS = ["#C24B2E", "#E3A94A", "#7C2B2A", "#F3ECDF"];
+
+// Celebrate only the first successful job of a session — after that, the quiet
+// in-place status bar is the reward, so the delight doesn't turn into noise.
+let celebratedThisSession = false;
 
 function celebrate() {
+  if (celebratedThisSession) return;
+  celebratedThisSession = true;
   confetti({
-    particleCount: 90,
-    spread: 72,
-    startVelocity: 38,
+    particleCount: 70,
+    spread: 70,
+    startVelocity: 36,
     origin: { y: 0.72 },
     colors: CONFETTI_COLORS,
     scalar: 0.9,
-    ticks: 130,
+    ticks: 120,
     disableForReducedMotion: true,
   });
 }

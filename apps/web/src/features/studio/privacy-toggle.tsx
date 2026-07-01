@@ -9,16 +9,11 @@ export function PrivacyToggle() {
   return (
     <label
       htmlFor="zero-retention"
-      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/40 p-3"
+      className="flex cursor-pointer items-center justify-between gap-3 px-1"
     >
-      <span className="flex items-center gap-2.5">
-        <ShieldCheck className="size-4 shrink-0 text-primary" />
-        <span className="flex flex-col">
-          <span className="text-xs font-medium">Zero-retention</span>
-          <span className="text-[11px] leading-tight text-muted-foreground">
-            Erase from our servers the moment you download
-          </span>
-        </span>
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+        <ShieldCheck className="size-3.5 shrink-0 text-primary/70" />
+        Zero-retention — erase on download
       </span>
       <Switch id="zero-retention" checked={zeroRetention} onCheckedChange={setZeroRetention} />
     </label>

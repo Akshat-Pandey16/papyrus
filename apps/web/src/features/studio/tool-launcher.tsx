@@ -119,7 +119,7 @@ export function ToolLauncher({
                         className={cn(
                           "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
                           focused
-                            ? "bg-molten text-primary-foreground"
+                            ? "bg-primary text-primary-foreground"
                             : "bg-primary/10 text-primary",
                         )}
                       >

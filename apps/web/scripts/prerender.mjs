@@ -108,14 +108,16 @@ function jsonLd(page, canonical) {
 }
 
 function contentBlock(page, currentSlug) {
-  const steps = Array.isArray(page.steps) && page.steps.length > 0
-    ? `<ol>${page.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`
-    : "";
-  const faqs = Array.isArray(page.faqs) && page.faqs.length > 0
-    ? `<section><h2>Frequently asked questions</h2><dl>${page.faqs
-        .map((f) => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`)
-        .join("")}</dl></section>`
-    : "";
+  const steps =
+    Array.isArray(page.steps) && page.steps.length > 0
+      ? `<ol>${page.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`
+      : "";
+  const faqs =
+    Array.isArray(page.faqs) && page.faqs.length > 0
+      ? `<section><h2>Frequently asked questions</h2><dl>${page.faqs
+          .map((f) => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`)
+          .join("")}</dl></section>`
+      : "";
   return (
     `<main style="max-width:720px;margin:0 auto;padding:48px 20px;font-family:system-ui,sans-serif;line-height:1.6">` +
     `<h1>${esc(page.h1)}</h1>` +

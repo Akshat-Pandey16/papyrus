@@ -451,7 +451,7 @@ export function LargeFileNotice() {
 
 export function MorePagesTile({ count, hint }: { count: number; hint?: string }) {
   return (
-    <div className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-card/40 p-2 text-center">
+    <div className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-card/40 p-2 text-center">
       <span className="font-display text-lg font-semibold text-foreground">+{count}</span>
       <span className="text-[10px] text-muted-foreground">{hint ?? "more pages"}</span>
     </div>
