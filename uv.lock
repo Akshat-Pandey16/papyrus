@@ -1719,7 +1719,7 @@ requires-dist = [
     { name = "prometheus-client", specifier = ">=0.21" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.7" },
-    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0" },
     { name = "pypdfium2", specifier = ">=4.30" },
     { name = "redis", specifier = ">=5.2" },
     { name = "reportlab", specifier = ">=4.2" },
