@@ -33,6 +33,8 @@ const TOOLS_BY_MODE: Record<EditorMode, EditorTool[]> = {
   edit: ["text", "ink", "box"],
 };
 
+const EDITOR_PAGE_WIDTH = 820;
+
 const TOOL_ICON = { box: Square, ink: PenLine, text: Type };
 const TOOL_LABEL = { box: "Box", ink: "Draw", text: "Text" };
 
@@ -97,7 +99,7 @@ export function OverlayEditor({
     let active = true;
     setLoading(true);
     setSrc(null);
-    renderPage(page + 1)
+    renderPage(page + 1, EDITOR_PAGE_WIDTH)
       .then((url) => {
         if (active) setSrc(url);
       })

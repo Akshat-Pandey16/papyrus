@@ -56,10 +56,14 @@ export function usePdfUpload() {
         const xhr = new XMLHttpRequest();
         xhrRegistry.set(clientUploadId, xhr);
 
+        let lastPercent = -1;
         xhr.upload.addEventListener("progress", (e: ProgressEvent) => {
-          if (e.lengthComputable) {
-            update(clientUploadId, { bytesUploaded: e.loaded });
-          }
+          if (!e.lengthComputable) return;
+          const total = e.total > 0 ? e.total : file.size;
+          const percent = total > 0 ? Math.floor((e.loaded / total) * 100) : 0;
+          if (percent === lastPercent && e.loaded < total) return;
+          lastPercent = percent;
+          update(clientUploadId, { bytesUploaded: e.loaded });
         });
 
         xhr.addEventListener("load", () => {

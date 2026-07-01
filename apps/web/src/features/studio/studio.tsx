@@ -9,6 +9,7 @@ import { PasswordGate } from "@/features/studio/password-gate";
 import { ResultsDrawer } from "@/features/studio/results-drawer";
 import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
 import { useStudioStore } from "@/features/studio/store";
+import { StudioErrorBoundary } from "@/features/studio/studio-error-boundary";
 import { StudioHero } from "@/features/studio/studio-hero";
 import { ToolDock } from "@/features/studio/tool-dock";
 import { ToolLauncher } from "@/features/studio/tool-launcher";
@@ -47,6 +48,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   const [launcherOpen, setLauncherOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
+  const prevAccept = useRef(TOOLS[activeTool].accept);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,12 +75,32 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   }, [initialTool, setActiveTool]);
 
   useEffect(() => {
-    if (!initialTool) return;
+    const nextAccept = TOOLS[activeTool].accept;
+    if (prevAccept.current !== nextAccept) {
+      clearFiles();
+      prevAccept.current = nextAccept;
+    }
+  }, [activeTool, clearFiles]);
+
+  useEffect(() => {
+    if (!initialTool || typeof document === "undefined") return;
     const meta = TOOLS[initialTool];
     const noun = meta.accept === "pdf" && !meta.label.includes("PDF") ? " PDF" : "";
     document.title = `${meta.label}${noun} — Papyrus`;
+    const existing = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const created = existing == null;
+    const descTag = existing ?? document.createElement("meta");
+    if (created) {
+      descTag.name = "description";
+      document.head.appendChild(descTag);
+    }
+    const prevDesc = descTag.getAttribute("content");
+    descTag.setAttribute("content", meta.tagline);
     return () => {
       document.title = "Papyrus";
+      if (created) descTag.remove();
+      else if (prevDesc != null) descTag.setAttribute("content", prevDesc);
+      else descTag.removeAttribute("content");
     };
   }, [initialTool]);
 
@@ -220,7 +242,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             exit="exit"
             className="w-full px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-8 2xl:px-16"
           >
-            {renderTool()}
+            <StudioErrorBoundary key={activeTool}>{renderTool()}</StudioErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>

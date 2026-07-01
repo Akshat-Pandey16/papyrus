@@ -1,5 +1,5 @@
 import type { Organization as ApiOrg, User as ApiUser } from "@papyrus/shared-types";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { fetchSession, refreshAccessOnly } from "@/features/auth/api";
 import { useAuthStore } from "@/features/auth/store";
 import { apiClient, isAccessTokenValid, registerRefreshHandler } from "@/lib/api/client";
@@ -59,28 +59,9 @@ registerRefreshHandler(async () => {
 });
 
 export function SessionBootstrap({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-
   useEffect(() => {
-    let active = true;
-    bootstrapOnce().finally(() => {
-      if (active) setReady(true);
-    });
-    return () => {
-      active = false;
-    };
+    void bootstrapOnce();
   }, []);
-
-  if (!ready) {
-    return (
-      <div className="grid min-h-svh place-items-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-          <span className="text-sm">Loading…</span>
-        </div>
-      </div>
-    );
-  }
 
   return <>{children}</>;
 }

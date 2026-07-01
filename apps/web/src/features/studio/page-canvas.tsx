@@ -38,13 +38,14 @@ async function withRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 type PdfViewport = { width: number; height: number };
+type PdfRenderTask = { promise: Promise<void>; cancel(): void };
 type PdfPage = {
   getViewport(opts: { scale: number }): PdfViewport;
   render(opts: {
     canvasContext: CanvasRenderingContext2D;
     viewport: PdfViewport;
     canvas: HTMLCanvasElement;
-  }): { promise: Promise<void> };
+  }): PdfRenderTask;
   cleanup(): void;
 };
 type PdfDoc = {
@@ -55,14 +56,52 @@ type PdfDoc = {
 };
 
 const TARGET_WIDTH = 224;
-const MAX_SCALE = 2;
+const MAX_DPR = 2;
+const MAX_CANVAS_WIDTH = 2200;
 const JPEG_QUALITY = 0.8;
 const DOC_CACHE_FILES = 2;
 const PREVIEW_TOO_LARGE = "preview_too_large";
 
-const renderCache = new Map<File, Map<number, string>>();
+const renderCache = new Map<File, Map<string, string>>();
 const docCache = new Map<File, Promise<PdfDoc>>();
+const inflightRenders = new Map<File, Set<PdfRenderTask>>();
 const filePasswords = new Map<File, string>();
+
+function isRenderCancelled(err: unknown): boolean {
+  return Boolean(err) && (err as { name?: string }).name === "RenderingCancelledException";
+}
+
+function trackRender(file: File, task: PdfRenderTask): void {
+  let set = inflightRenders.get(file);
+  if (!set) {
+    set = new Set();
+    inflightRenders.set(file, set);
+  }
+  set.add(task);
+}
+
+function untrackRender(file: File, task: PdfRenderTask): void {
+  const set = inflightRenders.get(file);
+  if (!set) return;
+  set.delete(task);
+  if (set.size === 0) inflightRenders.delete(file);
+}
+
+function cancelRenders(file: File): void {
+  const set = inflightRenders.get(file);
+  if (!set) return;
+  for (const task of set) task.cancel();
+  inflightRenders.delete(file);
+}
+
+function resolvePixelWidth(targetWidth: number): number {
+  const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+  return Math.min(MAX_CANVAS_WIDTH, Math.round(targetWidth * Math.min(MAX_DPR, dpr)));
+}
+
+function renderKey(index: number, pixelWidth: number): string {
+  return `${index}:${pixelWidth}`;
+}
 
 export function getFilePassword(file: File): string | undefined {
   return filePasswords.get(file);
@@ -100,6 +139,7 @@ export async function verifyPdfPassword(file: File, password: string): Promise<b
 }
 
 function evictFile(file: File): void {
+  cancelRenders(file);
   const urls = renderCache.get(file);
   if (urls) {
     for (const url of urls.values()) URL.revokeObjectURL(url);
@@ -134,11 +174,16 @@ function getDoc(file: File): Promise<PdfDoc> {
   return p;
 }
 
-function fileCache(file: File): Map<number, string> {
+function fileCache(file: File): Map<string, string> {
   let m = renderCache.get(file);
   if (!m) {
     m = new Map();
     renderCache.set(file, m);
+    while (renderCache.size > DOC_CACHE_FILES) {
+      const oldest = renderCache.keys().next().value;
+      if (!oldest || oldest === file) break;
+      evictFile(oldest);
+    }
   }
   return m;
 }
@@ -159,7 +204,7 @@ function canvasToObjectUrl(canvas: HTMLCanvasElement): Promise<string> {
 export type PdfRenderer = {
   total: number | null;
   error: string | null;
-  renderPage: (index: number) => Promise<string | null>;
+  renderPage: (index: number, targetWidth?: number) => Promise<string | null>;
 };
 
 export function usePdfRenderer(file: File): PdfRenderer {
@@ -187,18 +232,20 @@ export function usePdfRenderer(file: File): PdfRenderer {
   }, [file]);
 
   const renderPage = useCallback(
-    async (index: number): Promise<string | null> => {
+    async (index: number, targetWidth: number = TARGET_WIDTH): Promise<string | null> => {
       if (file.size > PREVIEW_MAX_BYTES) return null;
+      const pixelWidth = resolvePixelWidth(targetWidth);
+      const key = renderKey(index, pixelWidth);
       const cache = fileCache(file);
-      const hit = cache.get(index);
+      const hit = cache.get(key);
       if (hit) return hit;
       const doc = await getDoc(file);
       return withRenderSlot(async () => {
-        const existing = cache.get(index);
+        const existing = cache.get(key);
         if (existing) return existing;
         const page = await doc.getPage(index);
         const unscaled = page.getViewport({ scale: 1 });
-        const scale = Math.min(MAX_SCALE, TARGET_WIDTH / unscaled.width);
+        const scale = pixelWidth / unscaled.width;
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
@@ -210,10 +257,20 @@ export function usePdfRenderer(file: File): PdfRenderer {
         }
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+        const task = page.render({ canvasContext: ctx, viewport, canvas });
+        trackRender(file, task);
+        try {
+          await task.promise;
+        } catch (err) {
+          page.cleanup();
+          if (isRenderCancelled(err)) return null;
+          throw err;
+        } finally {
+          untrackRender(file, task);
+        }
         page.cleanup();
         const url = await canvasToObjectUrl(canvas);
-        cache.set(index, url);
+        cache.set(key, url);
         return url;
       });
     },
@@ -223,7 +280,10 @@ export function usePdfRenderer(file: File): PdfRenderer {
   return { total, error, renderPage };
 }
 
-export function useLazyThumb(renderPage: (index: number) => Promise<string | null>, index: number) {
+export function useLazyThumb(
+  renderPage: (index: number, targetWidth?: number) => Promise<string | null>,
+  index: number,
+) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [src, setSrc] = useState<string | null>(null);
 

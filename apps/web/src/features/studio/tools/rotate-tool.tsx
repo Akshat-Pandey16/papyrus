@@ -1,4 +1,4 @@
-import { RotateCcw, RotateCw } from "lucide-react";
+import { FileWarning, RotateCcw, RotateCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -6,12 +6,33 @@ import { useCreateRotateJobMutation } from "@/features/pdf-tools/api";
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
 import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-frame";
+import { PARSE_MAX_BYTES } from "@/features/studio/page-canvas";
 import { StageCanvas } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
 
+function TooLargeNotice() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-50/60 p-6 text-center dark:bg-amber-950/20">
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <FileWarning className="size-5" strokeWidth={2.1} />
+      </span>
+      <div className="flex flex-col gap-1">
+        <p className="font-display text-sm font-semibold text-foreground">
+          Too large to arrange here
+        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          This file is over 150 MB, so it can't be previewed and arranged in the browser. Compress
+          it first, or use a file under 150 MB.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function RotateTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToolProps) {
   const { pageCount } = useFilePageCount(file);
+  const tooLarge = pageCount == null && file.size > PARSE_MAX_BYTES;
   const [rotations, setRotations] = useState<Record<number, number>>({});
   const create = useCreateRotateJobMutation();
   const { run, submitting } = useSingleFileJobRunner();
@@ -74,32 +95,47 @@ export function RotateTool({ file, onReplaceFile, onRemove, onLaunched }: Single
         <InspectorFrame
           toolId="rotate"
           footer={
-            <Button
-              variant="molten"
-              size="lg"
-              onClick={onRun}
-              disabled={submitting || count === 0}
-              className="w-full"
-            >
-              {submitting ? <Spinner /> : <RotateCw />}
-              {submitting
-                ? "Starting…"
-                : count === 0
-                  ? "Tap a page to rotate"
-                  : `Rotate ${count} page${count === 1 ? "" : "s"}`}
-            </Button>
+            tooLarge ? null : (
+              <Button
+                variant="molten"
+                size="lg"
+                onClick={onRun}
+                disabled={submitting || count === 0}
+                className="w-full"
+              >
+                {submitting ? <Spinner /> : <RotateCw />}
+                {submitting
+                  ? "Starting…"
+                  : count === 0
+                    ? "Tap a page to rotate"
+                    : `Rotate ${count} page${count === 1 ? "" : "s"}`}
+              </Button>
+            )
           }
         >
+          {tooLarge ? <TooLargeNotice /> : null}
           <InspectorSection label="Rotate every page" hint="Or tap individual pages on the left.">
             <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" onClick={() => applyToAll(90)} disabled={!pageCount}>
+              <Button
+                variant="outline"
+                onClick={() => applyToAll(90)}
+                disabled={!pageCount || tooLarge}
+              >
                 <RotateCw />
                 90°
               </Button>
-              <Button variant="outline" onClick={() => applyToAll(180)} disabled={!pageCount}>
+              <Button
+                variant="outline"
+                onClick={() => applyToAll(180)}
+                disabled={!pageCount || tooLarge}
+              >
                 180°
               </Button>
-              <Button variant="outline" onClick={() => applyToAll(270)} disabled={!pageCount}>
+              <Button
+                variant="outline"
+                onClick={() => applyToAll(270)}
+                disabled={!pageCount || tooLarge}
+              >
                 <RotateCcw />
                 270°
               </Button>

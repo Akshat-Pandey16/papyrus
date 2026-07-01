@@ -31,7 +31,7 @@ export const Route = createFileRoute("/settings")({
     if (!state.hasAccess || state.user?.isAnonymous) {
       throw redirect({
         to: "/login",
-        search: { next: location.pathname } as never,
+        search: { next: location.pathname },
       });
     }
   },

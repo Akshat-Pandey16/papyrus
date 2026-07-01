@@ -11,11 +11,21 @@ import { PasswordInput } from "@/features/auth/components/password-input";
 import { type LoginInput, loginSchema } from "@/features/auth/schemas";
 import { useAuthStore } from "@/features/auth/store";
 
+function sanitizeNext(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (!value.startsWith("/") || value.startsWith("//")) return undefined;
+  return value;
+}
+
 export const Route = createFileRoute("/login")({
-  beforeLoad: () => {
+  validateSearch: (search: Record<string, unknown>): { next?: string } => {
+    const next = sanitizeNext(search.next);
+    return next ? { next } : {};
+  },
+  beforeLoad: ({ search }) => {
     const state = useAuthStore.getState();
     if (state.hasAccess && !state.user?.isAnonymous) {
-      throw redirect({ to: "/dashboard" });
+      throw redirect({ to: (search.next ?? "/dashboard") as "/dashboard" });
     }
   },
   component: LoginPage,
@@ -23,6 +33,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const mutation = useLoginMutation();
   const {
     register,
@@ -35,7 +46,7 @@ function LoginPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     await mutation.mutateAsync(values);
-    await navigate({ to: "/dashboard" });
+    await navigate({ to: (next ?? "/dashboard") as "/dashboard" });
   });
 
   const busy = isSubmitting || mutation.isPending;
