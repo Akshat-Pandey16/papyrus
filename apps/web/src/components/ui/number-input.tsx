@@ -80,7 +80,7 @@ export function NumberInput({
   return (
     <div
       className={cn(
-        "inline-flex h-11 items-center rounded-xl border border-input bg-card shadow-clay-sm",
+        "inline-flex h-11 items-center rounded-xl border border-input bg-card",
         disabled && "pointer-events-none opacity-60",
         className,
       )}

@@ -53,6 +53,9 @@
   --color-sand: oklch(0.9 0.025 80);
   --color-moss: oklch(0.6 0.082 140);
 
+  --color-canvas: oklch(0.945 0.016 78);
+  --color-knob: oklch(0.985 0.006 85);
+
   --radius-lg: 0.85rem;
   --radius-xl: 1.25rem;
   --radius-2xl: 1.75rem;
@@ -118,6 +121,9 @@
     --color-sand: oklch(0.8 0.05 78);
     --color-moss: oklch(0.66 0.092 145);
 
+    --color-canvas: oklch(0.175 0.014 22);
+    --color-knob: oklch(0.9 0.012 82);
+
     --shadow-clay-sm: 0 1px 2px oklch(0 0 0 / 0.42);
     --shadow-clay: 0 8px 24px -8px oklch(0 0 0 / 0.52);
     --shadow-clay-lg: 0 30px 70px -22px oklch(0 0 0 / 0.68);
@@ -161,17 +167,14 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-image: linear-gradient(
-      var(--color-ember),
-      var(--color-primary)
-    );
+    background-color: color-mix(in oklch, var(--color-muted-foreground) 34%, transparent);
     border: 3px solid transparent;
     border-radius: 999px;
     background-clip: padding-box;
-    opacity: 0.7;
   }
 
   ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--color-muted-foreground) 52%, transparent);
     border-width: 2px;
   }
 

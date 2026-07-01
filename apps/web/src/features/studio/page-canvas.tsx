@@ -335,7 +335,7 @@ export function PageThumb({
     <>
       <div
         ref={imgRef}
-        className="relative w-full overflow-hidden rounded-lg bg-white shadow-inner"
+        className="relative w-full overflow-hidden rounded-md bg-white shadow-clay-sm ring-1 ring-black/[0.05]"
       >
         {src ? (
           <img
@@ -361,7 +361,7 @@ export function PageThumb({
           </span>
         ) : null}
         {order != null ? (
-          <span className="absolute top-1.5 left-1.5 grid size-6 place-items-center rounded-full bg-molten font-mono text-[11px] font-bold text-primary-foreground shadow-clay-sm">
+          <span className="absolute top-1.5 left-1.5 grid size-6 place-items-center rounded-full bg-primary font-mono text-[11px] font-bold text-primary-foreground shadow-clay-sm">
             {order}
           </span>
         ) : null}
@@ -403,11 +403,8 @@ export function PageCanvas({
     <div className={cn(PAGE_GRID_CLASS, className)}>
       {total == null
         ? Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={`skeleton-${i.toString()}`}
-              className="flex flex-col items-center gap-1.5 rounded-xl border border-border/70 bg-card p-1.5"
-            >
-              <div className="aspect-[3/4] w-full animate-pulse rounded-lg bg-muted" />
+            <div key={`skeleton-${i.toString()}`} className="flex flex-col items-center gap-1.5">
+              <div className="aspect-[3/4] w-full animate-pulse rounded-md bg-muted" />
               <span className="h-2.5 w-4 animate-pulse rounded bg-muted" />
             </div>
           ))
@@ -487,14 +484,14 @@ function LazyPage({
   const { ref, src } = useLazyThumb(renderPage, index);
 
   const cardClass = cn(
-    "group relative flex flex-col items-center gap-1.5 rounded-xl border p-1.5 outline-none transition-all duration-200",
+    "group relative flex flex-col items-center gap-1.5 rounded-lg p-1 outline-none transition-[transform,box-shadow] duration-200",
     interactive &&
-      "cursor-pointer hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-ring",
+      "cursor-pointer hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
     selected
-      ? "border-primary bg-primary/8 ring-2 ring-primary/30"
+      ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas"
       : highlighted
-        ? "border-primary/50 bg-primary/5"
-        : "border-border/70 bg-card hover:border-primary/40",
+        ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-canvas"
+        : "",
   );
 
   if (interactive) {

@@ -12,7 +12,7 @@ export function Select({ className, children, size = "default", ...props }: Sele
       <select
         {...props}
         className={cn(
-          "w-full appearance-none rounded-xl border border-input bg-card pr-10 pl-3.5 text-[0.95rem] text-foreground shadow-clay-sm outline-none transition-[border-color,box-shadow]",
+          "w-full appearance-none rounded-xl border border-input bg-card pr-10 pl-3.5 text-[0.95rem] text-foreground outline-none transition-[border-color,box-shadow]",
           "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35",
           "disabled:cursor-not-allowed disabled:opacity-60",
           size === "sm" ? "h-9" : "h-11",

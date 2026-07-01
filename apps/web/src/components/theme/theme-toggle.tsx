@@ -53,7 +53,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             {active ? (
               <motion.span
                 layoutId={`theme-indicator-${groupId}`}
-                className="absolute inset-0 rounded-full bg-molten shadow-clay-sm"
+                className="absolute inset-0 rounded-full bg-primary"
                 transition={springSnappy}
               />
             ) : null}
