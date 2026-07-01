@@ -29,6 +29,7 @@ from papyrus_api.core.security import (
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.identity.enums import MembershipRole
 from papyrus_api.domain.identity.models import Organization, User
+from papyrus_api.integrations.email import send_email
 from papyrus_api.repositories.audit import AuditEventRepository
 from papyrus_api.repositories.users import (
     MembershipRepository,
@@ -337,6 +338,17 @@ class IdentityService:
             purpose=_RESET_PURPOSE,
         )
         await self.session.commit()
+        reset_link = f"{settings.web_public_url.rstrip('/')}/reset-password?token={raw_token}"
+        await send_email(
+            to=email_norm,
+            subject="Reset your Papyrus password",
+            text_body=(
+                "We received a request to reset your Papyrus password.\n\n"
+                f"Reset it here: {reset_link}\n\n"
+                "This link expires within the hour. "
+                "If you didn't request this, you can safely ignore this email."
+            ),
+        )
         log.info("auth.forgot.token_issued", user_id=str(user.id))
         return raw_token if settings.is_development else None
 

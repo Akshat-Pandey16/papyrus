@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"  # noqa: S104
     api_port: int = 8000
     api_public_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8000")
+    web_public_url: str = "http://localhost:5173"
     api_cors_origins: CsvList = Field(default_factory=lambda: ["http://localhost:5173"])
 
     database_url: str = "postgresql+asyncpg://papyrus:papyrus@localhost:5432/papyrus"
