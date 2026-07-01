@@ -92,9 +92,7 @@ async def refund_job_quota(organization_id: UUID | None) -> None:
         return
     from papyrus_api.integrations.redis import get_redis, release_daily_quota
 
-    await release_daily_quota(
-        get_redis(), namespace="jobs", principal_id=str(organization_id)
-    )
+    await release_daily_quota(get_redis(), namespace="jobs", principal_id=str(organization_id))
 
 
 async def decrypt_input_if_needed(
