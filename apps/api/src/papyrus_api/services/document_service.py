@@ -21,6 +21,7 @@ from papyrus_api.core.errors import (
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.documents.models import Document, DocumentVersion, StorageObject
 from papyrus_api.integrations.redis import input_password_key
+from papyrus_api.repositories.audit import AuditEventRepository
 from papyrus_api.repositories.documents import (
     DocumentRepository,
     DocumentVersionRepository,
@@ -107,6 +108,7 @@ class DocumentService:
         self.documents = DocumentRepository(session)
         self.storage_objects = StorageObjectRepository(session)
         self.versions = DocumentVersionRepository(session)
+        self.audit = AuditEventRepository(session)
 
     async def delete(
         self,
@@ -125,6 +127,12 @@ class DocumentService:
             document_id=document.id,
         )
         document.deleted_at = utc_now()
+        await self.audit.record(
+            action="document.deleted",
+            organization_id=organization_id,
+            target_type="document",
+            target_id=document.id,
+        )
         await self.session.flush()
         await self.session.commit()
 

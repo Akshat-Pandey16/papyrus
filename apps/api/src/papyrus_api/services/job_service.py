@@ -28,6 +28,7 @@ from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job
 from papyrus_api.integrations.redis import release_daily_quota, reserve_daily_quota
+from papyrus_api.repositories.audit import AuditEventRepository
 from papyrus_api.repositories.documents import (
     DocumentVersionRepository,
     StorageObjectRepository,
@@ -88,6 +89,16 @@ def _redact_params(params: dict[str, Any] | None) -> dict[str, Any]:
     return {k: v for k, v in params.items() if k not in _SENSITIVE_PARAM_KEYS}
 
 
+def _actor_from_params(params: dict[str, Any]) -> UUID | None:
+    raw = params.get("created_by_user_id")
+    if isinstance(raw, str):
+        try:
+            return UUID(raw)
+        except ValueError:
+            return None
+    return None
+
+
 def _page_cap(is_anonymous: bool) -> int:
     return settings.anon_max_pages if is_anonymous else settings.user_max_pages
 
@@ -134,6 +145,7 @@ class JobService:
         self.events = JobEventRepository(session)
         self.versions = DocumentVersionRepository(session)
         self.storage_objects = StorageObjectRepository(session)
+        self.audit = AuditEventRepository(session)
 
     async def create_compression_job(
         self,
@@ -218,6 +230,14 @@ class JobService:
                 job_id=job.id,
                 status=JobStatus.PENDING,
                 payload={"phase": "queued"},
+            )
+            await self.audit.record(
+                action="job.created",
+                actor_user_id=_actor_from_params(params),
+                organization_id=organization_id,
+                target_type="job",
+                target_id=job.id,
+                payload={"kind": kind.value},
             )
             await self.session.commit()
         except IntegrityError:
@@ -1246,6 +1266,16 @@ class JobService:
         zero_retention = bool(job.params.get("zero_retention")) if job.params else False
         if zero_retention or settings.zero_retention_mode:
             self._schedule_output_purge(job.id)
+
+        await self.audit.record(
+            action="job.download",
+            actor_user_id=_actor_from_params(job.params or {}),
+            organization_id=organization_id,
+            target_type="job",
+            target_id=job.id,
+            payload={"kind": job.kind.value},
+        )
+        await self.session.commit()
 
         return DownloadUrlResult(url=url, expires_at=expires_at, filename=suggested)
 
