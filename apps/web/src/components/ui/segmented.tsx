@@ -58,7 +58,7 @@ export function Segmented<T extends string>({
             {active ? (
               <motion.span
                 layoutId={`segmented-${groupId}`}
-                className="absolute inset-0 rounded-full bg-molten shadow-clay-sm"
+                className="absolute inset-0 rounded-full bg-primary"
                 transition={springSnappy}
               />
             ) : null}
