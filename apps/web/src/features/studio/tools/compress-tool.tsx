@@ -20,13 +20,16 @@ import type {
   CompressionLevel,
   CompressionOptions,
 } from "@/features/pdf-compress/types";
+import { setDocumentPassword } from "@/features/pdf-tools/api";
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-frame";
+import { getFilePassword } from "@/features/studio/page-canvas";
 import { StageCanvas } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
 import { ApiError } from "@/lib/api/client";
 import { randomUUID } from "@/lib/uuid";
+import { useUiStore } from "@/stores/ui-store";
 
 const PRESETS: { value: Exclude<CompressionLevel, "custom">; label: string }[] = [
   { value: "low", label: "Light" },
@@ -35,10 +38,17 @@ const PRESETS: { value: Exclude<CompressionLevel, "custom">; label: string }[] =
   { value: "extreme", label: "Max" },
 ];
 
+const PRESET_LEVELS: CompressionLevel[] = ["low", "medium", "high", "extreme"];
+
 export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToolProps) {
   const { pageCount } = useFilePageCount(file);
-  const [level, setLevel] = useState<CompressionLevel>(DEFAULT_LEVEL);
-  const [options, setOptions] = useState<CompressionOptions>(() => optionsForLevel(DEFAULT_LEVEL));
+  const savedLevel = useUiStore((s) => s.toolPrefs.compressionLevel);
+  const setToolPref = useUiStore((s) => s.setToolPref);
+  const initialLevel = PRESET_LEVELS.includes((savedLevel ?? "") as CompressionLevel)
+    ? (savedLevel as CompressionLevel)
+    : DEFAULT_LEVEL;
+  const [level, setLevel] = useState<CompressionLevel>(initialLevel);
+  const [options, setOptions] = useState<CompressionOptions>(() => optionsForLevel(initialLevel));
   const [estimate, setEstimate] = useState<CompressEstimate | null>(null);
   const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -61,6 +71,7 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
     setLevel(next);
     setOptions(optionsForLevel(next));
     setEstimate(null);
+    setToolPref("compressionLevel", next);
   };
 
   const patchOptions = (patch: Partial<CompressionOptions>) => {
@@ -70,10 +81,16 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
     setEstimate(null);
   };
 
+  const applyPassword = async (documentId: string) => {
+    const pw = getFilePassword(file);
+    if (pw) await setDocumentPassword(documentId, pw);
+  };
+
   const ensureUploaded = async (): Promise<string | null> => {
     if (uploadedDocId) return uploadedDocId;
     try {
       const result = await start({ clientUploadId: randomUUID(), file });
+      await applyPassword(result.documentId);
       setUploadedDocId(result.documentId);
       return result.documentId;
     } catch (err) {
@@ -121,6 +138,7 @@ export function CompressTool({ file, onReplaceFile, onRemove, onLaunched }: Sing
       if (!documentId) {
         const result = await start({ clientUploadId, file });
         documentId = result.documentId;
+        await applyPassword(documentId);
         setUploadedDocId(documentId);
       } else {
         updateUpload(clientUploadId, { documentId, phase: "queued" });

@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 from redis.asyncio import Redis
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
+    FileTooLargeError,
     JobNotFoundError,
     JobNotTerminalError,
     JobOutputExpiredError,
@@ -27,6 +28,7 @@ from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
 from papyrus_api.domain.jobs.models import Job
 from papyrus_api.integrations.redis import release_daily_quota, reserve_daily_quota
+from papyrus_api.repositories.audit import AuditEventRepository
 from papyrus_api.repositories.documents import (
     DocumentVersionRepository,
     StorageObjectRepository,
@@ -56,8 +58,45 @@ class DownloadUrlResult:
     filename: str
 
 
+_SENSITIVE_PARAM_KEYS: frozenset[str] = frozenset(
+    {"secret_ref", "user_password", "owner_password", "password"}
+)
+
+_SIMPLE_RETRY_TASKS: dict[JobKind, str] = {
+    JobKind.WATERMARK: "papyrus.pdf.watermark",
+    JobKind.PAGE_NUMBERS: "papyrus.pdf.page_numbers",
+    JobKind.CROP: "papyrus.pdf.crop",
+    JobKind.PDF_TO_IMAGES: "papyrus.pdf.pdf_to_images",
+    JobKind.REDACT: "papyrus.pdf.redact",
+}
+
+_SIMPLE_RETRY_KEYS: dict[JobKind, frozenset[str]] = {
+    JobKind.WATERMARK: frozenset({"text", "color", "opacity", "size", "rotation", "tile", "font"}),
+    JobKind.PAGE_NUMBERS: frozenset({"format", "position", "start_at", "size", "color", "font"}),
+    JobKind.CROP: frozenset({"box", "pages"}),
+    JobKind.PDF_TO_IMAGES: frozenset({"image_format", "dpi", "quality"}),
+    JobKind.REDACT: frozenset({"redactions", "dpi"}),
+}
+
+
 def _channel(job_id: UUID) -> str:
     return f"job-events:{job_id}"
+
+
+def _redact_params(params: dict[str, Any] | None) -> dict[str, Any]:
+    if not params:
+        return {}
+    return {k: v for k, v in params.items() if k not in _SENSITIVE_PARAM_KEYS}
+
+
+def _actor_from_params(params: dict[str, Any]) -> UUID | None:
+    raw = params.get("created_by_user_id")
+    if isinstance(raw, str):
+        try:
+            return UUID(raw)
+        except ValueError:
+            return None
+    return None
 
 
 def _page_cap(is_anonymous: bool) -> int:
@@ -78,7 +117,7 @@ def _job_to_out(job: Job, *, phase: str | None) -> JobOut:
         status=job.status.value,
         phase=phase,
         progress=None,
-        params=dict(job.params or {}),
+        params=_redact_params(job.params),
         document_id=document_id,
         input_size_bytes=job.input_size_bytes,
         output_size_bytes=job.output_size_bytes,
@@ -106,6 +145,7 @@ class JobService:
         self.events = JobEventRepository(session)
         self.versions = DocumentVersionRepository(session)
         self.storage_objects = StorageObjectRepository(session)
+        self.audit = AuditEventRepository(session)
 
     async def create_compression_job(
         self,
@@ -136,7 +176,7 @@ class JobService:
 
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )
@@ -190,6 +230,14 @@ class JobService:
                 job_id=job.id,
                 status=JobStatus.PENDING,
                 payload={"phase": "queued"},
+            )
+            await self.audit.record(
+                action="job.created",
+                actor_user_id=_actor_from_params(params),
+                organization_id=organization_id,
+                target_type="job",
+                target_id=job.id,
+                payload={"kind": kind.value},
             )
             await self.session.commit()
         except IntegrityError:
@@ -330,7 +378,7 @@ class JobService:
                 )
             document, version, storage_object = triple
             if storage_object.size_bytes > max_bytes:
-                raise QuotaExceededError(
+                raise FileTooLargeError(
                     "One of the files exceeds the maximum allowed size.",
                     details={
                         "max_bytes": max_bytes,
@@ -484,6 +532,439 @@ class JobService:
             task_name="papyrus.pdf.ocr",
         )
 
+    async def _store_secret(self, payload: dict[str, Any]) -> str:
+        key = f"job:secret:{uuid4().hex}"
+        await self.redis.set(
+            key,
+            json.dumps(payload),
+            ex=settings.job_secret_ttl_seconds,
+        )
+        return key
+
+    async def create_protect_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        secret: dict[str, Any],
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        secret_ref = await self._store_secret(secret)
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.PROTECT,
+            extra_params={**options, "secret_ref": secret_ref},
+            task_name="papyrus.pdf.protect",
+        )
+
+    async def create_unlock_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        secret: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        secret_ref = await self._store_secret(secret)
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.UNLOCK,
+            extra_params={"secret_ref": secret_ref},
+            task_name="papyrus.pdf.unlock",
+        )
+
+    async def create_convert_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.CONVERT,
+            extra_params={"target_format": "pdf"},
+            task_name="papyrus.pdf.convert",
+        )
+
+    async def create_pdf_to_word_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.CONVERT,
+            extra_params={"target_format": "docx"},
+            task_name="papyrus.pdf.pdf_to_word",
+        )
+
+    async def create_repair_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.REPAIR,
+            extra_params={},
+            task_name="papyrus.pdf.repair",
+        )
+
+    async def create_grayscale_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.GRAYSCALE,
+            extra_params={},
+            task_name="papyrus.pdf.grayscale",
+        )
+
+    async def create_watermark_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.WATERMARK,
+            extra_params=options,
+            task_name="papyrus.pdf.watermark",
+        )
+
+    async def create_page_numbers_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.PAGE_NUMBERS,
+            extra_params=options,
+            task_name="papyrus.pdf.page_numbers",
+        )
+
+    async def create_crop_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.CROP,
+            extra_params=options,
+            task_name="papyrus.pdf.crop",
+        )
+
+    async def create_pdf_to_images_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.PDF_TO_IMAGES,
+            extra_params=options,
+            task_name="papyrus.pdf.pdf_to_images",
+        )
+
+    async def create_redact_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        return await self._create_simple_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            document_id=document_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.REDACT,
+            extra_params=options,
+            task_name="papyrus.pdf.redact",
+        )
+
+    async def _create_compose_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        idempotency_key: UUID,
+        is_anonymous: bool,
+        zero_retention: bool,
+        kind: JobKind,
+        task_name: str,
+        input_specs: list[tuple[str, UUID]],
+        extra_params: dict[str, Any],
+        primary_ref: str,
+    ) -> CreateJobResult:
+        existing = await self.jobs.get_by_idempotency_key(
+            organization_id=organization_id,
+            idempotency_key=idempotency_key,
+        )
+        if existing is not None:
+            return CreateJobResult(job=existing, replay=True)
+
+        if not input_specs:
+            raise ValidationError("At least one input is required.")
+
+        unique_ids = list({doc_id for _, doc_id in input_specs})
+        triples_by_id = await self.versions.get_many_with_storage(
+            organization_id=organization_id,
+            document_ids=unique_ids,
+        )
+
+        max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
+        inputs: list[dict[str, Any]] = []
+        total_bytes = 0
+        primary_name: str | None = None
+        for ref, document_id in input_specs:
+            triple = triples_by_id.get(document_id)
+            if triple is None:
+                raise DocumentNotFoundError(
+                    "One of the documents was not found.",
+                    details={"document_id": str(document_id)},
+                )
+            document, version, storage_object = triple
+            if storage_object.size_bytes > max_bytes:
+                raise FileTooLargeError(
+                    "One of the files exceeds the maximum allowed size.",
+                    details={"max_bytes": max_bytes, "anonymous": is_anonymous},
+                )
+            total_bytes += storage_object.size_bytes
+            inputs.append(
+                {
+                    "ref": ref,
+                    "content_type": storage_object.content_type,
+                    "document_id": str(document.id),
+                    "version_id": str(version.id),
+                    "input_storage_object_id": str(storage_object.id),
+                    "input_bucket": storage_object.bucket,
+                    "input_key": storage_object.key,
+                    "input_size_bytes": storage_object.size_bytes,
+                    "input_filename": document.name,
+                }
+            )
+            if ref == primary_ref:
+                primary_name = document.name
+        if primary_name is None and inputs:
+            primary_name = str(inputs[0]["input_filename"])
+
+        await self._reserve_quota(organization_id, is_anonymous=is_anonymous)
+
+        params: dict[str, Any] = {
+            "inputs": inputs,
+            "input_filename": primary_name,
+            "input_size_bytes": total_bytes,
+            "created_by_user_id": str(user_id),
+            "zero_retention": zero_retention,
+            "is_anonymous": is_anonymous,
+            "max_pages": _page_cap(is_anonymous),
+            **extra_params,
+        }
+
+        return await self._persist_and_enqueue(
+            organization_id=organization_id,
+            kind=kind,
+            params=params,
+            idempotency_key=idempotency_key,
+            input_size_bytes=total_bytes,
+            task_name=task_name,
+        )
+
+    async def create_images_to_pdf_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_ids: list[UUID],
+        options: dict[str, Any],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        if not document_ids:
+            raise ValidationError("At least one image is required.")
+        if len(document_ids) > settings.images_to_pdf_max_count:
+            raise ValidationError(
+                "Too many images in one job.",
+                details={"max_count": settings.images_to_pdf_max_count},
+            )
+        input_specs = [(f"img{index}", doc_id) for index, doc_id in enumerate(document_ids)]
+        return await self._create_compose_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.IMAGES_TO_PDF,
+            task_name="papyrus.pdf.images_to_pdf",
+            input_specs=input_specs,
+            extra_params=options,
+            primary_ref="img0",
+        )
+
+    async def create_sign_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        image_refs: list[tuple[str, UUID]],
+        placements: list[dict[str, Any]],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        input_specs: list[tuple[str, UUID]] = [("primary", document_id), *image_refs]
+        return await self._create_compose_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.SIGN,
+            task_name="papyrus.pdf.sign",
+            input_specs=input_specs,
+            extra_params={"placements": placements},
+            primary_ref="primary",
+        )
+
+    async def create_edit_job(
+        self,
+        *,
+        organization_id: UUID,
+        user_id: UUID,
+        document_id: UUID,
+        image_refs: list[tuple[str, UUID]],
+        ops: list[dict[str, Any]],
+        idempotency_key: UUID,
+        is_anonymous: bool = False,
+        zero_retention: bool = False,
+    ) -> CreateJobResult:
+        input_specs: list[tuple[str, UUID]] = [("primary", document_id), *image_refs]
+        return await self._create_compose_job(
+            organization_id=organization_id,
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            is_anonymous=is_anonymous,
+            zero_retention=zero_retention,
+            kind=JobKind.EDIT,
+            task_name="papyrus.pdf.edit",
+            input_specs=input_specs,
+            extra_params={"ops": ops},
+            primary_ref="primary",
+        )
+
     async def _create_simple_job(
         self,
         *,
@@ -514,7 +995,7 @@ class JobService:
 
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )
@@ -740,6 +1221,24 @@ class JobService:
                 zero_retention=zero_retention,
             )
 
+        if job.kind in _SIMPLE_RETRY_TASKS:
+            document_id_raw = job.params.get("document_id") if job.params else None
+            if not isinstance(document_id_raw, str):
+                raise ValidationError("Job is missing the data needed to retry.")
+            allowed_keys = _SIMPLE_RETRY_KEYS[job.kind]
+            extra = {k: v for k, v in (job.params or {}).items() if k in allowed_keys}
+            return await self._create_simple_job(
+                organization_id=organization_id,
+                user_id=user_id,
+                document_id=UUID(document_id_raw),
+                idempotency_key=idempotency_key,
+                is_anonymous=False,
+                zero_retention=zero_retention,
+                kind=job.kind,
+                extra_params=extra,
+                task_name=_SIMPLE_RETRY_TASKS[job.kind],
+            )
+
         raise ValidationError(
             f"Retry is not supported for {job.kind.value} jobs yet.",
             details={"kind": job.kind.value},
@@ -834,6 +1333,16 @@ class JobService:
         if zero_retention or settings.zero_retention_mode:
             self._schedule_output_purge(job.id)
 
+        await self.audit.record(
+            action="job.download",
+            actor_user_id=_actor_from_params(job.params or {}),
+            organization_id=organization_id,
+            target_type="job",
+            target_id=job.id,
+            payload={"kind": job.kind.value},
+        )
+        await self.session.commit()
+
         return DownloadUrlResult(url=url, expires_at=expires_at, filename=suggested)
 
     @staticmethod
@@ -902,6 +1411,7 @@ class JobService:
         *,
         is_anonymous: bool = False,
     ) -> None:
+        await self.jobs.lock_org_for_reservation(organization_id=organization_id)
         inflight = await self.jobs.count_inflight_for_org(organization_id=organization_id)
         if inflight >= settings.max_inflight_jobs_per_org:
             raise QuotaExceededError(
@@ -955,6 +1465,19 @@ _SUFFIX_BY_KIND: dict[JobKind, str] = {
     JobKind.ROTATE: "rotated",
     JobKind.REORDER: "reordered",
     JobKind.OCR: "ocr",
+    JobKind.PROTECT: "protected",
+    JobKind.UNLOCK: "unlocked",
+    JobKind.WATERMARK: "watermarked",
+    JobKind.PAGE_NUMBERS: "numbered",
+    JobKind.CROP: "cropped",
+    JobKind.PDF_TO_IMAGES: "images",
+    JobKind.IMAGES_TO_PDF: "converted",
+    JobKind.SIGN: "signed",
+    JobKind.REDACT: "redacted",
+    JobKind.EDIT: "edited",
+    JobKind.CONVERT: "converted",
+    JobKind.REPAIR: "repaired",
+    JobKind.GRAYSCALE: "grayscale",
 }
 
 
@@ -995,6 +1518,12 @@ def _suggest_output_filename_for(job: Job) -> str:
     elif job.kind == JobKind.MERGE:
         suffix = "merged"
         ext = "pdf"
+    elif job.kind == JobKind.PDF_TO_IMAGES:
+        suffix = "images"
+        ext = "zip"
+    elif job.kind == JobKind.CONVERT:
+        suffix = "converted"
+        ext = "docx" if params.get("target_format") == "docx" else "pdf"
     else:
         suffix = _SUFFIX_BY_KIND.get(job.kind, "output")
         ext = "pdf"

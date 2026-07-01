@@ -1,4 +1,4 @@
-import { ListOrdered, RotateCcw } from "lucide-react";
+import { FileWarning, ListOrdered, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -6,13 +6,34 @@ import { useCreateReorderJobMutation } from "@/features/pdf-tools/api";
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
 import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-frame";
+import { PARSE_MAX_BYTES } from "@/features/studio/page-canvas";
 import { SortablePageCanvas } from "@/features/studio/sortable-page-canvas";
 import { CanvasHeader, CanvasInstruction } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
 
+function TooLargeNotice() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-50/60 p-6 text-center dark:bg-amber-950/20">
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <FileWarning className="size-5" strokeWidth={2.1} />
+      </span>
+      <div className="flex flex-col gap-1">
+        <p className="font-display text-sm font-semibold text-foreground">
+          Too large to arrange here
+        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          This file is over 150 MB, so it can't be previewed and arranged in the browser. Compress
+          it first, or use a file under 150 MB.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ReorderTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToolProps) {
   const { pageCount } = useFilePageCount(file);
+  const tooLarge = pageCount == null && file.size > PARSE_MAX_BYTES;
   const [order, setOrder] = useState<number[]>([]);
   const [excluded, setExcluded] = useState<ReadonlySet<number>>(new Set());
   const create = useCreateReorderJobMutation();
@@ -92,22 +113,25 @@ export function ReorderTool({ file, onReplaceFile, onRemove, onLaunched }: Singl
         <InspectorFrame
           toolId="reorder"
           footer={
-            <Button
-              variant="molten"
-              size="lg"
-              onClick={onRun}
-              disabled={submitting || finalOrder.length === 0}
-              className="w-full"
-            >
-              {submitting ? <Spinner /> : <ListOrdered />}
-              {submitting
-                ? "Starting…"
-                : finalOrder.length === 0
-                  ? "Keep at least one page"
-                  : "Apply new order"}
-            </Button>
+            tooLarge ? null : (
+              <Button
+                variant="molten"
+                size="lg"
+                onClick={onRun}
+                disabled={submitting || finalOrder.length === 0}
+                className="w-full"
+              >
+                {submitting ? <Spinner /> : <ListOrdered />}
+                {submitting
+                  ? "Starting…"
+                  : finalOrder.length === 0
+                    ? "Keep at least one page"
+                    : "Apply new order"}
+              </Button>
+            )
           }
         >
+          {tooLarge ? <TooLargeNotice /> : null}
           <InspectorSection label="Output" hint="Drag in the canvas; tap to drop pages.">
             <div className="grid grid-cols-2 gap-2">
               <Stat label="Pages kept" value={`${finalOrder.length}`} />

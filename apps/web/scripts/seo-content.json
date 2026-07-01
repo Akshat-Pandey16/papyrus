@@ -1,0 +1,562 @@
+[
+  {
+    "slug": "/",
+    "title": "Free PDF Tools — Papyrus",
+    "metaDescription": "Free online PDF tools with no signup and no ads. Compress, merge, split, convert, OCR, sign and redact PDFs privately. Files auto-delete in 24 hours.",
+    "h1": "Free PDF Tools",
+    "intro": "Papyrus is a free, private online PDF toolkit with no signup and no ads. Compress, merge, split, convert, OCR, sign and redact your PDFs right in the browser, and every file is automatically deleted within 24 hours.",
+    "steps": [
+      "Pick a tool from the list — compress, merge, split, convert, OCR and more",
+      "Drop your PDF into the box (no account needed to start)",
+      "Run it and let Papyrus process your file privately",
+      "Download the result — your file is auto-deleted within 24 hours"
+    ],
+    "faqs": [
+      {
+        "q": "Are these PDF tools really free?",
+        "a": "Yes. Every tool on Papyrus is free to use with no ads and no signup required. Anonymous users can start instantly, with generous daily limits, and signing in raises them."
+      },
+      {
+        "q": "What happens to my files after I use a tool?",
+        "a": "Your files are processed privately and automatically deleted within 24 hours. You can also use zero-retention mode, and Papyrus never logs the contents of your files."
+      },
+      {
+        "q": "Do I need to create an account?",
+        "a": "No. You can drop a file and run any tool anonymously. Anonymous use is capped at 25MB, 500 pages and 10 jobs per day; signing in gives you higher limits and history."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/compress",
+    "title": "Compress PDF — Papyrus",
+    "metaDescription": "Compress PDF files online for free, no signup. Shrink PDF size while keeping quality. Private processing, files auto-deleted in 24 hours. Try Papyrus now.",
+    "h1": "Compress PDF",
+    "intro": "Compress PDF files to make them smaller while keeping the text and images readable. Free, no signup, and private — your file is processed for you alone and auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above (up to 25MB, 500 pages for anonymous use).",
+      "Pick a compression preset: low, medium, high, or extreme.",
+      "Preview the estimated savings before you commit.",
+      "Run the compression and your smaller PDF downloads automatically."
+    ],
+    "faqs": [
+      {
+        "q": "How much can I shrink my PDF?",
+        "a": "It depends on what's inside. Image-heavy PDFs often drop by 50-80% on the high or extreme preset, while text-only files compress less. Papyrus previews the estimated savings before you run, so you can choose the right balance."
+      },
+      {
+        "q": "Will compressing reduce the quality of my PDF?",
+        "a": "The low and medium presets keep quality visually intact; high and extreme trade some image sharpness for a smaller file. Text stays crisp at every level. Use the preview to compare before downloading."
+      },
+      {
+        "q": "Is it really free and private?",
+        "a": "Yes. Compressing a PDF on Papyrus is free with no signup and no ads. Your file is processed privately and automatically deleted within 24 hours."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/merge",
+    "title": "Merge PDF — Papyrus",
+    "metaDescription": "Merge PDF files into one online, free and with no signup. Reorder files, pick page ranges, and keep it private — uploads auto-delete within 24 hours.",
+    "h1": "Merge PDF",
+    "intro": "Combine multiple PDFs into a single file, right in your browser. Papyrus is free, needs no signup, and keeps your documents private — files are automatically deleted within 24 hours.",
+    "steps": [
+      "Drop the PDFs you want to merge into the box.",
+      "Drag the files to set the order they'll appear.",
+      "Optionally pick a page range for each file.",
+      "Click Merge and your combined PDF downloads automatically."
+    ],
+    "faqs": [
+      {
+        "q": "Is merging PDFs on Papyrus free?",
+        "a": "Yes. Merging PDFs is completely free with no ads and no account required. Anonymous users can merge files up to 25MB and 500 pages, with up to 10 jobs a day."
+      },
+      {
+        "q": "Can I choose the order of files and specific pages?",
+        "a": "Yes. Drag your files to reorder them before merging, and set a page range for each file so only the pages you want end up in the final PDF."
+      },
+      {
+        "q": "What happens to my files after I merge them?",
+        "a": "Your files stay private and are automatically deleted within 24 hours. With zero-retention mode, we never keep your document content."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/split",
+    "title": "Split PDF — Papyrus",
+    "metaDescription": "Split a PDF by page ranges, every N pages, or extract single pages. Free, no signup, files auto-deleted in 24h. Private, ad-free PDF splitter.",
+    "h1": "Split PDF",
+    "intro": "Split a PDF into separate files by page ranges, every N pages, or pull out single pages. Papyrus is free, needs no signup, and keeps your files private — they're auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Choose how to split: by page ranges, every N pages, or extract single pages",
+      "Set your ranges or pages and run the split",
+      "Your split files download automatically"
+    ],
+    "faqs": [
+      {
+        "q": "How do I split a PDF into separate pages?",
+        "a": "Upload your PDF, choose the extract-single-pages option, and pick the pages you want. Each page comes out as its own file, ready to download."
+      },
+      {
+        "q": "Can I split a PDF by page ranges?",
+        "a": "Yes. Enter ranges like 1-3, 4-8, 9-12 and Papyrus creates one file per range. You can also split automatically every N pages."
+      },
+      {
+        "q": "Is splitting a PDF here really free and private?",
+        "a": "Completely. There's no signup, no ads, and no cost. Your file is processed privately and auto-deleted within 24 hours. Anonymous users can split files up to 25MB or 500 pages."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/rotate",
+    "title": "Rotate PDF — Papyrus",
+    "metaDescription": "Rotate PDF pages 90, 180 or 270 degrees online, free with no signup. Fix sideways or upside-down pages privately. Files auto-deleted in 24 hours.",
+    "h1": "Rotate PDF",
+    "intro": "Rotate PDF pages 90, 180, or 270 degrees online, for free with no signup. Fix sideways or upside-down pages one at a time or all at once, and your file stays private and is auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Choose 90, 180, or 270 degrees for a single page or all pages",
+      "Preview the new orientation from the page thumbnails",
+      "Download your rotated PDF — the download starts automatically"
+    ],
+    "faqs": [
+      {
+        "q": "Can I rotate just one page instead of the whole PDF?",
+        "a": "Yes. You can rotate any single page independently or apply the same rotation to every page at once. Per-page control lets you fix one sideways scan without touching the rest."
+      },
+      {
+        "q": "Does rotating a PDF reduce its quality?",
+        "a": "No. Rotation only changes each page's orientation, so text and images stay exactly as sharp as the original with no re-compression."
+      },
+      {
+        "q": "Is it really free and private?",
+        "a": "Yes. Rotate PDF is completely free with no signup and no ads. Anonymous users get 25MB and 500 pages per file, and every file is automatically deleted within 24 hours."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/reorder",
+    "title": "Organize PDF Pages — Papyrus",
+    "metaDescription": "Organize PDF pages for free: drag thumbnails to reorder, rearrange, or delete pages. No signup, no ads, files auto-deleted in 24h. Private and fast.",
+    "h1": "Organize PDF Pages",
+    "intro": "Reorder, rearrange, and delete PDF pages by simply dragging thumbnails. Papyrus is free, needs no signup, and keeps your files private — they're automatically deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box to see every page as a thumbnail.",
+      "Drag pages into the order you want, or delete the ones you don't need.",
+      "Click organize to rebuild your PDF.",
+      "Your reordered file downloads automatically."
+    ],
+    "faqs": [
+      {
+        "q": "Is it free to organize PDF pages on Papyrus?",
+        "a": "Yes. Reordering and deleting PDF pages is completely free with no ads and no account required. Anonymous users can process files up to 25MB and 500 pages, with 10 jobs per day."
+      },
+      {
+        "q": "Are my files kept private when I rearrange pages?",
+        "a": "Yes. Processing is private, and every uploaded file is automatically deleted within 24 hours. There's a zero-retention option too, so your document never lingers on our servers."
+      },
+      {
+        "q": "Can I delete pages while reordering them?",
+        "a": "Yes. As you drag thumbnails to rearrange your PDF, you can remove any pages you don't want in the same step before downloading the final file."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/ocr",
+    "title": "OCR PDF — Papyrus",
+    "metaDescription": "Free OCR for PDF: make scanned documents searchable and selectable. Many languages, no signup, no ads. Files auto-delete in 24h. Private and instant.",
+    "h1": "OCR PDF",
+    "intro": "Turn scanned PDFs into searchable, selectable text with free online OCR. No signup, no ads, and your files are processed privately and auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your scanned PDF into the box above.",
+      "Pick the document's language (or languages) for best accuracy.",
+      "Run OCR and let Papyrus add a searchable text layer.",
+      "Download your searchable PDF automatically when it's done."
+    ],
+    "faqs": [
+      {
+        "q": "What does OCR do to my PDF?",
+        "a": "It reads the text in scanned or image-based pages and adds an invisible, searchable text layer on top. The page still looks the same, but you can now search, select, and copy the text."
+      },
+      {
+        "q": "Which languages are supported?",
+        "a": "Papyrus uses ocrmypdf with Tesseract, which supports many languages. Choose the language that matches your document, and you can select more than one for mixed-language files."
+      },
+      {
+        "q": "Is it free and private?",
+        "a": "Yes. OCR is completely free with no signup or ads. Files are processed privately and automatically deleted within 24 hours, with a zero-retention option available."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/protect",
+    "title": "Protect PDF — Papyrus",
+    "metaDescription": "Password-protect a PDF free online with AES-256 encryption and permission controls. No signup, no ads, files auto-deleted in 24h. Fast and private.",
+    "h1": "Protect PDF",
+    "intro": "Add a password to your PDF with strong AES-256 encryption, right in your browser. Papyrus is free, needs no signup, shows no ads, and deletes your file within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box or click to choose a file",
+      "Set a password to open the document (and set permission restrictions if you want)",
+      "Click Protect to encrypt with AES-256",
+      "Download your password-protected PDF automatically when it finishes"
+    ],
+    "faqs": [
+      {
+        "q": "How strong is the PDF encryption?",
+        "a": "Papyrus uses AES-256, the same standard trusted for encrypting sensitive documents. Without the correct password, the file cannot be opened."
+      },
+      {
+        "q": "Can I restrict printing or copying instead of just adding a password?",
+        "a": "Yes. Along with an open password, you can set permissions to limit actions like printing, copying text, or editing the document."
+      },
+      {
+        "q": "Is protecting my PDF here actually private?",
+        "a": "Yes. There are no ads or trackers, you don't need an account, and your file is automatically deleted within 24 hours with a zero-retention option available."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/unlock",
+    "title": "Unlock PDF — Papyrus",
+    "metaDescription": "Unlock PDF files free with no signup. Remove a known password from a PDF you own, right in your browser. Private, no ads, files auto-deleted in 24h.",
+    "h1": "Unlock PDF",
+    "intro": "Unlock PDF files for free with no signup. Enter the password you already know and Papyrus removes it, so your PDF opens without a prompt every time. Private by design, no ads, and files auto-delete in 24 hours.",
+    "steps": [
+      "Drop your password-protected PDF into the box",
+      "Type in the password you know for the file",
+      "Click Unlock to remove the password",
+      "Download your unlocked PDF automatically"
+    ],
+    "faqs": [
+      {
+        "q": "Can I unlock a PDF without the password?",
+        "a": "No. Papyrus only removes a password you already know from a PDF you own. It will not crack, guess, or bypass protection on files you do not control."
+      },
+      {
+        "q": "Is unlocking my PDF private?",
+        "a": "Yes. Processing is private, there are no ads or trackers on your content, and your file is automatically deleted within 24 hours (sooner with zero-retention mode)."
+      },
+      {
+        "q": "Do I need to sign up to unlock a PDF?",
+        "a": "No signup is needed. Anonymous users can unlock files instantly, with limits of 25MB, 500 pages, and 10 jobs per day. Signing in raises those limits."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/watermark",
+    "title": "Watermark PDF — Papyrus",
+    "metaDescription": "Add a text watermark to your PDF free, no signup. Adjust opacity, size, rotation and tiling. Private, in-browser, files auto-deleted in 24 hours.",
+    "h1": "Watermark PDF",
+    "intro": "Stamp a text watermark across every page of your PDF for free, with no signup and no ads. Control the opacity, size, rotation and tiling, then download a private copy that we auto-delete within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box",
+      "Type your watermark text and set opacity, size, rotation and tiling",
+      "Click Apply to stamp it across every page",
+      "Download your watermarked PDF"
+    ],
+    "faqs": [
+      {
+        "q": "Is watermarking a PDF free?",
+        "a": "Yes. Adding a text watermark is completely free with no signup and no ads. Anonymous users can watermark files up to 25MB and 500 pages, up to 10 jobs a day."
+      },
+      {
+        "q": "Can I control how the watermark looks?",
+        "a": "Yes. You can adjust the opacity, font size, rotation angle, and turn on tiling to repeat the text across the whole page."
+      },
+      {
+        "q": "Is my file kept private?",
+        "a": "Yes. Processing is private, we don't run ads or track your content, and your files are automatically deleted within 24 hours (with a zero-retention option available)."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/page-numbers",
+    "title": "Add Page Numbers to PDF — Papyrus",
+    "metaDescription": "Add page numbers to PDF online, free and no signup. Choose position, format and starting number. Private, no ads, files auto-deleted in 24 hours.",
+    "h1": "Add Page Numbers to PDF",
+    "intro": "Add page numbers to any PDF for free, with no signup and no ads. Pick the position, number format and starting page, and process everything privately in your browser session with files auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Choose the position, format and starting number",
+      "Click Add page numbers and let it process",
+      "Your numbered PDF downloads automatically"
+    ],
+    "faqs": [
+      {
+        "q": "How do I add page numbers to a PDF for free?",
+        "a": "Drop your PDF into Papyrus, choose where the numbers go and which number to start from, then download the result. It is completely free with no signup and no watermarks."
+      },
+      {
+        "q": "Can I choose the position and starting number?",
+        "a": "Yes. You can place numbers at the top or bottom, adjust the alignment and format, and set any starting number so your pages match your document."
+      },
+      {
+        "q": "Is it private, and are my files stored?",
+        "a": "Your file is processed privately and never used for ads or tracking. Uploads are automatically deleted within 24 hours, with a zero-retention option available."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/crop",
+    "title": "Crop PDF — Papyrus",
+    "metaDescription": "Crop PDF pages and trim white margins online, free with no signup. Files auto-delete in 24h and processing stays private. No ads, no account needed.",
+    "h1": "Crop PDF",
+    "intro": "Crop PDF pages to trim margins or cut away whitespace, right in your browser. Papyrus is free, needs no signup, and keeps your files private, with everything auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Adjust the crop box to trim the margins or whitespace you want gone",
+      "Apply the crop to every page or just the ones you choose",
+      "Download your cropped PDF, no signup needed"
+    ],
+    "faqs": [
+      {
+        "q": "How do I crop margins off a PDF for free?",
+        "a": "Drop your PDF into Papyrus, drag the crop box to trim the margins or whitespace, and download the result. It is completely free with no signup or ads."
+      },
+      {
+        "q": "Will cropping reduce my PDF's file size?",
+        "a": "Cropping mainly changes the visible page area rather than the underlying data, so size savings are usually small. To shrink a file meaningfully, use our Compress PDF tool instead."
+      },
+      {
+        "q": "Is it safe to crop a private PDF here?",
+        "a": "Yes. Processing is private, files are never used for anything but your job, and everything is automatically deleted within 24 hours, with a zero-retention option available."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/sign",
+    "title": "Sign PDF — Papyrus",
+    "metaDescription": "Sign a PDF online for free. Draw or type your signature and place it anywhere on the page. No signup, no ads, files auto-deleted in 24 hours.",
+    "h1": "Sign PDF",
+    "intro": "Add your signature to any PDF in seconds. Draw or type a signature, drag it onto the page, and download the signed file — free, no signup, and your document stays private and is auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Draw your signature with your mouse or trackpad, or type it and pick a style",
+      "Drag the signature onto the right spot and resize it to fit",
+      "Download your signed PDF — it starts automatically"
+    ],
+    "faqs": [
+      {
+        "q": "Is it free to sign a PDF here?",
+        "a": "Yes. Signing a PDF is completely free with no signup and no ads. Anonymous users can sign files up to 25MB and 500 pages, with up to 10 jobs per day."
+      },
+      {
+        "q": "Is my document kept private when I sign it?",
+        "a": "Yes. Your file is processed privately and automatically deleted within 24 hours, and we never keep logs of your document's contents."
+      },
+      {
+        "q": "Is this a legally binding electronic signature?",
+        "a": "This tool places a visual signature (drawn or typed) onto your PDF, which is fine for most everyday agreements. It does not add a cryptographic digital signature or certificate."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/redact",
+    "title": "Redact PDF — Papyrus",
+    "metaDescription": "Redact PDF online for free — permanently black out sensitive text so it's destroyed, not just hidden. No signup, no ads, files auto-deleted in 24h.",
+    "h1": "Redact PDF",
+    "intro": "Permanently black out sensitive content in your PDF — the underlying text is destroyed, not just covered up. Free, no signup, and your file is auto-deleted within 24 hours for real privacy.",
+    "steps": [
+      "Drop your PDF into the box above.",
+      "Draw boxes over the names, numbers, or text you want to remove.",
+      "Click Redact to permanently destroy the content underneath.",
+      "Your redacted PDF downloads automatically."
+    ],
+    "faqs": [
+      {
+        "q": "Can the redacted text still be copied or recovered?",
+        "a": "No. Papyrus deletes the underlying text and image data beneath each redaction box, so it can't be copied, searched, or recovered — unlike a black rectangle drawn on top in a regular PDF editor."
+      },
+      {
+        "q": "Is redacting my PDF really private?",
+        "a": "Yes. Redaction runs on our server but your file is never logged or shared, and it's automatically deleted within 24 hours. There's no signup, no ads, and you can self-host Papyrus entirely."
+      },
+      {
+        "q": "Is there a file size or page limit?",
+        "a": "Anonymous users can redact files up to 25MB and 500 pages, with 10 jobs per day. Signing in raises those limits, but you can start instantly with no account."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/edit",
+    "title": "Edit PDF — Papyrus",
+    "metaDescription": "Edit PDF files free with no signup. Add text, shapes, and drawings right in your browser. Private and secure — files auto-delete in 24 hours.",
+    "h1": "Edit PDF",
+    "intro": "Edit any PDF for free with no signup. Add text, shapes, and freehand drawings directly onto your pages, then download the result. Your file stays private and is auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Add text boxes, shapes, or draw freehand where you need them",
+      "Adjust the size, color, and position of each element",
+      "Download your edited PDF instantly"
+    ],
+    "faqs": [
+      {
+        "q": "Is it really free to edit a PDF here?",
+        "a": "Yes. Editing is completely free with no signup, no ads, and no watermarks. Anonymous users can process files up to 25MB and 500 pages, with up to 10 jobs a day."
+      },
+      {
+        "q": "Can I add text and drawings to an existing PDF?",
+        "a": "Yes. You can place text boxes, add shapes like lines and rectangles, and draw freehand anywhere on the page before downloading the edited file."
+      },
+      {
+        "q": "What happens to my file after I edit it?",
+        "a": "Your file is processed privately and automatically deleted within 24 hours. With zero-retention mode we never keep a copy, and we never log your file's contents."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/pdf-to-images",
+    "title": "PDF to JPG — Papyrus",
+    "metaDescription": "Convert PDF to JPG or PNG free, no signup. Turn each page into an image, pick your DPI, and keep it private — files auto-delete in 24 hours.",
+    "h1": "PDF to JPG",
+    "intro": "Convert PDF to JPG or PNG for free, with no signup and no ads. Papyrus turns each page of your PDF into a separate image at the DPI you choose, and your files stay private — processed quietly and auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Choose JPG or PNG and set the DPI (higher DPI means sharper, larger images)",
+      "Click Convert and let each page render to an image",
+      "Download your images — no signup, no watermark"
+    ],
+    "faqs": [
+      {
+        "q": "How do I convert a PDF to JPG for free?",
+        "a": "Drop your PDF into Papyrus, pick JPG as the output, choose a DPI, and click Convert. Each page becomes a separate JPG you can download instantly — no account and no cost."
+      },
+      {
+        "q": "Should I choose JPG or PNG?",
+        "a": "Pick JPG for smaller files and photo-heavy pages, and PNG when you need lossless quality or sharp text and lines. You can select either before converting."
+      },
+      {
+        "q": "What DPI should I use?",
+        "a": "150 DPI is fine for screen viewing, while 300 DPI gives crisp images suitable for printing. Higher DPI produces sharper but larger files."
+      },
+      {
+        "q": "Are my files kept private?",
+        "a": "Yes. Processing is private, there are no ads or trackers, and files are automatically deleted within 24 hours. Anonymous use works instantly with limits of 25MB, 500 pages, and 10 jobs a day."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/images-to-pdf",
+    "title": "Images to PDF — Papyrus",
+    "metaDescription": "Convert JPG, PNG, and WebP images to PDF for free. No signup, no ads, and your files are auto-deleted in 24h. Combine images into one PDF privately.",
+    "h1": "Images to PDF",
+    "intro": "Combine JPG, PNG, and WebP images into a single PDF, free and with no signup. Papyrus runs privately and auto-deletes your files within 24 hours.",
+    "steps": [
+      "Drop your JPG, PNG, or WebP images into the box",
+      "Drag to reorder them the way you want the pages",
+      "Click Convert to build one PDF",
+      "Your combined PDF downloads automatically"
+    ],
+    "faqs": [
+      {
+        "q": "Which image formats can I convert to PDF?",
+        "a": "You can combine JPG, PNG, and WebP images into a single PDF. Just drop them in, reorder if needed, and convert."
+      },
+      {
+        "q": "Is the images-to-PDF converter really free?",
+        "a": "Yes. It's completely free with no ads and no account required. Anonymous use allows up to 25MB and 500 pages per file, with 10 jobs a day."
+      },
+      {
+        "q": "What happens to my images after converting?",
+        "a": "Your uploads are processed privately and automatically deleted within 24 hours. Papyrus keeps no logs of your file content."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/convert",
+    "title": "Word to PDF — Papyrus",
+    "metaDescription": "Convert Word to PDF free online, no signup. Turn Word, Excel, PowerPoint & OpenDocument files into PDF privately. Files auto-deleted in 24 hours.",
+    "h1": "Word to PDF",
+    "intro": "Convert Word to PDF free online with no signup and no ads. Papyrus also turns Excel, PowerPoint, and OpenDocument files into clean PDFs using LibreOffice, and your files stay private and are auto-deleted within 24 hours.",
+    "steps": [
+      "Drop your Word, Excel, PowerPoint, or OpenDocument file into the box",
+      "We convert it to PDF with LibreOffice, preserving your layout",
+      "Your PDF downloads automatically the moment it's ready",
+      "The uploaded file is deleted within 24 hours"
+    ],
+    "faqs": [
+      {
+        "q": "How do I convert Word to PDF for free?",
+        "a": "Drop your .docx or .doc file into the box above and Papyrus converts it to PDF instantly. It's free, needs no signup, and the download starts automatically."
+      },
+      {
+        "q": "What file types can I convert to PDF?",
+        "a": "Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx), and OpenDocument formats (.odt/.ods/.odp) are all supported via LibreOffice."
+      },
+      {
+        "q": "Are my documents kept private?",
+        "a": "Yes. Processing is private, we don't log file content, and your uploaded file is automatically deleted within 24 hours. Anonymous use is capped at 25MB per file and 10 jobs a day."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/pdf-to-word",
+    "title": "PDF to Word — free, private — Papyrus",
+    "metaDescription": "Convert PDF to an editable Word document (.docx) online, free with no signup. Private processing, files auto-deleted in 24 hours.",
+    "h1": "PDF to Word",
+    "intro": "Turn a PDF into an editable Word document you can open in Word, Google Docs, or LibreOffice. Free, no signup, and private — your file is deleted within 24 hours.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Convert to Word",
+      "Edit the downloaded .docx in Word, Google Docs, or LibreOffice"
+    ],
+    "faqs": [
+      {
+        "q": "Is converting PDF to Word free?",
+        "a": "Yes. PDF to Word conversion on Papyrus is free with no ads and no signup. Anonymous users can convert files up to 25MB and 500 pages."
+      },
+      {
+        "q": "Will the layout and text be editable?",
+        "a": "Text-based PDFs convert to fully editable Word text with their layout and images preserved as closely as possible. Complex layouts may need small tweaks after converting."
+      },
+      {
+        "q": "Can I convert a scanned PDF to Word?",
+        "a": "Scanned or image-only PDFs have no selectable text, so run OCR first to make the text recognizable, then convert to Word."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/grayscale",
+    "title": "Grayscale PDF — free & private — Papyrus",
+    "metaDescription": "Convert a PDF to grayscale (black & white) online, free with no signup. Great for printing and smaller files. Private, files deleted in 24h.",
+    "h1": "Grayscale PDF",
+    "intro": "Convert every page of a PDF to grayscale — ideal for black-and-white printing and shrinking color-heavy scans. Free, no signup, and private.",
+    "steps": [
+      "Drop your PDF into the box above",
+      "Click Grayscale PDF",
+      "Download your black-and-white PDF"
+    ],
+    "faqs": [
+      {
+        "q": "Does grayscale make the PDF smaller?",
+        "a": "Often yes — color-heavy pages and scans usually get noticeably smaller once color data is removed, while text stays crisp."
+      },
+      {
+        "q": "Is it free and private?",
+        "a": "Yes. Grayscale conversion is free with no ads or signup, and your file is deleted within 24 hours."
+      }
+    ]
+  },
+  {
+    "slug": "/tools/repair",
+    "title": "Repair PDF — fix a broken PDF — Papyrus",
+    "metaDescription": "Repair a damaged or corrupt PDF online, free with no signup. Rebuild broken files so they open again. Private, files auto-deleted in 24 hours.",
+    "h1": "Repair PDF",
+    "intro": "Recover a damaged, corrupt, or unreadable PDF by rebuilding its internal structure so it opens again. Free, no signup, and private.",
+    "steps": [
+      "Drop the broken PDF into the box above",
+      "Click Repair PDF",
+      "Download the recovered file"
+    ],
+    "faqs": [
+      {
+        "q": "What kinds of damage can this fix?",
+        "a": "It reconstructs the PDF structure — broken cross-reference tables, truncated files, and many \"file is corrupt\" errors. Content that was fully lost can't be recovered."
+      },
+      {
+        "q": "Is repairing a PDF free?",
+        "a": "Yes. PDF repair is free with no signup or ads, and your file is deleted within 24 hours."
+      }
+    ]
+  }
+]

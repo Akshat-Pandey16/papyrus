@@ -34,6 +34,8 @@ from papyrus_api.workers.tasks._common import (
     TransientStorageError,
     check_cancelled,
     classify_storage_error,
+    decrypt_input_if_needed,
+    discard_output,
     fail_job,
     publish,
     purge_input,
@@ -185,6 +187,12 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
 
             await scan_input(input_path)
             await check_cancelled(redis, job_id)
+            await decrypt_input_if_needed(
+                redis=redis,
+                organization_id=organization_id,
+                document_id=params.get("document_id"),
+                input_path=input_path,
+            )
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -200,6 +208,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
 
             assert level is not None
             assert compress_options is not None
+            max_pages = params.get("max_pages")
             result = await anyio.to_thread.run_sync(
                 lambda: compress_pdf(
                     input_path=input_path,
@@ -207,6 +216,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                     level=level,
                     options=compress_options,
                     progress=_on_progress,
+                    max_pages=max_pages if isinstance(max_pages, int) else None,
                 )
             )
 
@@ -263,6 +273,7 @@ async def _run_compress(task_id: str, job_id: UUID) -> None:
                 )
                 if succeeded is None:
                     await session.rollback()
+                    await discard_output(storage, output_bucket, output_key)
                     log.info("jobs.compress.succeed_blocked", job_id=str(job_id))
                     return
                 event_payload = {
@@ -517,6 +528,12 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                         raise TransientStorageError(str(exc)) from exc
                     raise
                 await scan_input(dest)
+                await decrypt_input_if_needed(
+                    redis=redis,
+                    organization_id=organization_id,
+                    document_id=item.get("document_id"),
+                    input_path=dest,
+                )
                 page_ranges_raw = item.get("page_ranges")
                 page_ranges = (
                     page_ranges_raw
@@ -619,6 +636,7 @@ async def _run_merge(task_id: str, job_id: UUID) -> None:
                 )
                 if succeeded is None:
                     await session.rollback()
+                    await discard_output(storage, output_bucket, output_key)
                     log.info("jobs.merge.succeed_blocked", job_id=str(job_id))
                     return
                 event_payload = {

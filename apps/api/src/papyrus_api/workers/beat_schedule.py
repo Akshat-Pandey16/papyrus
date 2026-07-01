@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
 from celery.schedules import crontab
 
-from papyrus_api.workers.celery_app import celery_app
-
-celery_app.conf.beat_schedule = {
+BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
     "cleanup-expired-artifacts": {
         "task": "papyrus.cleanup.purge_expired",
         "schedule": crontab(minute="*/15"),
@@ -27,6 +27,10 @@ celery_app.conf.beat_schedule = {
     },
     "reap-stale-pending-jobs": {
         "task": "papyrus.cleanup.reap_stale_pending",
+        "schedule": crontab(minute="*/5"),
+    },
+    "reap-stale-running-jobs": {
+        "task": "papyrus.cleanup.reap_stale_running",
         "schedule": crontab(minute="*/5"),
     },
 }

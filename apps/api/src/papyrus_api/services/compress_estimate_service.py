@@ -10,16 +10,18 @@ from uuid import UUID
 import anyio
 import pikepdf
 import structlog
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.errors import (
     DocumentNotFoundError,
+    FileTooLargeError,
     PdfEncryptedError,
     PdfMalformedError,
-    QuotaExceededError,
     ValidationError,
 )
+from papyrus_api.integrations.redis import input_password_key
 from papyrus_api.repositories.documents import (
     DocumentVersionRepository,
     StorageObjectRepository,
@@ -31,6 +33,7 @@ from papyrus_api.services.pdf.compress import (
     options_from_payload,
 )
 from papyrus_api.services.pdf.gs_runtime import GsNotConfiguredError, is_available
+from papyrus_api.services.pdf.security import decrypt_for_processing
 from papyrus_api.services.storage_service import StorageService
 
 log = structlog.get_logger(__name__)
@@ -55,9 +58,10 @@ class EstimateResult:
 
 
 class CompressEstimateService:
-    def __init__(self, session: AsyncSession, storage: StorageService) -> None:
+    def __init__(self, session: AsyncSession, storage: StorageService, redis: Redis) -> None:
         self.session = session
         self.storage = storage
+        self.redis = redis
         self.versions = DocumentVersionRepository(session)
         self.storage_objects = StorageObjectRepository(session)
 
@@ -88,7 +92,7 @@ class CompressEstimateService:
 
         max_bytes = settings.anon_max_file_bytes if is_anonymous else settings.user_max_file_bytes
         if storage_object.size_bytes > max_bytes:
-            raise QuotaExceededError(
+            raise FileTooLargeError(
                 "File exceeds the maximum allowed size.",
                 details={"max_bytes": max_bytes, "anonymous": is_anonymous},
             )
@@ -117,6 +121,12 @@ class CompressEstimateService:
                 key=storage_object.key,
                 dest=input_path,
             )
+
+            password = await self.redis.get(input_password_key(organization_id, str(document_id)))
+            if password:
+                await anyio.to_thread.run_sync(
+                    lambda: decrypt_for_processing(input_path=input_path, password=password)
+                )
 
             total_pages, sample_pages, sample_input_size = await anyio.to_thread.run_sync(
                 _build_sample,
@@ -173,7 +183,7 @@ def _build_sample(input_path: Path, sample_path: Path) -> tuple[int, int, int]:
         src = pikepdf.open(str(input_path))
     except pikepdf.PasswordError as exc:
         raise PdfEncryptedError(
-            "This PDF is password-protected. Remove the password and try again.",
+            "This PDF is password-protected.",
         ) from exc
     except pikepdf.PdfError as exc:
         raise PdfMalformedError(

@@ -17,11 +17,25 @@ import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
 import { Route as DashboardRouteImport } from './app/routes/dashboard'
 import { Route as IndexRouteImport } from './app/routes/index'
+import { Route as ToolsWatermarkRouteImport } from './app/routes/tools/watermark'
+import { Route as ToolsUnlockRouteImport } from './app/routes/tools/unlock'
 import { Route as ToolsSplitRouteImport } from './app/routes/tools/split'
+import { Route as ToolsSignRouteImport } from './app/routes/tools/sign'
 import { Route as ToolsRotateRouteImport } from './app/routes/tools/rotate'
+import { Route as ToolsRepairRouteImport } from './app/routes/tools/repair'
 import { Route as ToolsReorderRouteImport } from './app/routes/tools/reorder'
+import { Route as ToolsRedactRouteImport } from './app/routes/tools/redact'
+import { Route as ToolsProtectRouteImport } from './app/routes/tools/protect'
+import { Route as ToolsPdfToWordRouteImport } from './app/routes/tools/pdf-to-word'
+import { Route as ToolsPdfToImagesRouteImport } from './app/routes/tools/pdf-to-images'
+import { Route as ToolsPageNumbersRouteImport } from './app/routes/tools/page-numbers'
 import { Route as ToolsOcrRouteImport } from './app/routes/tools/ocr'
 import { Route as ToolsMergeRouteImport } from './app/routes/tools/merge'
+import { Route as ToolsImagesToPdfRouteImport } from './app/routes/tools/images-to-pdf'
+import { Route as ToolsGrayscaleRouteImport } from './app/routes/tools/grayscale'
+import { Route as ToolsEditRouteImport } from './app/routes/tools/edit'
+import { Route as ToolsCropRouteImport } from './app/routes/tools/crop'
+import { Route as ToolsConvertRouteImport } from './app/routes/tools/convert'
 import { Route as ToolsCompressRouteImport } from './app/routes/tools/compress'
 
 const SignupRoute = SignupRouteImport.update({
@@ -64,9 +78,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsWatermarkRoute = ToolsWatermarkRouteImport.update({
+  id: '/tools/watermark',
+  path: '/tools/watermark',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsUnlockRoute = ToolsUnlockRouteImport.update({
+  id: '/tools/unlock',
+  path: '/tools/unlock',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsSplitRoute = ToolsSplitRouteImport.update({
   id: '/tools/split',
   path: '/tools/split',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsSignRoute = ToolsSignRouteImport.update({
+  id: '/tools/sign',
+  path: '/tools/sign',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsRotateRoute = ToolsRotateRouteImport.update({
@@ -74,9 +103,39 @@ const ToolsRotateRoute = ToolsRotateRouteImport.update({
   path: '/tools/rotate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsRepairRoute = ToolsRepairRouteImport.update({
+  id: '/tools/repair',
+  path: '/tools/repair',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsReorderRoute = ToolsReorderRouteImport.update({
   id: '/tools/reorder',
   path: '/tools/reorder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsRedactRoute = ToolsRedactRouteImport.update({
+  id: '/tools/redact',
+  path: '/tools/redact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsProtectRoute = ToolsProtectRouteImport.update({
+  id: '/tools/protect',
+  path: '/tools/protect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsPdfToWordRoute = ToolsPdfToWordRouteImport.update({
+  id: '/tools/pdf-to-word',
+  path: '/tools/pdf-to-word',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsPdfToImagesRoute = ToolsPdfToImagesRouteImport.update({
+  id: '/tools/pdf-to-images',
+  path: '/tools/pdf-to-images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsPageNumbersRoute = ToolsPageNumbersRouteImport.update({
+  id: '/tools/page-numbers',
+  path: '/tools/page-numbers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsOcrRoute = ToolsOcrRouteImport.update({
@@ -87,6 +146,31 @@ const ToolsOcrRoute = ToolsOcrRouteImport.update({
 const ToolsMergeRoute = ToolsMergeRouteImport.update({
   id: '/tools/merge',
   path: '/tools/merge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsImagesToPdfRoute = ToolsImagesToPdfRouteImport.update({
+  id: '/tools/images-to-pdf',
+  path: '/tools/images-to-pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsGrayscaleRoute = ToolsGrayscaleRouteImport.update({
+  id: '/tools/grayscale',
+  path: '/tools/grayscale',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsEditRoute = ToolsEditRouteImport.update({
+  id: '/tools/edit',
+  path: '/tools/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsCropRoute = ToolsCropRouteImport.update({
+  id: '/tools/crop',
+  path: '/tools/crop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsConvertRoute = ToolsConvertRouteImport.update({
+  id: '/tools/convert',
+  path: '/tools/convert',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsCompressRoute = ToolsCompressRouteImport.update({
@@ -105,11 +189,25 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
+  '/tools/crop': typeof ToolsCropRoute
+  '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
+  '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
+  '/tools/page-numbers': typeof ToolsPageNumbersRoute
+  '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
+  '/tools/protect': typeof ToolsProtectRoute
+  '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
+  '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
+  '/tools/unlock': typeof ToolsUnlockRoute
+  '/tools/watermark': typeof ToolsWatermarkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -121,11 +219,25 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
+  '/tools/crop': typeof ToolsCropRoute
+  '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
+  '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
+  '/tools/page-numbers': typeof ToolsPageNumbersRoute
+  '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
+  '/tools/protect': typeof ToolsProtectRoute
+  '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
+  '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
+  '/tools/unlock': typeof ToolsUnlockRoute
+  '/tools/watermark': typeof ToolsWatermarkRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -138,11 +250,25 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/tools/compress': typeof ToolsCompressRoute
+  '/tools/convert': typeof ToolsConvertRoute
+  '/tools/crop': typeof ToolsCropRoute
+  '/tools/edit': typeof ToolsEditRoute
+  '/tools/grayscale': typeof ToolsGrayscaleRoute
+  '/tools/images-to-pdf': typeof ToolsImagesToPdfRoute
   '/tools/merge': typeof ToolsMergeRoute
   '/tools/ocr': typeof ToolsOcrRoute
+  '/tools/page-numbers': typeof ToolsPageNumbersRoute
+  '/tools/pdf-to-images': typeof ToolsPdfToImagesRoute
+  '/tools/pdf-to-word': typeof ToolsPdfToWordRoute
+  '/tools/protect': typeof ToolsProtectRoute
+  '/tools/redact': typeof ToolsRedactRoute
   '/tools/reorder': typeof ToolsReorderRoute
+  '/tools/repair': typeof ToolsRepairRoute
   '/tools/rotate': typeof ToolsRotateRoute
+  '/tools/sign': typeof ToolsSignRoute
   '/tools/split': typeof ToolsSplitRoute
+  '/tools/unlock': typeof ToolsUnlockRoute
+  '/tools/watermark': typeof ToolsWatermarkRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -156,11 +282,25 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
+    | '/tools/crop'
+    | '/tools/edit'
+    | '/tools/grayscale'
+    | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
+    | '/tools/page-numbers'
+    | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
+    | '/tools/protect'
+    | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
+    | '/tools/sign'
     | '/tools/split'
+    | '/tools/unlock'
+    | '/tools/watermark'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,11 +312,25 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
+    | '/tools/crop'
+    | '/tools/edit'
+    | '/tools/grayscale'
+    | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
+    | '/tools/page-numbers'
+    | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
+    | '/tools/protect'
+    | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
+    | '/tools/sign'
     | '/tools/split'
+    | '/tools/unlock'
+    | '/tools/watermark'
   id:
     | '__root__'
     | '/'
@@ -188,11 +342,25 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/tools/compress'
+    | '/tools/convert'
+    | '/tools/crop'
+    | '/tools/edit'
+    | '/tools/grayscale'
+    | '/tools/images-to-pdf'
     | '/tools/merge'
     | '/tools/ocr'
+    | '/tools/page-numbers'
+    | '/tools/pdf-to-images'
+    | '/tools/pdf-to-word'
+    | '/tools/protect'
+    | '/tools/redact'
     | '/tools/reorder'
+    | '/tools/repair'
     | '/tools/rotate'
+    | '/tools/sign'
     | '/tools/split'
+    | '/tools/unlock'
+    | '/tools/watermark'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -205,11 +373,25 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   ToolsCompressRoute: typeof ToolsCompressRoute
+  ToolsConvertRoute: typeof ToolsConvertRoute
+  ToolsCropRoute: typeof ToolsCropRoute
+  ToolsEditRoute: typeof ToolsEditRoute
+  ToolsGrayscaleRoute: typeof ToolsGrayscaleRoute
+  ToolsImagesToPdfRoute: typeof ToolsImagesToPdfRoute
   ToolsMergeRoute: typeof ToolsMergeRoute
   ToolsOcrRoute: typeof ToolsOcrRoute
+  ToolsPageNumbersRoute: typeof ToolsPageNumbersRoute
+  ToolsPdfToImagesRoute: typeof ToolsPdfToImagesRoute
+  ToolsPdfToWordRoute: typeof ToolsPdfToWordRoute
+  ToolsProtectRoute: typeof ToolsProtectRoute
+  ToolsRedactRoute: typeof ToolsRedactRoute
   ToolsReorderRoute: typeof ToolsReorderRoute
+  ToolsRepairRoute: typeof ToolsRepairRoute
   ToolsRotateRoute: typeof ToolsRotateRoute
+  ToolsSignRoute: typeof ToolsSignRoute
   ToolsSplitRoute: typeof ToolsSplitRoute
+  ToolsUnlockRoute: typeof ToolsUnlockRoute
+  ToolsWatermarkRoute: typeof ToolsWatermarkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -270,11 +452,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/watermark': {
+      id: '/tools/watermark'
+      path: '/tools/watermark'
+      fullPath: '/tools/watermark'
+      preLoaderRoute: typeof ToolsWatermarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/unlock': {
+      id: '/tools/unlock'
+      path: '/tools/unlock'
+      fullPath: '/tools/unlock'
+      preLoaderRoute: typeof ToolsUnlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/split': {
       id: '/tools/split'
       path: '/tools/split'
       fullPath: '/tools/split'
       preLoaderRoute: typeof ToolsSplitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/sign': {
+      id: '/tools/sign'
+      path: '/tools/sign'
+      fullPath: '/tools/sign'
+      preLoaderRoute: typeof ToolsSignRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/rotate': {
@@ -284,11 +487,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsRotateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/repair': {
+      id: '/tools/repair'
+      path: '/tools/repair'
+      fullPath: '/tools/repair'
+      preLoaderRoute: typeof ToolsRepairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/reorder': {
       id: '/tools/reorder'
       path: '/tools/reorder'
       fullPath: '/tools/reorder'
       preLoaderRoute: typeof ToolsReorderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/redact': {
+      id: '/tools/redact'
+      path: '/tools/redact'
+      fullPath: '/tools/redact'
+      preLoaderRoute: typeof ToolsRedactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/protect': {
+      id: '/tools/protect'
+      path: '/tools/protect'
+      fullPath: '/tools/protect'
+      preLoaderRoute: typeof ToolsProtectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/pdf-to-word': {
+      id: '/tools/pdf-to-word'
+      path: '/tools/pdf-to-word'
+      fullPath: '/tools/pdf-to-word'
+      preLoaderRoute: typeof ToolsPdfToWordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/pdf-to-images': {
+      id: '/tools/pdf-to-images'
+      path: '/tools/pdf-to-images'
+      fullPath: '/tools/pdf-to-images'
+      preLoaderRoute: typeof ToolsPdfToImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/page-numbers': {
+      id: '/tools/page-numbers'
+      path: '/tools/page-numbers'
+      fullPath: '/tools/page-numbers'
+      preLoaderRoute: typeof ToolsPageNumbersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/ocr': {
@@ -303,6 +548,41 @@ declare module '@tanstack/react-router' {
       path: '/tools/merge'
       fullPath: '/tools/merge'
       preLoaderRoute: typeof ToolsMergeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/images-to-pdf': {
+      id: '/tools/images-to-pdf'
+      path: '/tools/images-to-pdf'
+      fullPath: '/tools/images-to-pdf'
+      preLoaderRoute: typeof ToolsImagesToPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/grayscale': {
+      id: '/tools/grayscale'
+      path: '/tools/grayscale'
+      fullPath: '/tools/grayscale'
+      preLoaderRoute: typeof ToolsGrayscaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/edit': {
+      id: '/tools/edit'
+      path: '/tools/edit'
+      fullPath: '/tools/edit'
+      preLoaderRoute: typeof ToolsEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/crop': {
+      id: '/tools/crop'
+      path: '/tools/crop'
+      fullPath: '/tools/crop'
+      preLoaderRoute: typeof ToolsCropRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/convert': {
+      id: '/tools/convert'
+      path: '/tools/convert'
+      fullPath: '/tools/convert'
+      preLoaderRoute: typeof ToolsConvertRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/compress': {
@@ -325,11 +605,25 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   ToolsCompressRoute: ToolsCompressRoute,
+  ToolsConvertRoute: ToolsConvertRoute,
+  ToolsCropRoute: ToolsCropRoute,
+  ToolsEditRoute: ToolsEditRoute,
+  ToolsGrayscaleRoute: ToolsGrayscaleRoute,
+  ToolsImagesToPdfRoute: ToolsImagesToPdfRoute,
   ToolsMergeRoute: ToolsMergeRoute,
   ToolsOcrRoute: ToolsOcrRoute,
+  ToolsPageNumbersRoute: ToolsPageNumbersRoute,
+  ToolsPdfToImagesRoute: ToolsPdfToImagesRoute,
+  ToolsPdfToWordRoute: ToolsPdfToWordRoute,
+  ToolsProtectRoute: ToolsProtectRoute,
+  ToolsRedactRoute: ToolsRedactRoute,
   ToolsReorderRoute: ToolsReorderRoute,
+  ToolsRepairRoute: ToolsRepairRoute,
   ToolsRotateRoute: ToolsRotateRoute,
+  ToolsSignRoute: ToolsSignRoute,
   ToolsSplitRoute: ToolsSplitRoute,
+  ToolsUnlockRoute: ToolsUnlockRoute,
+  ToolsWatermarkRoute: ToolsWatermarkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

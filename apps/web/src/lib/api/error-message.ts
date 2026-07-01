@@ -1,11 +1,17 @@
 const MESSAGES: Record<string, string> = {
-  pdf_encrypted: "This PDF is password-protected. Remove the password and try again.",
+  pdf_encrypted:
+    "This PDF is password-protected. Re-open it here and enter the password to continue.",
+  pdf_wrong_password: "That password didn't unlock the PDF. Re-open it and try again.",
   pdf_malformed: "This PDF appears to be damaged. Re-export it and upload again.",
   pdf_signature_invalid: "That file isn't a valid PDF.",
   upload_not_found_in_storage: "The upload didn't reach our storage. Try uploading again.",
   upload_already_confirmed: "This file was already processed. Start a new job.",
   ocr_not_configured: "OCR isn't available on this server right now.",
-  quota_exceeded: "You've reached your limit. Sign up for more, or try again later.",
+  file_too_large:
+    "This file is over the size limit. Sign in for larger uploads, or try a smaller file.",
+  payload_too_large: "This file is over the size limit. Try a smaller file.",
+  quota_exceeded:
+    "You've hit your daily free limit. Sign in for a higher limit, or try again tomorrow.",
   rate_limited: "Too many requests. Please wait a moment and try again.",
   document_not_found: "We couldn't find that file. Upload it again.",
   job_not_found: "We couldn't find that job. Try starting over.",

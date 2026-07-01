@@ -1,4 +1,4 @@
-import { Scissors } from "lucide-react";
+import { FileWarning, Scissors } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { type PageRange, PageRangeBuilder } from "@/components/shared/page-range-builder";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,29 @@ import {
 import { useFilePageCount } from "@/features/pdf-tools/use-file-page-count";
 import { useSingleFileJobRunner } from "@/features/pdf-tools/use-single-file-job";
 import { InspectorFrame, InspectorSection } from "@/features/studio/inspector-frame";
+import { PARSE_MAX_BYTES } from "@/features/studio/page-canvas";
 import { StageCanvas } from "@/features/studio/stage-canvas";
 import { StudioLayout } from "@/features/studio/studio-layout";
 import type { SingleToolProps } from "@/features/studio/types";
+
+function TooLargeNotice() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-50/60 p-6 text-center dark:bg-amber-950/20">
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <FileWarning className="size-5" strokeWidth={2.1} />
+      </span>
+      <div className="flex flex-col gap-1">
+        <p className="font-display text-sm font-semibold text-foreground">
+          Too large to split here
+        </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          This file is over 150 MB, so it can't be previewed and split in the browser. Compress it
+          first, or use a file under 150 MB.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const DEFAULT_OPTIONS: SplitOptions = {
   combineIntoSingle: false,
@@ -28,6 +48,7 @@ const DEFAULT_OPTIONS: SplitOptions = {
 
 export function SplitTool({ file, onReplaceFile, onRemove, onLaunched }: SingleToolProps) {
   const { pageCount } = useFilePageCount(file);
+  const tooLarge = pageCount == null && file.size > PARSE_MAX_BYTES;
   const [mode, setMode] = useState<SplitMode>("ranges");
   const [ranges, setRanges] = useState<PageRange[]>([{ from: 1, to: 1 }]);
   const [everyN, setEveryN] = useState(2);
@@ -111,72 +132,85 @@ export function SplitTool({ file, onReplaceFile, onRemove, onLaunched }: SingleT
         <InspectorFrame
           toolId="split"
           footer={
-            <Button variant="molten" size="lg" onClick={onRun} disabled={!ready} className="w-full">
-              {submitting ? <Spinner /> : <Scissors />}
-              {submitting ? "Starting…" : "Split PDF"}
-            </Button>
+            tooLarge ? null : (
+              <Button
+                variant="molten"
+                size="lg"
+                onClick={onRun}
+                disabled={!ready}
+                className="w-full"
+              >
+                {submitting ? <Spinner /> : <Scissors />}
+                {submitting ? "Starting…" : "Split PDF"}
+              </Button>
+            )
           }
         >
-          <InspectorSection label="Split mode">
-            <Segmented<SplitMode>
-              value={mode}
-              onChange={setMode}
-              ariaLabel="Split mode"
-              options={[
-                { value: "ranges", label: "Ranges" },
-                { value: "every_n", label: "Every N" },
-                { value: "single_pages", label: "Each page" },
-              ]}
-            />
-          </InspectorSection>
-
-          {mode === "ranges" ? (
-            <InspectorSection label="Page ranges">
-              <PageRangeBuilder
-                pageCount={pageCount}
-                ranges={ranges}
-                onChange={setRanges}
-                disabled={submitting}
-                compact
-              />
-              <label
-                htmlFor="combine-single"
-                className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 p-3"
-              >
-                <span className="text-xs">
-                  <span className="font-medium">Combine into one PDF</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    Otherwise you get a ZIP of separate files
-                  </span>
-                </span>
-                <Switch
-                  id="combine-single"
-                  checked={options.combineIntoSingle}
-                  onCheckedChange={(v) => setOptions((o) => ({ ...o, combineIntoSingle: v }))}
+          {tooLarge ? <TooLargeNotice /> : null}
+          {tooLarge ? null : (
+            <>
+              <InspectorSection label="Split mode">
+                <Segmented<SplitMode>
+                  value={mode}
+                  onChange={setMode}
+                  ariaLabel="Split mode"
+                  options={[
+                    { value: "ranges", label: "Ranges" },
+                    { value: "every_n", label: "Every N" },
+                    { value: "single_pages", label: "Each page" },
+                  ]}
                 />
-              </label>
-            </InspectorSection>
-          ) : null}
+              </InspectorSection>
 
-          {mode === "every_n" ? (
-            <InspectorSection label="Pages per file">
-              <NumberInput
-                value={everyN}
-                onChange={setEveryN}
-                min={1}
-                max={pageCount ?? 10000}
-                disabled={submitting || pageCount == null}
-                ariaLabel="Pages per file"
-              />
-            </InspectorSection>
-          ) : null}
+              {mode === "ranges" ? (
+                <InspectorSection label="Page ranges">
+                  <PageRangeBuilder
+                    pageCount={pageCount}
+                    ranges={ranges}
+                    onChange={setRanges}
+                    disabled={submitting}
+                    compact
+                  />
+                  <label
+                    htmlFor="combine-single"
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/30 p-3"
+                  >
+                    <span className="text-xs">
+                      <span className="font-medium">Combine into one PDF</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        Otherwise you get a ZIP of separate files
+                      </span>
+                    </span>
+                    <Switch
+                      id="combine-single"
+                      checked={options.combineIntoSingle}
+                      onCheckedChange={(v) => setOptions((o) => ({ ...o, combineIntoSingle: v }))}
+                    />
+                  </label>
+                </InspectorSection>
+              ) : null}
 
-          {outputPreview ? (
-            <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs">
-              <span className="font-medium text-foreground">You'll get:</span>{" "}
-              <span className="text-muted-foreground">{outputPreview}</span>
-            </div>
-          ) : null}
+              {mode === "every_n" ? (
+                <InspectorSection label="Pages per file">
+                  <NumberInput
+                    value={everyN}
+                    onChange={setEveryN}
+                    min={1}
+                    max={pageCount ?? 10000}
+                    disabled={submitting || pageCount == null}
+                    ariaLabel="Pages per file"
+                  />
+                </InspectorSection>
+              ) : null}
+
+              {outputPreview ? (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs">
+                  <span className="font-medium text-foreground">You'll get:</span>{" "}
+                  <span className="text-muted-foreground">{outputPreview}</span>
+                </div>
+              ) : null}
+            </>
+          )}
         </InspectorFrame>
       }
     />

@@ -19,13 +19,13 @@ export function Progress({ value = 0, indeterminate = false, className }: Progre
     >
       {indeterminate ? (
         <motion.div
-          className="absolute inset-y-0 w-2/5 rounded-full bg-molten"
+          className="absolute inset-y-0 w-2/5 rounded-full bg-primary"
           animate={{ x: ["-100%", "300%"] }}
           transition={{ duration: 1.3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         />
       ) : (
         <motion.div
-          className="h-full rounded-full bg-molten"
+          className="h-full rounded-full bg-primary"
           initial={false}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}

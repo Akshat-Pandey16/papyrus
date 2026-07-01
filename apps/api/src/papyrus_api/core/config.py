@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"  # noqa: S104
     api_port: int = 8000
     api_public_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8000")
+    web_public_url: str = "http://localhost:5173"
     api_cors_origins: CsvList = Field(default_factory=lambda: ["http://localhost:5173"])
 
     database_url: str = "postgresql+asyncpg://papyrus:papyrus@localhost:5432/papyrus"
@@ -59,6 +60,8 @@ class Settings(BaseSettings):
     database_max_overflow: int = 20
     database_pool_timeout: int = 30
     database_echo: bool = False
+    worker_database_pool_size: int = 2
+    worker_database_max_overflow: int = 2
 
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = 50
@@ -78,10 +81,13 @@ class Settings(BaseSettings):
     s3_lifecycle_expiry_days: int = 1
 
     clamav_enabled: bool = False
+    clamav_fail_closed: bool = True
     clamav_host: str = "localhost"
     clamav_port: int = 3310
     clamav_timeout_seconds: int = 30
     clamav_max_scan_bytes: int = 200 * 1024 * 1024
+
+    anon_mint_daily_limit_per_ip: int = 50
 
     jwt_secret: SecretStr = SecretStr("change-me")
     jwt_issuer: str = "papyrus"
@@ -119,13 +125,27 @@ class Settings(BaseSettings):
     max_rotate_pages: int = 10_000
     max_split_parts: int = 5_000
 
+    image_allowed_content_types: CsvList = Field(
+        default_factory=lambda: ["image/jpeg", "image/png", "image/webp"]
+    )
+    images_to_pdf_max_count: int = 200
+    pdf_to_images_max_pages: int = 1_000
+    raster_dpi_default: int = 150
+    raster_dpi_max: int = 300
+    raster_max_megapixels: int = 40
+    redact_dpi: int = 200
+    overlay_max_ops: int = 2_000
+    job_secret_ttl_seconds: int = 1_800
+
     max_request_body_bytes: int = 1024 * 1024
     sse_max_streams_per_user: int = 8
     max_inflight_jobs_per_org: int = 25
     job_lock_ttl_seconds: int = 1800
     pending_job_timeout_seconds: int = 900
+    running_job_timeout_seconds: int = 1_200
+    worker_max_memory_per_child_kb: int = 1_500_000
 
-    subprocess_cpu_seconds: int = 0
+    subprocess_cpu_seconds: int = 900
     subprocess_memory_limit_mb: int = 0
     ocr_jobs: int = 1
     ocr_max_image_mpixels: int = 256
@@ -170,6 +190,26 @@ class Settings(BaseSettings):
         if self.token_pepper is not None and self.token_pepper.get_secret_value() in weak:
             raise ValueError("token_pepper must be a strong value when set.")
         return self
+
+    def production_warnings(self) -> list[str]:
+        if self.papyrus_env is not Environment.PRODUCTION:
+            return []
+        warnings: list[str] = []
+        if not self.trusted_proxies:
+            warnings.append(
+                "TRUSTED_PROXIES is empty: behind a reverse proxy every client shares one "
+                "rate-limit/lockout bucket. Set it to your proxy/ingress CIDR."
+            )
+        if self.s3_sse is None:
+            warnings.append(
+                "S3_SSE is unset: uploaded files are stored unencrypted at rest. "
+                "Set S3_SSE=AES256 (or aws:kms) for encryption at rest."
+            )
+        if not self.clamav_enabled:
+            warnings.append(
+                "CLAMAV_ENABLED is false: uploads are not malware-scanned in production."
+            )
+        return warnings
 
     @property
     def is_development(self) -> bool:

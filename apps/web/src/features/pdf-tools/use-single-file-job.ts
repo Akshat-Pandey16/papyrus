@@ -1,9 +1,12 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
+import type { UploadContentType } from "@/features/pdf-compress/api";
 import { usePdfUpload } from "@/features/pdf-compress/hooks/use-pdf-upload";
 import { type UploadKind, useUploadStore } from "@/features/pdf-compress/store";
 import type { CompressionLevel } from "@/features/pdf-compress/types";
+import { setDocumentPassword } from "@/features/pdf-tools/api";
+import { getFilePassword } from "@/features/studio/page-canvas";
 import { ApiError } from "@/lib/api/client";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { randomUUID } from "@/lib/uuid";
@@ -12,6 +15,7 @@ export type RunArgs = {
   file: File;
   kind: UploadKind;
   level?: CompressionLevel;
+  contentType?: UploadContentType;
   createJob: (documentId: string, idempotencyKey: string) => Promise<{ id: string }>;
 };
 
@@ -22,7 +26,7 @@ export function useSingleFileJobRunner() {
   const { start: doUpload, cancel } = usePdfUpload();
 
   const run = useCallback(
-    async ({ file, kind, level = "medium", createJob }: RunArgs) => {
+    async ({ file, kind, level = "medium", contentType, createJob }: RunArgs) => {
       if (submitting) return null;
       setSubmitting(true);
       const clientUploadId = randomUUID();
@@ -42,8 +46,14 @@ export function useSingleFileJobRunner() {
       });
       try {
         await ensureAnonymousSession();
-        const result = await doUpload({ clientUploadId, file });
+        const result = await doUpload({
+          clientUploadId,
+          file,
+          ...(contentType ? { contentType } : {}),
+        });
         updateUpload(clientUploadId, { documentId: result.documentId });
+        const password = getFilePassword(file);
+        if (password) await setDocumentPassword(result.documentId, password);
         const job = await createJob(result.documentId, idempotencyKey);
         updateUpload(clientUploadId, { jobId: job.id, phase: "queued" });
         return { clientUploadId, jobId: job.id };

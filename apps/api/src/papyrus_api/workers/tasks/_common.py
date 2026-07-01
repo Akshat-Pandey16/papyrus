@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+import anyio
 import structlog
 from botocore.exceptions import BotoCoreError, ClientError
 from celery import Task
@@ -14,6 +15,7 @@ from papyrus_api.db.session import get_sessionmaker
 from papyrus_api.domain.jobs.enums import JobStatus
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.job_service import JobService
+from papyrus_api.services.pdf.security import decrypt_for_processing
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
@@ -72,6 +74,49 @@ async def purge_input(
         log.warning("jobs.zero_retention.input_purge_failed", bucket=bucket, error=str(exc))
 
 
+async def discard_output(
+    storage: StorageService,
+    bucket: str | None,
+    key: str | None,
+) -> None:
+    if not bucket or not key:
+        return
+    try:
+        await storage.delete(bucket=bucket, key=key)
+    except Exception as exc:
+        log.warning("jobs.output.discard_failed", bucket=bucket, error=str(exc))
+
+
+async def refund_job_quota(organization_id: UUID | None) -> None:
+    if organization_id is None:
+        return
+    from papyrus_api.integrations.redis import get_redis, release_daily_quota
+
+    await release_daily_quota(get_redis(), namespace="jobs", principal_id=str(organization_id))
+
+
+async def decrypt_input_if_needed(
+    *,
+    redis: Redis,
+    organization_id: UUID | None,
+    document_id: object,
+    input_path: Path,
+) -> bool:
+    if organization_id is None or not isinstance(document_id, str) or not document_id:
+        return False
+    from papyrus_api.integrations.redis import input_password_key
+
+    try:
+        password = await redis.get(input_password_key(organization_id, document_id))
+    except Exception:
+        password = None
+    if not password:
+        return False
+    return await anyio.to_thread.run_sync(
+        lambda: decrypt_for_processing(input_path=input_path, password=password)
+    )
+
+
 async def check_cancelled(redis: Redis, job_id: UUID) -> None:
     try:
         flag = await redis.get(f"job:cancel:{job_id}")
@@ -104,31 +149,49 @@ async def fail_job(
     code: str,
     message: str,
 ) -> bool:
-    if session is not None:
-        repo = JobRepository(session)
-        result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
-        if result is None:
-            return False
-        await JobEventRepository(session).append(
-            job_id=job_id,
-            status=JobStatus.FAILED,
-            payload={"phase": "failed", "error_code": code, "error_message": message},
-        )
-        await session.commit()
-        return True
-    sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
-    async with sm() as s:
+    async def _mark(s: AsyncSession) -> tuple[UUID, dict[str, Any]] | None:
         repo = JobRepository(s)
         result = await repo.mark_failed(job_id=job_id, error_code=code, error_message=message)
         if result is None:
-            return False
+            return None
+        organization_id = result.organization_id
+        params = dict(result.params or {})
         await JobEventRepository(s).append(
             job_id=job_id,
             status=JobStatus.FAILED,
             payload={"phase": "failed", "error_code": code, "error_message": message},
         )
         await s.commit()
-        return True
+        return organization_id, params
+
+    if session is not None:
+        marked = await _mark(session)
+    else:
+        sm = sessionmaker if sessionmaker is not None else get_sessionmaker()
+        async with sm() as s:
+            marked = await _mark(s)
+    if marked is None:
+        return False
+    organization_id, params = marked
+    await refund_job_quota(organization_id)
+    await _purge_inputs_if_zero_retention(params)
+    return True
+
+
+async def _purge_inputs_if_zero_retention(params: dict[str, Any]) -> None:
+    from papyrus_api.core.config import settings
+    from papyrus_api.services.storage_service import StorageService
+
+    if not (settings.zero_retention_mode or params.get("zero_retention")):
+        return
+    storage = StorageService()
+    inputs = params.get("inputs")
+    if isinstance(inputs, list):
+        for item in inputs:
+            if isinstance(item, dict):
+                await purge_input(storage, item.get("input_bucket"), item.get("input_key"))
+    else:
+        await purge_input(storage, params.get("input_bucket"), params.get("input_key"))
 
 
 async def release_lock(redis: Redis, job_id: UUID, task_id: str) -> None:

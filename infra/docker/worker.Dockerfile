@@ -36,8 +36,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ghostscript \
         tesseract-ocr \
         ocrmypdf \
+        libreoffice-writer \
+        libreoffice-calc \
+        libreoffice-impress \
+        fonts-dejavu \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 10001 -g root papyrus
+
+ENV HOME=/tmp
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /app/apps/api /app/apps/api
@@ -46,4 +52,4 @@ WORKDIR /app/apps/api
 USER 10001
 
 ENTRYPOINT ["tini", "--"]
-CMD ["celery", "-A", "papyrus_api.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=4"]
+CMD ["celery", "-A", "papyrus_api.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=4", "-Q", "default,pdf,pdf-heavy,cleanup"]

@@ -9,10 +9,10 @@ export function Slider({ className, ...props }: ComponentProps<typeof SliderPrim
       {...props}
     >
       <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-muted">
-        <SliderPrimitive.Range className="absolute h-full bg-molten" />
+        <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
-        className="block size-5 rounded-full border-2 border-primary bg-[oklch(0.97_0.012_85)] shadow-clay-sm outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+        className="block size-5 rounded-full border-2 border-primary bg-knob shadow-clay-sm outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 disabled:pointer-events-none disabled:opacity-50"
         aria-label="Value"
       />
     </SliderPrimitive.Root>

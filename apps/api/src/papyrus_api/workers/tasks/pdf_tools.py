@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import json
 import tempfile
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -21,10 +23,19 @@ from papyrus_api.integrations.redis import get_redis
 from papyrus_api.repositories.documents import StorageObjectRepository
 from papyrus_api.repositories.jobs import JobEventRepository, JobRepository
 from papyrus_api.services.pdf.compress import CompressionLevel, options_from_payload
+from papyrus_api.services.pdf.convert import DOCX_CONTENT_TYPE, office_to_pdf, pdf_to_word
+from papyrus_api.services.pdf.crop import crop_pdf, normalize_box
+from papyrus_api.services.pdf.grayscale import grayscale_pdf
 from papyrus_api.services.pdf.ocr import OcrNotConfiguredError, ocr_pdf
+from papyrus_api.services.pdf.page_numbers import PageNumberOptions, number_pages_pdf
+from papyrus_api.services.pdf.pdf_to_images import ImageFormat, pdf_to_images
+from papyrus_api.services.pdf.redact import redact_pdf, redactions_from_payload
 from papyrus_api.services.pdf.reorder import reorder_pdf
+from papyrus_api.services.pdf.repair import repair_pdf
 from papyrus_api.services.pdf.rotate import rotate_pdf
+from papyrus_api.services.pdf.security import protect_pdf, unlock_pdf
 from papyrus_api.services.pdf.split import SplitMode, SplitOptions, split_pdf
+from papyrus_api.services.pdf.watermark import WatermarkOptions, watermark_pdf
 from papyrus_api.services.storage_service import StorageService
 from papyrus_api.workers.celery_app import celery_app
 from papyrus_api.workers.runtime import run_async
@@ -34,6 +45,8 @@ from papyrus_api.workers.tasks._common import (
     TransientStorageError,
     check_cancelled,
     classify_storage_error,
+    decrypt_input_if_needed,
+    discard_output,
     fail_job,
     publish,
     purge_input,
@@ -54,6 +67,47 @@ def _max_pages(params: dict[str, Any]) -> int | None:
     return None
 
 
+async def _read_job_secret(params: dict[str, Any]) -> dict[str, Any]:
+    ref = params.get("secret_ref")
+    if not isinstance(ref, str) or not ref:
+        return {}
+    redis = get_redis()
+    raw = await redis.get(ref)
+    with contextlib.suppress(Exception):
+        await redis.delete(ref)
+    if raw is None:
+        return {}
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _rgb_param(raw: object, default: tuple[float, float, float]) -> tuple[float, float, float]:
+    if isinstance(raw, (list, tuple)) and len(raw) == 3:
+        try:
+            values = [max(0.0, min(1.0, float(c))) for c in raw]
+            return (values[0], values[1], values[2])
+        except (TypeError, ValueError):
+            return default
+    return default
+
+
+def _float_param(raw: object, default: float) -> float:
+    if isinstance(raw, bool):
+        return default
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    return default
+
+
+def _int_param(raw: object, default: int, *, lo: int, hi: int) -> int:
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return default
+    return max(lo, min(hi, int(raw)))
+
+
 async def _run_simple_job(
     *,
     task_id: str,
@@ -62,6 +116,7 @@ async def _run_simple_job(
     process: ProcessFn,
     output_extension: str = "pdf",
     output_content_type: str = "application/pdf",
+    decrypt: bool = True,
 ) -> None:
     redis = get_redis()
     lock_key = f"job:lock:{job_id}"
@@ -136,7 +191,13 @@ async def _run_simple_job(
 
         with tempfile.TemporaryDirectory(prefix=f"papyrus-{kind_label}-") as tmp_root:
             tmp_dir = Path(tmp_root)
-            input_path = tmp_dir / "input.pdf"
+            input_name = params.get("input_filename")
+            input_ext = (
+                Path(input_name).suffix.lstrip(".").lower()
+                if isinstance(input_name, str) and "." in input_name
+                else "pdf"
+            )
+            input_path = tmp_dir / f"input.{input_ext or 'pdf'}"
             output_path = tmp_dir / f"output.{output_extension}"
 
             try:
@@ -153,6 +214,13 @@ async def _run_simple_job(
 
             await scan_input(input_path)
             await check_cancelled(redis, job_id)
+            if decrypt and kind_label != "unlock":
+                await decrypt_input_if_needed(
+                    redis=redis,
+                    organization_id=organization_id,
+                    document_id=params.get("document_id"),
+                    input_path=input_path,
+                )
 
             async with sessionmaker() as session:
                 await JobEventRepository(session).append(
@@ -227,6 +295,7 @@ async def _run_simple_job(
                 )
                 if succeeded is None:
                     await session.rollback()
+                    await discard_output(storage, output_bucket, output_key)
                     log.info("jobs.tool.succeed_blocked", job_id=str(job_id))
                     return
                 event_payload = {
@@ -463,6 +532,205 @@ async def _ocr_process(
     }
 
 
+async def _protect_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    secret = await _read_job_secret(params)
+    user_password = secret.get("user_password")
+    if not isinstance(user_password, str) or not user_password:
+        raise AppError("Password is missing for this job.")
+    owner_raw = secret.get("owner_password")
+    owner_password = owner_raw if isinstance(owner_raw, str) and owner_raw else None
+    allow_printing = bool(params.get("allow_printing", True))
+    allow_copying = bool(params.get("allow_copying", False))
+    result = await anyio.to_thread.run_sync(
+        lambda: protect_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            user_password=user_password,
+            owner_password=owner_password,
+            allow_printing=allow_printing,
+            allow_copying=allow_copying,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "encrypted": result.encrypted,
+    }
+
+
+async def _unlock_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    secret = await _read_job_secret(params)
+    password = secret.get("password")
+    if not isinstance(password, str):
+        password = ""
+    result = await anyio.to_thread.run_sync(
+        lambda: unlock_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            password=password,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "encrypted": result.encrypted,
+    }
+
+
+async def _watermark_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    text = params.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise AppError("Watermark text is missing.")
+    options = WatermarkOptions(
+        text=text,
+        color=_rgb_param(params.get("color"), (0.6, 0.6, 0.6)),
+        opacity=max(0.05, min(1.0, _float_param(params.get("opacity"), 0.25))),
+        size=max(6.0, min(200.0, _float_param(params.get("size"), 48.0))),
+        rotation=_float_param(params.get("rotation"), 45.0),
+        tile=bool(params.get("tile", True)),
+        font=str(params.get("font") or "Helvetica-Bold"),
+    )
+    result = await anyio.to_thread.run_sync(
+        lambda: watermark_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            options=options,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "ops_applied": result.ops_applied,
+    }
+
+
+async def _page_numbers_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    options = PageNumberOptions(
+        fmt=str(params.get("format") or "{n}"),
+        position=str(params.get("position") or "bottom-center"),
+        start_at=_int_param(params.get("start_at"), 1, lo=0, hi=1_000_000),
+        size=max(6.0, min(72.0, _float_param(params.get("size"), 11.0))),
+        color=_rgb_param(params.get("color"), (0.1, 0.1, 0.1)),
+        font=str(params.get("font") or "Helvetica"),
+    )
+    result = await anyio.to_thread.run_sync(
+        lambda: number_pages_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            options=options,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "ops_applied": result.ops_applied,
+    }
+
+
+async def _crop_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    box = normalize_box(params.get("box"))
+    pages_raw = params.get("pages")
+    pages = (
+        [int(p) for p in pages_raw if isinstance(p, (int, float)) and not isinstance(p, bool)]
+        if isinstance(pages_raw, list)
+        else None
+    )
+    result = await anyio.to_thread.run_sync(
+        lambda: crop_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            box=box,
+            pages=pages,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "pages_cropped": result.pages_cropped,
+    }
+
+
+async def _pdf_to_images_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    fmt_raw = str(params.get("image_format") or "jpeg")
+    try:
+        image_format = ImageFormat(fmt_raw)
+    except ValueError:
+        image_format = ImageFormat.JPEG
+    dpi = _int_param(
+        params.get("dpi"), settings.raster_dpi_default, lo=36, hi=settings.raster_dpi_max
+    )
+    quality = _int_param(params.get("quality"), 85, lo=30, hi=100)
+    actual_output = output_path.parent / "output.zip"
+    cap = _max_pages(params)
+    hard_cap = settings.pdf_to_images_max_pages
+    page_cap = min(cap, hard_cap) if cap else hard_cap
+    result = await anyio.to_thread.run_sync(
+        lambda: pdf_to_images(
+            input_path=input_path,
+            output_path=actual_output,
+            image_format=image_format,
+            dpi=dpi,
+            quality=quality,
+            max_pages=page_cap,
+            max_megapixels=settings.raster_max_megapixels,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "images": result.images,
+        "image_format": result.image_format,
+        "_output_extension": "zip",
+        "_output_content_type": "application/zip",
+        "_output_path": str(actual_output),
+    }
+
+
+async def _redact_process(
+    input_path: Path, output_path: Path, params: dict[str, Any]
+) -> dict[str, Any]:
+    redactions = redactions_from_payload(params.get("redactions"))
+    dpi = _int_param(params.get("dpi"), settings.redact_dpi, lo=72, hi=settings.raster_dpi_max)
+    result = await anyio.to_thread.run_sync(
+        lambda: redact_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            redactions=redactions,
+            dpi=dpi,
+            max_megapixels=settings.raster_max_megapixels,
+            max_pages=_max_pages(params),
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+        "pages_redacted": result.pages_redacted,
+        "boxes_applied": result.boxes_applied,
+    }
+
+
 def _make_task(
     *,
     name: str,
@@ -470,6 +738,7 @@ def _make_task(
     label: str,
     extension: str = "pdf",
     content_type: str = "application/pdf",
+    decrypt: bool = True,
 ) -> Any:
     @celery_app.task(
         name=name,
@@ -492,6 +761,7 @@ def _make_task(
                 process=process,
                 output_extension=extension,
                 output_content_type=content_type,
+                decrypt=decrypt,
             )
         )
         return job_id
@@ -523,4 +793,153 @@ ocr_task = _make_task(
     name="papyrus.pdf.ocr",
     process=_ocr_process,
     label="ocr",
+)
+
+protect_task = _make_task(
+    name="papyrus.pdf.protect",
+    process=_protect_process,
+    label="protect",
+)
+
+unlock_task = _make_task(
+    name="papyrus.pdf.unlock",
+    process=_unlock_process,
+    label="unlock",
+)
+
+watermark_task = _make_task(
+    name="papyrus.pdf.watermark",
+    process=_watermark_process,
+    label="watermark",
+)
+
+page_numbers_task = _make_task(
+    name="papyrus.pdf.page_numbers",
+    process=_page_numbers_process,
+    label="page_numbers",
+)
+
+crop_task = _make_task(
+    name="papyrus.pdf.crop",
+    process=_crop_process,
+    label="crop",
+)
+
+pdf_to_images_task = _make_task(
+    name="papyrus.pdf.pdf_to_images",
+    process=_pdf_to_images_process,
+    label="pdf_to_images",
+    extension="zip",
+    content_type="application/zip",
+)
+
+redact_task = _make_task(
+    name="papyrus.pdf.redact",
+    process=_redact_process,
+    label="redact",
+)
+
+
+async def _convert_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    profile_dir = output_path.parent / f"lo-profile-{uuid4().hex}"
+    result = await anyio.to_thread.run_sync(
+        lambda: office_to_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            profile_dir=profile_dir,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+    }
+
+
+convert_task = _make_task(
+    name="papyrus.pdf.convert",
+    process=_convert_process,
+    label="convert",
+    decrypt=False,
+)
+
+
+async def _pdf_to_word_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    profile_dir = output_path.parent / f"lo-profile-{uuid4().hex}"
+    result = await anyio.to_thread.run_sync(
+        lambda: pdf_to_word(
+            input_path=input_path,
+            output_path=output_path,
+            profile_dir=profile_dir,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+    }
+
+
+pdf_to_word_task = _make_task(
+    name="papyrus.pdf.pdf_to_word",
+    process=_pdf_to_word_process,
+    label="pdf_to_word",
+    extension="docx",
+    content_type=DOCX_CONTENT_TYPE,
+)
+
+
+async def _repair_process(
+    input_path: Path,
+    output_path: Path,
+    _params: dict[str, Any],
+) -> dict[str, Any]:
+    result = await anyio.to_thread.run_sync(
+        lambda: repair_pdf(input_path=input_path, output_path=output_path)
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+repair_task = _make_task(
+    name="papyrus.pdf.repair",
+    process=_repair_process,
+    label="repair",
+    decrypt=False,
+)
+
+
+async def _grayscale_process(
+    input_path: Path,
+    output_path: Path,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    max_pages = params.get("max_pages")
+    result = await anyio.to_thread.run_sync(
+        lambda: grayscale_pdf(
+            input_path=input_path,
+            output_path=output_path,
+            max_pages=max_pages if isinstance(max_pages, int) else None,
+        )
+    )
+    return {
+        "output_size_bytes": result.output_size_bytes,
+        "input_size_bytes": result.input_size_bytes,
+        "page_count": result.page_count,
+    }
+
+
+grayscale_task = _make_task(
+    name="papyrus.pdf.grayscale",
+    process=_grayscale_process,
+    label="grayscale",
 )

@@ -38,13 +38,14 @@ async function withRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 type PdfViewport = { width: number; height: number };
+type PdfRenderTask = { promise: Promise<void>; cancel(): void };
 type PdfPage = {
   getViewport(opts: { scale: number }): PdfViewport;
   render(opts: {
     canvasContext: CanvasRenderingContext2D;
     viewport: PdfViewport;
     canvas: HTMLCanvasElement;
-  }): { promise: Promise<void> };
+  }): PdfRenderTask;
   cleanup(): void;
 };
 type PdfDoc = {
@@ -55,15 +56,90 @@ type PdfDoc = {
 };
 
 const TARGET_WIDTH = 224;
-const MAX_SCALE = 2;
+const MAX_DPR = 2;
+const MAX_CANVAS_WIDTH = 2200;
 const JPEG_QUALITY = 0.8;
 const DOC_CACHE_FILES = 2;
 const PREVIEW_TOO_LARGE = "preview_too_large";
 
-const renderCache = new Map<File, Map<number, string>>();
+const renderCache = new Map<File, Map<string, string>>();
 const docCache = new Map<File, Promise<PdfDoc>>();
+const inflightRenders = new Map<File, Set<PdfRenderTask>>();
+const filePasswords = new Map<File, string>();
+
+function isRenderCancelled(err: unknown): boolean {
+  return Boolean(err) && (err as { name?: string }).name === "RenderingCancelledException";
+}
+
+function trackRender(file: File, task: PdfRenderTask): void {
+  let set = inflightRenders.get(file);
+  if (!set) {
+    set = new Set();
+    inflightRenders.set(file, set);
+  }
+  set.add(task);
+}
+
+function untrackRender(file: File, task: PdfRenderTask): void {
+  const set = inflightRenders.get(file);
+  if (!set) return;
+  set.delete(task);
+  if (set.size === 0) inflightRenders.delete(file);
+}
+
+function cancelRenders(file: File): void {
+  const set = inflightRenders.get(file);
+  if (!set) return;
+  for (const task of set) task.cancel();
+  inflightRenders.delete(file);
+}
+
+function resolvePixelWidth(targetWidth: number): number {
+  const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+  return Math.min(MAX_CANVAS_WIDTH, Math.round(targetWidth * Math.min(MAX_DPR, dpr)));
+}
+
+function renderKey(index: number, pixelWidth: number): string {
+  return `${index}:${pixelWidth}`;
+}
+
+export function getFilePassword(file: File): string | undefined {
+  return filePasswords.get(file);
+}
+
+export function setFilePassword(file: File, password: string): void {
+  filePasswords.set(file, password);
+  evictFile(file);
+}
+
+export function isPasswordException(err: unknown): boolean {
+  return Boolean(err) && (err as { name?: string }).name === "PasswordException";
+}
+
+export async function probePdfNeedsPassword(file: File): Promise<boolean> {
+  try {
+    await getCachedDoc(file);
+    return false;
+  } catch (err) {
+    if (isPasswordException(err)) return true;
+    throw err;
+  }
+}
+
+export async function verifyPdfPassword(file: File, password: string): Promise<boolean> {
+  const pdfjs = await loadPdfjs();
+  const data = await file.arrayBuffer();
+  try {
+    const doc = (await pdfjs.getDocument({ data, password }).promise) as unknown as PdfDoc;
+    void doc.destroy().catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function evictFile(file: File): void {
+  cancelRenders(file);
   const urls = renderCache.get(file);
   if (urls) {
     for (const url of urls.values()) URL.revokeObjectURL(url);
@@ -81,10 +157,12 @@ export function getCachedDoc(file: File): Promise<PdfDoc> {
 function getDoc(file: File): Promise<PdfDoc> {
   let p = docCache.get(file);
   if (!p) {
+    const password = filePasswords.get(file);
     p = (async () => {
       const pdfjs = await loadPdfjs();
       const data = await file.arrayBuffer();
-      return (await pdfjs.getDocument({ data }).promise) as unknown as PdfDoc;
+      const params = password === undefined ? { data } : { data, password };
+      return (await pdfjs.getDocument(params).promise) as unknown as PdfDoc;
     })();
     docCache.set(file, p);
     while (docCache.size > DOC_CACHE_FILES) {
@@ -96,11 +174,16 @@ function getDoc(file: File): Promise<PdfDoc> {
   return p;
 }
 
-function fileCache(file: File): Map<number, string> {
+function fileCache(file: File): Map<string, string> {
   let m = renderCache.get(file);
   if (!m) {
     m = new Map();
     renderCache.set(file, m);
+    while (renderCache.size > DOC_CACHE_FILES) {
+      const oldest = renderCache.keys().next().value;
+      if (!oldest || oldest === file) break;
+      evictFile(oldest);
+    }
   }
   return m;
 }
@@ -121,7 +204,7 @@ function canvasToObjectUrl(canvas: HTMLCanvasElement): Promise<string> {
 export type PdfRenderer = {
   total: number | null;
   error: string | null;
-  renderPage: (index: number) => Promise<string | null>;
+  renderPage: (index: number, targetWidth?: number) => Promise<string | null>;
 };
 
 export function usePdfRenderer(file: File): PdfRenderer {
@@ -149,18 +232,20 @@ export function usePdfRenderer(file: File): PdfRenderer {
   }, [file]);
 
   const renderPage = useCallback(
-    async (index: number): Promise<string | null> => {
+    async (index: number, targetWidth: number = TARGET_WIDTH): Promise<string | null> => {
       if (file.size > PREVIEW_MAX_BYTES) return null;
+      const pixelWidth = resolvePixelWidth(targetWidth);
+      const key = renderKey(index, pixelWidth);
       const cache = fileCache(file);
-      const hit = cache.get(index);
+      const hit = cache.get(key);
       if (hit) return hit;
       const doc = await getDoc(file);
       return withRenderSlot(async () => {
-        const existing = cache.get(index);
+        const existing = cache.get(key);
         if (existing) return existing;
         const page = await doc.getPage(index);
         const unscaled = page.getViewport({ scale: 1 });
-        const scale = Math.min(MAX_SCALE, TARGET_WIDTH / unscaled.width);
+        const scale = pixelWidth / unscaled.width;
         const viewport = page.getViewport({ scale });
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
@@ -172,10 +257,20 @@ export function usePdfRenderer(file: File): PdfRenderer {
         }
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+        const task = page.render({ canvasContext: ctx, viewport, canvas });
+        trackRender(file, task);
+        try {
+          await task.promise;
+        } catch (err) {
+          page.cleanup();
+          if (isRenderCancelled(err)) return null;
+          throw err;
+        } finally {
+          untrackRender(file, task);
+        }
         page.cleanup();
         const url = await canvasToObjectUrl(canvas);
-        cache.set(index, url);
+        cache.set(key, url);
         return url;
       });
     },
@@ -185,7 +280,10 @@ export function usePdfRenderer(file: File): PdfRenderer {
   return { total, error, renderPage };
 }
 
-export function useLazyThumb(renderPage: (index: number) => Promise<string | null>, index: number) {
+export function useLazyThumb(
+  renderPage: (index: number, targetWidth?: number) => Promise<string | null>,
+  index: number,
+) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [src, setSrc] = useState<string | null>(null);
 
@@ -237,7 +335,7 @@ export function PageThumb({
     <>
       <div
         ref={imgRef}
-        className="relative w-full overflow-hidden rounded-lg bg-white shadow-inner"
+        className="relative w-full overflow-hidden rounded-md bg-white shadow-clay-sm ring-1 ring-black/[0.05]"
       >
         {src ? (
           <img
@@ -263,7 +361,7 @@ export function PageThumb({
           </span>
         ) : null}
         {order != null ? (
-          <span className="absolute top-1.5 left-1.5 grid size-6 place-items-center rounded-full bg-molten font-mono text-[11px] font-bold text-primary-foreground shadow-clay-sm">
+          <span className="absolute top-1.5 left-1.5 grid size-6 place-items-center rounded-full bg-primary font-mono text-[11px] font-bold text-primary-foreground shadow-clay-sm">
             {order}
           </span>
         ) : null}
@@ -305,11 +403,8 @@ export function PageCanvas({
     <div className={cn(PAGE_GRID_CLASS, className)}>
       {total == null
         ? Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={`skeleton-${i.toString()}`}
-              className="flex flex-col items-center gap-1.5 rounded-xl border border-border/70 bg-card p-1.5"
-            >
-              <div className="aspect-[3/4] w-full animate-pulse rounded-lg bg-muted" />
+            <div key={`skeleton-${i.toString()}`} className="flex flex-col items-center gap-1.5">
+              <div className="aspect-[3/4] w-full animate-pulse rounded-md bg-muted" />
               <span className="h-2.5 w-4 animate-pulse rounded bg-muted" />
             </div>
           ))
@@ -356,7 +451,7 @@ export function LargeFileNotice() {
 
 export function MorePagesTile({ count, hint }: { count: number; hint?: string }) {
   return (
-    <div className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-card/40 p-2 text-center">
+    <div className="flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border bg-card/40 p-2 text-center">
       <span className="font-display text-lg font-semibold text-foreground">+{count}</span>
       <span className="text-[10px] text-muted-foreground">{hint ?? "more pages"}</span>
     </div>
@@ -389,14 +484,14 @@ function LazyPage({
   const { ref, src } = useLazyThumb(renderPage, index);
 
   const cardClass = cn(
-    "group relative flex flex-col items-center gap-1.5 rounded-xl border p-1.5 outline-none transition-all duration-200",
+    "group relative flex flex-col items-center gap-1.5 rounded-lg p-1 outline-none transition-[transform,box-shadow] duration-200",
     interactive &&
-      "cursor-pointer hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-ring",
+      "cursor-pointer hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
     selected
-      ? "border-primary bg-primary/8 ring-2 ring-primary/30"
+      ? "ring-2 ring-primary ring-offset-2 ring-offset-canvas"
       : highlighted
-        ? "border-primary/50 bg-primary/5"
-        : "border-border/70 bg-card hover:border-primary/40",
+        ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-canvas"
+        : "",
   );
 
   if (interactive) {

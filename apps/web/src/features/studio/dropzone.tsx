@@ -3,27 +3,47 @@ import { motion } from "motion/react";
 import { type DragEvent, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { maxFileLabel, validatePdf } from "@/features/studio/validate";
+import { maxFileLabel, validateFor } from "@/features/studio/validate";
 import { cn } from "@/lib/utils";
 
 export type DropzoneProps = {
   onFiles: (files: File[]) => void;
   multi?: boolean;
+  accept?: "pdf" | "image" | "office";
   disabled?: boolean;
+  variant?: "full" | "panel";
+  showHeading?: boolean;
   className?: string;
 };
 
-export function Dropzone({ onFiles, multi = false, disabled = false, className }: DropzoneProps) {
+const ACCEPT_ATTR = {
+  pdf: "application/pdf",
+  image: "image/jpeg,image/png,image/webp",
+  office: ".doc,.docx,.odt,.xls,.xlsx,.ods,.ppt,.pptx,.odp",
+};
+
+export function Dropzone({
+  onFiles,
+  multi = false,
+  accept = "pdf",
+  disabled = false,
+  variant = "full",
+  showHeading = true,
+  className,
+}: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const inputId = useId();
   const [over, setOver] = useState(false);
+  const isPanel = variant === "panel";
+  const nouns = accept === "image" ? "images" : accept === "office" ? "documents" : "PDFs";
+  const aNoun = accept === "image" ? "an image" : accept === "office" ? "a document" : "a PDF";
 
-  const accept = (list: FileList | null) => {
+  const acceptFiles = (list: FileList | null) => {
     if (!list || disabled) return;
     const valid: File[] = [];
     for (const f of Array.from(list)) {
-      const err = validatePdf(f);
+      const err = validateFor(accept, f);
       if (err) {
         toast.error(`${f.name}: ${err}`);
         continue;
@@ -38,7 +58,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
     e.preventDefault();
     dragDepth.current = 0;
     setOver(false);
-    accept(e.dataTransfer.files);
+    acceptFiles(e.dataTransfer.files);
   };
 
   return (
@@ -46,7 +66,7 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
     <div
       role="button"
       tabIndex={0}
-      aria-label={multi ? "Drop PDFs or browse" : "Drop a PDF or browse"}
+      aria-label={multi ? `Drop ${nouns} or browse` : `Drop ${aNoun} or browse`}
       aria-disabled={disabled}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(e) => {
@@ -67,7 +87,8 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
       }}
       onDrop={onDrop}
       className={cn(
-        "group relative flex min-h-[58svh] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-colors sm:p-10",
+        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed text-center transition-colors",
+        isPanel ? "h-full min-h-[22rem] p-6 sm:p-8" : "min-h-[44svh] p-6 sm:p-10",
         over ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
         disabled && "pointer-events-none opacity-60",
         className,
@@ -79,19 +100,34 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         className="relative z-0 flex flex-col items-center gap-5"
       >
-        <motion.span
-          className="grid size-20 place-items-center rounded-3xl bg-molten text-primary-foreground shadow-ember"
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 4.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        <span
+          className={cn(
+            "grid place-items-center rounded-3xl bg-molten text-primary-foreground shadow-ember",
+            isPanel ? "size-16" : "size-20",
+          )}
         >
-          <ScrollText className="size-9" strokeWidth={2} />
-        </motion.span>
+          <ScrollText className={isPanel ? "size-7" : "size-9"} strokeWidth={2} />
+        </span>
         <div className="flex flex-col gap-2">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Drop a PDF{multi ? " or a few" : ""} to begin
-          </h2>
+          {showHeading ? (
+            <h2
+              className={cn(
+                "font-display font-semibold tracking-tight text-balance",
+                isPanel ? "text-2xl" : "text-3xl sm:text-4xl",
+              )}
+            >
+              Drop {multi ? nouns : aNoun} {isPanel ? "here" : "to begin"}
+            </h2>
+          ) : null}
           <p className="max-w-md text-sm text-muted-foreground sm:text-base">
-            Or click anywhere to browse. Up to {maxFileLabel()} · processed privately · gone in 24h.
+            {isPanel ? (
+              <>or click to browse · up to {maxFileLabel()}</>
+            ) : (
+              <>
+                Or click anywhere to browse. Up to {maxFileLabel()} · processed privately · gone in
+                24h.
+              </>
+            )}
           </p>
         </div>
         <Button
@@ -109,11 +145,11 @@ export function Dropzone({ onFiles, multi = false, disabled = false, className }
         ref={inputRef}
         id={inputId}
         type="file"
-        accept="application/pdf"
+        accept={ACCEPT_ATTR[accept]}
         multiple={multi}
         className="sr-only"
         onChange={(e) => {
-          accept(e.target.files);
+          acceptFiles(e.target.files);
           e.target.value = "";
         }}
       />

@@ -1,4 +1,24 @@
-export type ToolId = "compress" | "merge" | "split" | "rotate" | "reorder" | "ocr";
+export type ToolId =
+  | "compress"
+  | "merge"
+  | "split"
+  | "rotate"
+  | "reorder"
+  | "ocr"
+  | "protect"
+  | "unlock"
+  | "watermark"
+  | "page_numbers"
+  | "crop"
+  | "pdf_to_images"
+  | "images_to_pdf"
+  | "sign"
+  | "redact"
+  | "edit"
+  | "convert"
+  | "pdf_to_word"
+  | "repair"
+  | "grayscale";
 
 export type StudioFile = {
   id: string;

@@ -14,40 +14,31 @@ type AuthLayoutProps = {
 
 export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProps) {
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-oxblood text-white">
+    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-background text-foreground">
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <motion.div
-          className="absolute -top-1/3 -left-1/4 size-[62vmax] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(229,55,155,0.55), transparent 60%)" }}
-          animate={{ x: [0, 50, 0], y: [0, 36, 0] }}
-          transition={{ duration: 19, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+        <div
+          className="absolute inset-x-0 top-0 h-[65vh]"
+          style={{
+            background:
+              "radial-gradient(120% 75% at 50% -10%, color-mix(in oklch, var(--color-primary) 12%, transparent), transparent 62%)",
+          }}
         />
-        <motion.div
-          className="absolute -right-1/4 -bottom-1/3 size-[56vmax] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(225,70,106,0.55), transparent 60%)" }}
-          animate={{ x: [0, -46, 0], y: [0, -30, 0] }}
-          transition={{ duration: 23, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-1/3 left-1/2 size-[40vmax] -translate-x-1/2 rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(240,178,60,0.26), transparent 60%)" }}
-          animate={{ scale: [1, 1.15, 1] }}
-          transition={{ duration: 15, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        />
-        <div className="absolute inset-0 bg-grain opacity-[0.07] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-grain opacity-[0.03]" />
       </div>
 
       <header className="relative z-10 flex shrink-0 items-center justify-between p-5 sm:p-6">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="inline-flex items-center gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <LogoMark className="size-8" />
-          <span className="font-display text-base font-semibold tracking-tight">Papyrus</span>
+          <span className="font-display text-base font-semibold tracking-tight text-foreground">
+            Papyrus
+          </span>
         </Link>
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-2 text-sm text-white/85 backdrop-blur transition-colors hover:bg-white/20 hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/70 px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
           Home
@@ -56,10 +47,10 @@ export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProp
 
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-6">
         <motion.div
-          initial={{ opacity: 0, y: 22, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={springSoft}
-          className="w-full max-w-[460px] rounded-3xl border border-border/60 bg-popover p-7 text-popover-foreground shadow-clay-lg sm:p-9"
+          className="w-full max-w-[440px] rounded-2xl border border-border/70 bg-card p-7 text-card-foreground shadow-clay sm:p-9"
         >
           <div className="mb-7 flex flex-col gap-2">
             <h1 className="font-display text-[2rem] font-semibold tracking-tight">{title}</h1>
@@ -71,8 +62,8 @@ export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProp
       </main>
 
       <div className="relative z-10 flex shrink-0 justify-center px-4 pt-2 pb-5">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-xs text-white/75 backdrop-blur">
-          <ShieldCheck className="size-3.5" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-3.5 py-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5 text-primary/80" />
           Zero-retention · Files purged in 24h · Self-hostable
         </span>
       </div>

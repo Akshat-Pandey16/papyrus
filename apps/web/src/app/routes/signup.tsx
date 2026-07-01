@@ -56,7 +56,7 @@ function SignupPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Free forever for individuals. Upgrade for higher quotas and team features."
+      subtitle="Free forever. Keep your job history in one place, re-download for 24 hours, and your files stay yours — no tracking, ever."
       footer={
         <>
           Already have an account?{" "}

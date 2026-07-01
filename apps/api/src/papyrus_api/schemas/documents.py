@@ -15,7 +15,21 @@ class _MutableModel(StrictModel):
 
 class UploadInitiateRequest(_MutableModel):
     name: str = Field(min_length=1, max_length=255)
-    content_type: Literal["application/pdf"]
+    content_type: Literal[
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.spreadsheet",
+        "application/vnd.oasis.opendocument.presentation",
+        "application/msword",
+        "application/vnd.ms-excel",
+        "application/vnd.ms-powerpoint",
+    ]
     size_bytes: int = Field(ge=1)
 
 
@@ -36,6 +50,10 @@ class UploadInitiateResponse(StrictModel):
 
 class ConfirmUploadRequest(_MutableModel):
     etag: str | None = None
+
+
+class DocumentPasswordRequest(_MutableModel):
+    password: str = Field(min_length=1, max_length=512)
 
 
 class DocumentVersionOut(StrictModel):

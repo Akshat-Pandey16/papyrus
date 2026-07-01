@@ -18,12 +18,11 @@ export function ResultsDrawer({
   const direction = isDesktop ? "right" : "bottom";
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange} direction={direction}>
+    <Drawer.Root open={open} onOpenChange={onOpenChange} direction={direction} modal={false}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-oxblood/45 backdrop-blur-sm" />
         <Drawer.Content
           className={cn(
-            "fixed z-50 flex flex-col bg-popover text-popover-foreground outline-none",
+            "fixed z-50 flex flex-col bg-popover text-popover-foreground shadow-clay-lg outline-none",
             isDesktop
               ? "inset-y-0 right-0 w-[420px] max-w-[92vw] rounded-l-3xl border-l border-border/70"
               : "inset-x-0 bottom-0 max-h-[88svh] rounded-t-3xl border-t border-border/70",

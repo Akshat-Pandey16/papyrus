@@ -5,20 +5,35 @@ import { toast } from "sonner";
 import { ensureAnonymousSession } from "@/features/auth/ensure-session";
 import { useUploadStore } from "@/features/pdf-compress/store";
 import { useMergeStore } from "@/features/pdf-merge/store";
-import { Dropzone } from "@/features/studio/dropzone";
-import { ResultsDrawer } from "@/features/studio/results-drawer";
-import { isActivePhase, useSessionJobs } from "@/features/studio/session-jobs";
+import { JobAnnouncer } from "@/features/studio/job-announcer";
+import { JobStatusBar } from "@/features/studio/job-status-bar";
+import { PasswordGate } from "@/features/studio/password-gate";
 import { useStudioStore } from "@/features/studio/store";
-import { ToolDock } from "@/features/studio/tool-dock";
+import { StudioErrorBoundary } from "@/features/studio/studio-error-boundary";
+import { StudioHero } from "@/features/studio/studio-hero";
 import { TOOLS } from "@/features/studio/tools";
 import { CompressTool } from "@/features/studio/tools/compress-tool";
+import { ConvertTool } from "@/features/studio/tools/convert-tool";
+import { CropTool } from "@/features/studio/tools/crop-tool";
+import { EditTool } from "@/features/studio/tools/edit-tool";
+import { GrayscaleTool } from "@/features/studio/tools/grayscale-tool";
+import { ImagesToPdfTool } from "@/features/studio/tools/images-to-pdf-tool";
 import { MergeTool } from "@/features/studio/tools/merge-tool";
 import { OcrTool } from "@/features/studio/tools/ocr-tool";
+import { PageNumbersTool } from "@/features/studio/tools/page-numbers-tool";
+import { PdfToImagesTool } from "@/features/studio/tools/pdf-to-images-tool";
+import { PdfToWordTool } from "@/features/studio/tools/pdf-to-word-tool";
+import { ProtectTool } from "@/features/studio/tools/protect-tool";
+import { RedactTool } from "@/features/studio/tools/redact-tool";
 import { ReorderTool } from "@/features/studio/tools/reorder-tool";
+import { RepairTool } from "@/features/studio/tools/repair-tool";
 import { RotateTool } from "@/features/studio/tools/rotate-tool";
+import { SignTool } from "@/features/studio/tools/sign-tool";
 import { SplitTool } from "@/features/studio/tools/split-tool";
+import { UnlockTool } from "@/features/studio/tools/unlock-tool";
+import { WatermarkTool } from "@/features/studio/tools/watermark-tool";
 import type { SingleToolProps, StudioFile, ToolId } from "@/features/studio/types";
-import { validatePdf } from "@/features/studio/validate";
+import { validateFor } from "@/features/studio/validate";
 import { fadeRise } from "@/lib/motion";
 import { randomUUID } from "@/lib/uuid";
 
@@ -30,12 +45,9 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
   const addFiles = useStudioStore((s) => s.addFiles);
   const clearFiles = useStudioStore((s) => s.clearFiles);
 
-  const [resultsOpen, setResultsOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
-
-  const sessionJobs = useSessionJobs();
-  const activeCount = sessionJobs.filter((j) => isActivePhase(j.phase)).length;
+  const prevAccept = useRef(TOOLS[activeTool].accept);
 
   useEffect(() => {
     void ensureAnonymousSession();
@@ -47,14 +59,45 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
     if (initialTool) setActiveTool(initialTool);
   }, [initialTool, setActiveTool]);
 
+  useEffect(() => {
+    const nextAccept = TOOLS[activeTool].accept;
+    if (prevAccept.current !== nextAccept) {
+      clearFiles();
+      prevAccept.current = nextAccept;
+    }
+  }, [activeTool, clearFiles]);
+
+  useEffect(() => {
+    if (!initialTool || typeof document === "undefined") return;
+    const meta = TOOLS[initialTool];
+    const noun = meta.accept === "pdf" && !meta.label.includes("PDF") ? " PDF" : "";
+    document.title = `${meta.label}${noun} — Papyrus`;
+    const existing = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const created = existing == null;
+    const descTag = existing ?? document.createElement("meta");
+    if (created) {
+      descTag.name = "description";
+      document.head.appendChild(descTag);
+    }
+    const prevDesc = descTag.getAttribute("content");
+    descTag.setAttribute("content", meta.tagline);
+    return () => {
+      document.title = "Papyrus";
+      if (created) descTag.remove();
+      else if (prevDesc != null) descTag.setAttribute("content", prevDesc);
+      else descTag.removeAttribute("content");
+    };
+  }, [initialTool]);
+
   const multi = TOOLS[activeTool].multi;
+  const accept = TOOLS[activeTool].accept;
   const firstFile = files[0]?.file ?? null;
   const showEmpty = multi ? files.length === 0 : firstFile == null;
 
   const acceptFiles = (incoming: File[]) => {
     const valid: StudioFile[] = [];
     for (const f of incoming) {
-      const err = validatePdf(f);
+      const err = validateFor(accept, f);
       if (err) {
         toast.error(`${f.name}: ${err}`);
         continue;
@@ -94,30 +137,65 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
     acceptFiles(Array.from(e.dataTransfer.files));
   };
 
+  const onLaunched = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
   const singleProps: SingleToolProps = {
     file: firstFile as File,
     onReplaceFile: (f) => setFiles([{ id: randomUUID(), file: f }]),
     onRemove: () => clearFiles(),
-    onLaunched: () => setResultsOpen(true),
+    onLaunched,
   };
 
   const renderTool = () => {
-    if (activeTool === "merge") return <MergeTool onLaunched={() => setResultsOpen(true)} />;
+    if (activeTool === "merge") return <MergeTool onLaunched={onLaunched} />;
+    if (activeTool === "images_to_pdf") return <ImagesToPdfTool onLaunched={onLaunched} />;
     if (!firstFile) return null;
-    switch (activeTool) {
-      case "compress":
-        return <CompressTool {...singleProps} />;
-      case "split":
-        return <SplitTool {...singleProps} />;
-      case "rotate":
-        return <RotateTool {...singleProps} />;
-      case "reorder":
-        return <ReorderTool {...singleProps} />;
-      case "ocr":
-        return <OcrTool {...singleProps} />;
-      default:
-        return null;
-    }
+    if (activeTool === "unlock") return <UnlockTool {...singleProps} />;
+    if (activeTool === "convert") return <ConvertTool {...singleProps} />;
+    const inner = (() => {
+      switch (activeTool) {
+        case "compress":
+          return <CompressTool {...singleProps} />;
+        case "split":
+          return <SplitTool {...singleProps} />;
+        case "rotate":
+          return <RotateTool {...singleProps} />;
+        case "reorder":
+          return <ReorderTool {...singleProps} />;
+        case "ocr":
+          return <OcrTool {...singleProps} />;
+        case "protect":
+          return <ProtectTool {...singleProps} />;
+        case "watermark":
+          return <WatermarkTool {...singleProps} />;
+        case "page_numbers":
+          return <PageNumbersTool {...singleProps} />;
+        case "crop":
+          return <CropTool {...singleProps} />;
+        case "pdf_to_images":
+          return <PdfToImagesTool {...singleProps} />;
+        case "pdf_to_word":
+          return <PdfToWordTool {...singleProps} />;
+        case "grayscale":
+          return <GrayscaleTool {...singleProps} />;
+        case "repair":
+          return <RepairTool {...singleProps} />;
+        case "sign":
+          return <SignTool {...singleProps} />;
+        case "redact":
+          return <RedactTool {...singleProps} />;
+        case "edit":
+          return <EditTool {...singleProps} />;
+        default:
+          return null;
+      }
+    })();
+    if (!inner) return null;
+    return (
+      <PasswordGate key={firstFile.name + firstFile.size} file={firstFile}>
+        {inner}
+      </PasswordGate>
+    );
   };
 
   return (
@@ -137,9 +215,15 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="flex min-h-[calc(100svh-4rem)] w-full items-stretch px-4 pt-4 pb-24 sm:px-6 lg:px-8"
+            className="flex min-h-[calc(100svh-4rem)] w-full items-center pb-24"
           >
-            <Dropzone onFiles={acceptFiles} multi={multi} className="flex-1" />
+            <StudioHero
+              tool={TOOLS[activeTool]}
+              generic={initialTool == null}
+              multi={multi}
+              accept={accept}
+              onFiles={acceptFiles}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -148,9 +232,12 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="mx-auto w-full max-w-[1600px] px-4 pt-6 pb-32 sm:px-6 lg:px-8 lg:pt-8"
+            className="w-full px-4 pt-6 pb-32 sm:px-6 lg:px-10 lg:pt-8 2xl:px-16"
           >
-            {renderTool()}
+            <div className="mb-5 empty:hidden">
+              <JobStatusBar />
+            </div>
+            <StudioErrorBoundary key={activeTool}>{renderTool()}</StudioErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>
@@ -161,7 +248,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none fixed inset-0 z-30 grid place-items-center bg-oxblood/40 backdrop-blur-sm"
+            className="pointer-events-none fixed inset-0 z-30 grid place-items-center bg-oxblood/50"
           >
             <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-primary bg-card/90 px-10 py-8 shadow-clay-lg">
               <ScrollText className="size-10 text-primary" />
@@ -173,14 +260,7 @@ export function Studio({ initialTool }: { initialTool?: ToolId }) {
         ) : null}
       </AnimatePresence>
 
-      <ToolDock
-        activeTool={activeTool}
-        onSelect={setActiveTool}
-        resultsCount={sessionJobs.length}
-        activeCount={activeCount}
-        onOpenResults={() => setResultsOpen(true)}
-      />
-      <ResultsDrawer open={resultsOpen} onOpenChange={setResultsOpen} />
+      <JobAnnouncer />
     </div>
   );
 }

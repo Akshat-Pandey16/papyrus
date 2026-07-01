@@ -9,6 +9,11 @@ const EnvSchema = z.object({
     .transform((v) => (typeof v === "string" ? Number.parseInt(v, 10) : v))
     .pipe(z.number().int().positive())
     .default(500 * 1024 * 1024),
+  VITE_ANON_MAX_FILE_BYTES: z
+    .union([z.string(), z.number()])
+    .transform((v) => (typeof v === "string" ? Number.parseInt(v, 10) : v))
+    .pipe(z.number().int().positive())
+    .default(25 * 1024 * 1024),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

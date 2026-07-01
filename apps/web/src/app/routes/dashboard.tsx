@@ -1,24 +1,19 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   ArrowRight,
-  ArrowUpRight,
   CheckCircle2,
   Clock,
-  FileSignature,
   HardDrive,
-  Lock,
   type LucideIcon,
   ScrollText,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store";
 import { formatBytes } from "@/features/pdf-compress/format";
 import type { Job, JobStatus } from "@/features/pdf-compress/types";
 import { jobDisplayName, useJobsFeedQuery } from "@/features/pdf-tools/jobs-feed";
-import { TOOL_ORDER, TOOL_PATH, TOOLS } from "@/features/studio/tools";
-import { staggerContainer, staggerItem } from "@/lib/motion";
+import { TOOLS } from "@/features/studio/tools";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -43,23 +38,23 @@ function DashboardPage() {
   const totalBytes = recentJobs.reduce((sum, j) => sum + (j.outputSizeBytes ?? 0), 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pt-8 pb-16 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card p-6 shadow-clay sm:flex-row sm:items-center sm:justify-between sm:p-8">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-primary uppercase">
+    <div className="mx-auto w-full max-w-[1760px] px-4 pt-8 pb-16 sm:px-6 lg:px-10 2xl:px-16">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {organization?.name ?? "Workspace"}
           </span>
           <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
             Welcome back, {greeting}.
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Your jobs and downloads, all in one place. Jump back into the canvas anytime.
+          <p className="text-[0.95rem] text-muted-foreground">
+            Your jobs and downloads, all in one place.
           </p>
         </div>
-        <Button asChild variant="molten" size="lg" className="shrink-0">
+        <Button asChild size="lg" className="shrink-0">
           <Link to="/">
             <ScrollText />
-            Open the Studio
+            Open Studio
           </Link>
         </Button>
       </header>
@@ -79,57 +74,6 @@ function DashboardPage() {
         />
         <StatCard label="Plan" value="Free" hint="Up to 500 MB per file" icon={CheckCircle2} />
       </div>
-
-      <section className="mt-10 flex flex-col gap-4">
-        <SectionHeader title="Tools" subtitle="Everything you can run right now." />
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-        >
-          {TOOL_ORDER.map((id) => {
-            const tool = TOOLS[id];
-            const Icon = tool.icon;
-            return (
-              <motion.div key={id} variants={staggerItem}>
-                <Link
-                  to={TOOL_PATH[id]}
-                  className="group flex h-full flex-col gap-3 rounded-2xl border border-border/70 bg-card p-5 shadow-clay-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-clay"
-                >
-                  <span className="grid size-10 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-molten group-hover:text-primary-foreground">
-                    <Icon className="size-5" />
-                  </span>
-                  <span className="font-display text-base font-semibold">{tool.verb}</span>
-                  <span className="text-xs text-muted-foreground">{tool.tagline}</span>
-                  <span className="mt-auto inline-flex items-center text-xs font-medium text-primary/80 transition-colors group-hover:text-primary">
-                    Open <ArrowUpRight className="ml-0.5 size-3" />
-                  </span>
-                </Link>
-              </motion.div>
-            );
-          })}
-          {[
-            { icon: FileSignature, label: "Sign" },
-            { icon: Lock, label: "Redact" },
-          ].map((t) => (
-            <div
-              key={t.label}
-              className="flex h-full flex-col gap-3 rounded-2xl border border-dashed border-border bg-card/40 p-5 opacity-70"
-            >
-              <span className="grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <t.icon className="size-5" />
-              </span>
-              <span className="font-display text-base font-semibold text-muted-foreground">
-                {t.label}
-              </span>
-              <Badge tone="muted" className="self-start">
-                Soon
-              </Badge>
-            </div>
-          ))}
-        </motion.div>
-      </section>
 
       <section className="mt-10 flex flex-col gap-4">
         <SectionHeader
@@ -223,7 +167,7 @@ function StatCard({
   icon: LucideIcon;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4 shadow-clay-sm">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between text-muted-foreground">
         <span className="text-xs font-medium tracking-wide uppercase">{label}</span>
         <Icon className="size-4" />
@@ -284,8 +228,8 @@ function EmptyState() {
           Run your first PDF tool to see activity here.
         </span>
       </div>
-      <Button asChild size="sm" variant="molten">
-        <Link to="/">Open the Studio</Link>
+      <Button asChild size="sm">
+        <Link to="/">Open Studio</Link>
       </Button>
     </div>
   );

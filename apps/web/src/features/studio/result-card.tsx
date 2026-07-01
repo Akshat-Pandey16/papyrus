@@ -13,27 +13,16 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { formatBytes, formatPercent } from "@/features/pdf-compress/format";
-import { useUploadStore } from "@/features/pdf-compress/store";
-import { useMergeStore } from "@/features/pdf-merge/store";
-import {
-  useCancelJobMutation,
-  useDownloadUrlMutation,
-  useJobQuery,
-  useRetryJobMutation,
-} from "@/features/pdf-tools/api";
-import { triggerDownload } from "@/features/pdf-tools/download";
+import { useJobQuery } from "@/features/pdf-tools/api";
 import { isActivePhase, type SessionJob } from "@/features/studio/session-jobs";
-import { ApiError } from "@/lib/api/client";
+import { useJobActions } from "@/features/studio/use-job-actions";
 import { mapErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
-import { randomUUID } from "@/lib/uuid";
 
 const KIND_ICON: Record<string, LucideIcon> = {
   compress: Wand2,
@@ -55,14 +44,7 @@ const PHASE_LABEL: Record<string, string> = {
 
 export function ResultCard({ job }: { job: SessionJob }) {
   const { data: remote } = useJobQuery(job.jobId ?? null);
-  const removeUpload = useUploadStore((s) => s.remove);
-  const updateUpload = useUploadStore((s) => s.update);
-  const removeBatch = useMergeStore((s) => s.remove);
-  const updateBatch = useMergeStore((s) => s.updateBatch);
-  const download = useDownloadUrlMutation();
-  const cancel = useCancelJobMutation();
-  const retry = useRetryJobMutation();
-  const [expired, setExpired] = useState(false);
+  const { download, retry, expired, dismiss, onDownload, onCancel, onRetry } = useJobActions(job);
 
   const status = remote?.status;
   const phase = job.phase;
@@ -80,40 +62,6 @@ export function ResultCard({ job }: { job: SessionJob }) {
   const uploadPct = uploading
     ? Math.round(((job.bytesUploaded ?? 0) / (job.bytesTotal ?? 1)) * 100)
     : 0;
-
-  const dismiss = () => (job.source === "upload" ? removeUpload(job.key) : removeBatch(job.key));
-
-  const onDownload = async () => {
-    if (!job.jobId) return;
-    try {
-      const r = await download.mutateAsync({ jobId: job.jobId });
-      triggerDownload(r.url, r.filename);
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 410 || err.code === "job_output_expired")) {
-        setExpired(true);
-        toast.info("This file was erased from our servers. Re-run the tool to regenerate it.");
-      } else {
-        toast.error("Could not prepare the download. Please try again.");
-      }
-    }
-  };
-
-  const onCancel = async () => {
-    if (job.jobId) {
-      try {
-        await cancel.mutateAsync({ jobId: job.jobId });
-      } catch {}
-    }
-    if (job.source === "upload") updateUpload(job.key, { phase: "cancelled" });
-    else updateBatch(job.key, { phase: "cancelled" });
-  };
-
-  const onRetry = async () => {
-    if (!job.jobId) return;
-    const next = await retry.mutateAsync({ jobId: job.jobId, idempotencyKey: randomUUID() });
-    if (job.source === "upload") updateUpload(job.key, { jobId: next.id, phase: "queued" });
-    else updateBatch(job.key, { jobId: next.id, phase: "queued" });
-  };
 
   return (
     <motion.article

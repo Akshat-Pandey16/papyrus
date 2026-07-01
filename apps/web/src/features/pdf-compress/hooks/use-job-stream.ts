@@ -2,9 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { compressKeys, mapJob, requestSseTicket, useJobQuery } from "@/features/pdf-compress/api";
 import type { Job } from "@/features/pdf-compress/types";
+import { mergeKeys } from "@/features/pdf-merge/api";
 import { env } from "@/lib/env";
 
 const MAX_RETRIES = 3;
+const STABLE_OPEN_MS = 4000;
+const TICKET_MIN_INTERVAL_MS = 3000;
 const TERMINAL: ReadonlySet<Job["status"]> = new Set(["succeeded", "failed", "cancelled"]);
 
 type ApiJobPayload = Parameters<typeof mapJob>[0];
@@ -31,6 +34,15 @@ export function useJobStream(jobId: string | null) {
     let es: EventSource | null = null;
     let closed = false;
     let retryTimer: number | null = null;
+    let stableTimer: number | null = null;
+    let lastTicketAt = 0;
+
+    const clearStableTimer = () => {
+      if (stableTimer !== null) {
+        window.clearTimeout(stableTimer);
+        stableTimer = null;
+      }
+    };
 
     const close = () => {
       closed = true;
@@ -44,6 +56,7 @@ export function useJobStream(jobId: string | null) {
         window.clearTimeout(retryTimer);
         retryTimer = null;
       }
+      clearStableTimer();
     };
 
     const handleState = (data: string) => {
@@ -78,22 +91,33 @@ export function useJobStream(jobId: string | null) {
           qc.setQueryData(compressKeys.job(jobId), updated);
           if (TERMINAL.has(updated.status)) {
             qc.invalidateQueries({ queryKey: compressKeys.all });
+            qc.invalidateQueries({ queryKey: mergeKeys.all });
+            qc.invalidateQueries({ queryKey: ["jobs-feed"] });
           }
         }
       } catch {}
     };
 
     const open = async () => {
-      try {
-        await requestSseTicket(jobId);
-      } catch {}
+      const now = Date.now();
+      if (now - lastTicketAt >= TICKET_MIN_INTERVAL_MS) {
+        lastTicketAt = now;
+        try {
+          await requestSseTicket(jobId);
+        } catch {}
+      }
       if (closed) return;
 
       const url = `${env.VITE_API_BASE_URL}/api/v1/jobs/${jobId}/events`;
       es = new EventSource(url, { withCredentials: true });
 
+      clearStableTimer();
+      stableTimer = window.setTimeout(() => {
+        stableTimer = null;
+        if (!closed) attempts = 0;
+      }, STABLE_OPEN_MS);
+
       es.addEventListener("state", (e) => {
-        attempts = 0;
         handleState((e as MessageEvent).data);
       });
       es.addEventListener("terminal", (e) => {
@@ -102,6 +126,7 @@ export function useJobStream(jobId: string | null) {
       });
       es.onerror = () => {
         if (closed) return;
+        clearStableTimer();
         if (es) {
           try {
             es.close();

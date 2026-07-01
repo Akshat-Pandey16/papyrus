@@ -55,11 +55,8 @@ export function SortablePageCanvas({
     return (
       <div className={PAGE_GRID_CLASS}>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={`s-${i.toString()}`}
-            className="flex flex-col items-center gap-1.5 rounded-xl border border-border/70 bg-card p-1.5"
-          >
-            <div className="aspect-[3/4] w-full animate-pulse rounded-lg bg-muted" />
+          <div key={`s-${i.toString()}`} className="flex flex-col items-center gap-1.5">
+            <div className="aspect-[3/4] w-full animate-pulse rounded-md bg-muted" />
             <span className="h-2.5 w-4 animate-pulse rounded bg-muted" />
           </div>
         ))}
@@ -132,16 +129,16 @@ function SortableThumb({
       {...attributes}
       {...listeners}
       className={cn(
-        "group relative flex touch-none cursor-grab flex-col items-center gap-1.5 rounded-xl border p-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
+        "group relative flex touch-none cursor-grab flex-col items-center gap-1.5 rounded-lg p-1 outline-none transition-[transform,box-shadow] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:cursor-grabbing",
         isDragging
-          ? "border-primary bg-card shadow-clay-lg ring-2 ring-primary/40"
-          : "border-border/70 bg-card hover:border-primary/40",
+          ? "shadow-clay-lg ring-2 ring-primary ring-offset-2 ring-offset-canvas"
+          : "hover:-translate-y-0.5",
         excluded && "opacity-45",
       )}
     >
       <PageThumb index={page} src={src} imgRef={ref} numbered={numbered} />
       {excluded ? (
-        <span className="absolute inset-1.5 mb-5 grid place-items-center rounded-lg bg-oxblood/55 backdrop-blur-[1px]">
+        <span className="absolute inset-1 mb-5 grid place-items-center rounded-md bg-oxblood/55 backdrop-blur-[1px]">
           <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
             <Trash2 className="size-3" />
             Dropped

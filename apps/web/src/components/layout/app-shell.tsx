@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SkipLink } from "@/components/shared/skip-link";
 import { ResultsHost } from "@/features/studio/results-host";
+import { StudioChrome } from "@/features/studio/studio-chrome";
 
 const AUTH_FORM_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </motion.div>
       </main>
       <ResultsHost />
+      <StudioChrome />
     </div>
   );
 }

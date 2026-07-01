@@ -17,18 +17,18 @@ export function InspectorFrame({
   return (
     <div className="flex max-h-full flex-col">
       <header className="flex items-center gap-3 border-b border-border/60 p-5 pb-4">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-molten text-primary-foreground shadow-clay-sm">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <Icon className="size-5" strokeWidth={2.1} />
         </span>
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold leading-tight">{tool.verb} PDF</h2>
+          <h2 className="font-display text-lg font-semibold leading-tight">{tool.label}</h2>
           <p className="truncate text-xs text-muted-foreground">{tool.tagline}</p>
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">{children}</div>
       <footer className="flex flex-col gap-3 border-t border-border/60 p-5 pt-4">
-        <PrivacyToggle />
         {footer}
+        <PrivacyToggle />
       </footer>
     </div>
   );

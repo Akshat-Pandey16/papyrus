@@ -2,7 +2,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import { lazy, type ReactNode, Suspense } from "react";
 import { Toaster } from "sonner";
-import { GlobalCursor } from "@/components/cursor/global-cursor";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionBootstrap } from "@/features/auth/session-bootstrap";
@@ -55,7 +54,6 @@ export function AppProviders({ children }: AppProvidersProps) {
             <ReactQueryDevtools initialIsOpen={false} />
           </Suspense>
         ) : null}
-        <GlobalCursor />
       </QueryClientProvider>
     </ThemeProvider>
   );

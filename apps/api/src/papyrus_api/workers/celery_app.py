@@ -5,6 +5,7 @@ from celery.signals import worker_process_init
 
 from papyrus_api.core.config import settings
 from papyrus_api.core.logging import configure_logging
+from papyrus_api.workers.beat_schedule import BEAT_SCHEDULE
 
 celery_app = Celery(
     "papyrus",
@@ -15,6 +16,7 @@ celery_app = Celery(
         "papyrus_api.workers.tasks.cleanup",
         "papyrus_api.workers.tasks.pdf_pipeline",
         "papyrus_api.workers.tasks.pdf_tools",
+        "papyrus_api.workers.tasks.pdf_compose",
     ],
 )
 
@@ -29,9 +31,17 @@ celery_app.conf.update(
     result_expires=settings.job_result_ttl_seconds,
     timezone="UTC",
     enable_utc=True,
+    beat_schedule=BEAT_SCHEDULE,
+    worker_max_memory_per_child=settings.worker_max_memory_per_child_kb or None,
     task_default_queue="default",
     task_routes={
         "papyrus.pdf.ocr": {"queue": "pdf-heavy"},
+        "papyrus.pdf.pdf_to_images": {"queue": "pdf-heavy"},
+        "papyrus.pdf.images_to_pdf": {"queue": "pdf-heavy"},
+        "papyrus.pdf.redact": {"queue": "pdf-heavy"},
+        "papyrus.pdf.convert": {"queue": "pdf-heavy"},
+        "papyrus.pdf.pdf_to_word": {"queue": "pdf-heavy"},
+        "papyrus.pdf.grayscale": {"queue": "pdf-heavy"},
         "papyrus.pdf.*": {"queue": "pdf"},
         "papyrus.cleanup.*": {"queue": "cleanup"},
     },

@@ -214,8 +214,12 @@ class RefreshTokenRepository(AsyncRepository[RefreshToken]):
         await self.session.flush()
         return token
 
-    async def get_by_hash(self, token_hash: str) -> RefreshToken | None:
+    async def get_by_hash(
+        self, token_hash: str, *, for_update: bool = False
+    ) -> RefreshToken | None:
         stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        if for_update:
+            stmt = stmt.with_for_update()
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

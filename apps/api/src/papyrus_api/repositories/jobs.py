@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, text, update
 
 from papyrus_api.core.time import utc_now
 from papyrus_api.domain.jobs.enums import JobKind, JobStatus
@@ -100,6 +100,28 @@ class JobRepository(AsyncRepository[Job]):
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_stale_running(self, *, cutoff: datetime, limit: int = 200) -> list[Job]:
+        stmt = (
+            select(Job)
+            .where(
+                Job.status == JobStatus.RUNNING,
+                or_(
+                    and_(Job.started_at.is_not(None), Job.started_at < cutoff),
+                    and_(Job.started_at.is_(None), Job.created_at < cutoff),
+                ),
+            )
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def lock_org_for_reservation(self, *, organization_id: UUID) -> None:
+        bind = self.session.get_bind()
+        if bind.dialect.name != "postgresql":
+            return
+        key = int.from_bytes(organization_id.bytes[:8], "big", signed=True)
+        await self.session.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": key})
 
     async def count_inflight_for_org(self, *, organization_id: UUID) -> int:
         stmt = select(func.count(Job.id)).where(

@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +9,7 @@ import { useResetPasswordMutation } from "@/features/auth/api";
 import { AuthLayout } from "@/features/auth/components/auth-layout";
 import { ErrorBanner } from "@/features/auth/components/error-banner";
 import { PasswordInput } from "@/features/auth/components/password-input";
+import { SuccessBanner } from "@/features/auth/components/success-banner";
 import { type ResetPasswordInput, resetPasswordSchema } from "@/features/auth/schemas";
 
 const searchSchema = z.object({
@@ -76,12 +76,9 @@ function ResetPasswordPage() {
     >
       {success ? (
         <div className="flex flex-col gap-4">
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            <p className="leading-relaxed">
-              Your password has been updated. You can now sign in with your new credentials.
-            </p>
-          </div>
+          <SuccessBanner>
+            Your password has been updated. You can now sign in with your new credentials.
+          </SuccessBanner>
           <Button onClick={() => navigate({ to: "/login" })} size="lg">
             Continue to sign in
           </Button>

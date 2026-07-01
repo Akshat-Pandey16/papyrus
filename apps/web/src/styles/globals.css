@@ -12,59 +12,62 @@
     "Bricolage Grotesque Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
-  --color-background: oklch(0.965 0.014 12);
-  --color-foreground: oklch(0.25 0.032 350);
+  --color-background: oklch(0.965 0.012 85);
+  --color-foreground: oklch(0.26 0.022 38);
 
-  --color-card: oklch(0.99 0.008 14);
-  --color-card-foreground: oklch(0.25 0.032 350);
+  --color-card: oklch(0.99 0.006 85);
+  --color-card-foreground: oklch(0.26 0.022 38);
 
-  --color-popover: oklch(0.995 0.006 14);
-  --color-popover-foreground: oklch(0.25 0.032 350);
+  --color-popover: oklch(0.992 0.005 85);
+  --color-popover-foreground: oklch(0.26 0.022 38);
 
-  --color-primary: oklch(0.58 0.202 11);
-  --color-primary-foreground: oklch(0.985 0.01 14);
+  --color-primary: oklch(0.44 0.155 14);
+  --color-primary-foreground: oklch(0.97 0.01 85);
 
-  --color-secondary: oklch(0.93 0.026 9);
-  --color-secondary-foreground: oklch(0.34 0.06 355);
+  --color-secondary: oklch(0.93 0.025 24);
+  --color-secondary-foreground: oklch(0.4 0.1 16);
 
-  --color-muted: oklch(0.945 0.018 11);
-  --color-muted-foreground: oklch(0.502 0.038 355);
+  --color-muted: oklch(0.945 0.013 80);
+  --color-muted-foreground: oklch(0.52 0.03 38);
 
-  --color-accent: oklch(0.92 0.038 12);
-  --color-accent-foreground: oklch(0.42 0.13 10);
+  --color-accent: oklch(0.92 0.035 18);
+  --color-accent-foreground: oklch(0.42 0.12 14);
 
-  --color-destructive: oklch(0.552 0.208 26);
-  --color-destructive-foreground: oklch(0.985 0.01 14);
+  --color-destructive: oklch(0.58 0.2 29);
+  --color-destructive-foreground: oklch(0.98 0.01 85);
 
-  --color-success: oklch(0.555 0.115 146);
-  --color-success-foreground: oklch(0.985 0.01 14);
+  --color-success: oklch(0.6 0.108 150);
+  --color-success-foreground: oklch(0.98 0.01 85);
 
-  --color-warning: oklch(0.75 0.152 76);
-  --color-warning-foreground: oklch(0.27 0.04 60);
+  --color-warning: oklch(0.78 0.14 75);
+  --color-warning-foreground: oklch(0.28 0.04 50);
 
-  --color-border: oklch(0.892 0.022 10);
-  --color-input: oklch(0.892 0.022 10);
-  --color-ring: oklch(0.58 0.202 11);
+  --color-border: oklch(0.892 0.014 66);
+  --color-input: oklch(0.892 0.014 66);
+  --color-ring: oklch(0.44 0.155 14);
 
-  --color-ember: oklch(0.6 0.236 351);
-  --color-clay: oklch(0.5 0.184 9);
-  --color-gold: oklch(0.78 0.146 76);
-  --color-oxblood: oklch(0.2 0.052 348);
-  --color-sand: oklch(0.88 0.05 74);
-  --color-moss: oklch(0.56 0.1 142);
+  --color-ember: oklch(0.56 0.18 18);
+  --color-clay: oklch(0.35 0.13 8);
+  --color-gold: oklch(0.8 0.13 78);
+  --color-oxblood: oklch(0.24 0.06 12);
+  --color-sand: oklch(0.9 0.025 80);
+  --color-moss: oklch(0.6 0.082 140);
 
-  --radius-lg: 0.75rem;
-  --radius-xl: 1.1rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 2rem;
+  --color-canvas: oklch(0.945 0.016 78);
+  --color-knob: oklch(0.985 0.006 85);
+
+  --radius-lg: 0.85rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.25rem;
 
   --shadow-clay-sm:
-    0 1px 2px oklch(0.3 0.08 350 / 0.1), 0 1px 1px oklch(0.3 0.08 350 / 0.06);
+    0 1px 2px oklch(0.35 0.1 18 / 0.1), 0 1px 1px oklch(0.35 0.1 18 / 0.06);
   --shadow-clay:
-    0 6px 20px -6px oklch(0.3 0.08 350 / 0.16), 0 2px 6px -3px oklch(0.3 0.08 350 / 0.12);
+    0 8px 24px -8px oklch(0.35 0.12 18 / 0.16), 0 2px 6px -3px oklch(0.35 0.1 18 / 0.12);
   --shadow-clay-lg:
-    0 26px 60px -18px oklch(0.3 0.09 350 / 0.32), 0 6px 18px -10px oklch(0.3 0.08 350 / 0.2);
-  --shadow-ember: 0 10px 38px -8px oklch(0.6 0.23 4 / 0.5);
+    0 28px 60px -20px oklch(0.32 0.13 18 / 0.3), 0 8px 20px -12px oklch(0.32 0.1 18 / 0.18);
+  --shadow-ember: 0 12px 40px -10px oklch(0.44 0.155 14 / 0.4);
 
   --ease-clay: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -77,51 +80,54 @@
 
 @layer base {
   :root.dark {
-    --color-background: oklch(0.178 0.032 348);
-    --color-foreground: oklch(0.952 0.013 20);
+    --color-background: oklch(0.2 0.018 20);
+    --color-foreground: oklch(0.94 0.012 80);
 
-    --color-card: oklch(0.228 0.038 348);
-    --color-card-foreground: oklch(0.952 0.013 20);
+    --color-card: oklch(0.25 0.022 18);
+    --color-card-foreground: oklch(0.94 0.012 80);
 
-    --color-popover: oklch(0.246 0.04 348);
-    --color-popover-foreground: oklch(0.952 0.013 20);
+    --color-popover: oklch(0.27 0.024 18);
+    --color-popover-foreground: oklch(0.94 0.012 80);
 
-    --color-primary: oklch(0.672 0.214 10);
-    --color-primary-foreground: oklch(0.2 0.032 348);
+    --color-primary: oklch(0.605 0.172 16);
+    --color-primary-foreground: oklch(0.99 0.01 85);
 
-    --color-secondary: oklch(0.286 0.042 350);
-    --color-secondary-foreground: oklch(0.93 0.02 24);
+    --color-secondary: oklch(0.3 0.03 18);
+    --color-secondary-foreground: oklch(0.9 0.03 22);
 
-    --color-muted: oklch(0.258 0.036 350);
-    --color-muted-foreground: oklch(0.722 0.032 352);
+    --color-muted: oklch(0.282 0.02 18);
+    --color-muted-foreground: oklch(0.74 0.025 56);
 
-    --color-accent: oklch(0.31 0.062 350);
-    --color-accent-foreground: oklch(0.92 0.05 22);
+    --color-accent: oklch(0.32 0.045 16);
+    --color-accent-foreground: oklch(0.9 0.05 22);
 
-    --color-destructive: oklch(0.63 0.204 25);
-    --color-destructive-foreground: oklch(0.96 0.013 20);
+    --color-destructive: oklch(0.64 0.2 29);
+    --color-destructive-foreground: oklch(0.96 0.012 80);
 
-    --color-success: oklch(0.72 0.13 146);
-    --color-success-foreground: oklch(0.2 0.03 348);
+    --color-success: oklch(0.7 0.12 150);
+    --color-success-foreground: oklch(0.18 0.02 20);
 
-    --color-warning: oklch(0.82 0.146 78);
-    --color-warning-foreground: oklch(0.22 0.035 60);
+    --color-warning: oklch(0.83 0.14 80);
+    --color-warning-foreground: oklch(0.22 0.035 50);
 
-    --color-border: oklch(0.314 0.034 350);
-    --color-input: oklch(0.33 0.036 350);
-    --color-ring: oklch(0.672 0.214 10);
+    --color-border: oklch(0.332 0.022 18);
+    --color-input: oklch(0.348 0.024 18);
+    --color-ring: oklch(0.605 0.172 16);
 
-    --color-ember: oklch(0.66 0.244 351);
-    --color-clay: oklch(0.55 0.196 9);
-    --color-gold: oklch(0.83 0.152 78);
-    --color-oxblood: oklch(0.12 0.042 348);
-    --color-sand: oklch(0.78 0.07 74);
-    --color-moss: oklch(0.7 0.11 146);
+    --color-ember: oklch(0.62 0.19 20);
+    --color-clay: oklch(0.42 0.15 8);
+    --color-gold: oklch(0.83 0.14 80);
+    --color-oxblood: oklch(0.14 0.03 14);
+    --color-sand: oklch(0.8 0.05 78);
+    --color-moss: oklch(0.66 0.092 145);
 
-    --shadow-clay-sm: 0 1px 2px oklch(0 0 0 / 0.4);
-    --shadow-clay: 0 8px 24px -8px oklch(0 0 0 / 0.55);
-    --shadow-clay-lg: 0 30px 70px -22px oklch(0 0 0 / 0.72);
-    --shadow-ember: 0 12px 44px -8px oklch(0.672 0.214 10 / 0.55);
+    --color-canvas: oklch(0.175 0.014 22);
+    --color-knob: oklch(0.9 0.012 82);
+
+    --shadow-clay-sm: 0 1px 2px oklch(0 0 0 / 0.42);
+    --shadow-clay: 0 8px 24px -8px oklch(0 0 0 / 0.52);
+    --shadow-clay-lg: 0 30px 70px -22px oklch(0 0 0 / 0.68);
+    --shadow-ember: 0 12px 44px -10px oklch(0.605 0.172 16 / 0.5);
   }
 
   * {
@@ -146,7 +152,7 @@
   }
 
   ::selection {
-    background-color: oklch(0.672 0.214 10 / 0.28);
+    background-color: oklch(0.44 0.155 14 / 0.2);
     color: inherit;
   }
 
@@ -161,17 +167,14 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-image: linear-gradient(
-      var(--color-ember),
-      var(--color-primary)
-    );
+    background-color: color-mix(in oklch, var(--color-muted-foreground) 34%, transparent);
     border: 3px solid transparent;
     border-radius: 999px;
     background-clip: padding-box;
-    opacity: 0.7;
   }
 
   ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklch, var(--color-muted-foreground) 52%, transparent);
     border-width: 2px;
   }
 
@@ -180,15 +183,19 @@
     outline-offset: 2px;
   }
 
-  html.custom-cursor,
-  html.custom-cursor * {
-    cursor: none !important;
-  }
-
+  /* Theme switch: the new view is revealed via a JS-driven clip-path circle
+     (see runThemeTransition). Disabling the default crossfade keeps only one
+     full-page layer animating, which avoids jank on heavy pages. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation-duration: 0.32s;
-    animation-timing-function: var(--ease-clay);
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(root) {
+    z-index: 0;
+  }
+  ::view-transition-new(root) {
+    z-index: 1;
   }
 
   @media (prefers-reduced-motion: reduce) {

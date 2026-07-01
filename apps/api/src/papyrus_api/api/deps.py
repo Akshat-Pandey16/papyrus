@@ -7,6 +7,7 @@ import structlog
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from papyrus_api.core.config import settings
@@ -22,6 +23,8 @@ from papyrus_api.services.document_service import DocumentService
 from papyrus_api.services.identity_service import IdentityService
 from papyrus_api.services.job_service import JobService
 from papyrus_api.services.storage_service import StorageService
+
+log = structlog.get_logger(__name__)
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 
@@ -74,7 +77,7 @@ def get_compress_estimate_service(
     session: DbSession,
     storage: StorageServiceDep,
 ) -> CompressEstimateService:
-    return CompressEstimateService(session, storage)
+    return CompressEstimateService(session, storage, get_redis())
 
 
 CompressEstimateServiceDep = Annotated[
@@ -156,12 +159,16 @@ def rate_limit(
     async def _dep(request: Request, redis: RedisDep) -> None:
         limiter = RateLimiter(redis)
         principal_id = client_ip(request)
-        decision = await limiter.hit(
-            scope=scope,
-            principal_id=principal_id,
-            limit=limit,
-            window_seconds=window_seconds,
-        )
+        try:
+            decision = await limiter.hit(
+                scope=scope,
+                principal_id=principal_id,
+                limit=limit,
+                window_seconds=window_seconds,
+            )
+        except RedisError as exc:
+            log.warning("rate_limit.unavailable", scope=scope, error=type(exc).__name__)
+            return
         if not decision.allowed:
             raise RateLimitedError(
                 "Too many requests. Please try again shortly.",

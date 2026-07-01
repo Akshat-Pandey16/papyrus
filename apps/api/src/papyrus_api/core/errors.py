@@ -110,6 +110,26 @@ class PdfMalformedError(AppError):
     http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
+class PdfWrongPasswordError(AppError):
+    code = "pdf_wrong_password"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class PdfNotEncryptedError(AppError):
+    code = "pdf_not_encrypted"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class ImageInvalidError(AppError):
+    code = "image_invalid"
+    http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+class ToolNotConfiguredError(AppError):
+    code = "tool_not_configured"
+    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 class TooManyPagesError(AppError):
     code = "too_many_pages"
     http_status = status.HTTP_422_UNPROCESSABLE_CONTENT
@@ -122,6 +142,11 @@ class MaliciousFileError(AppError):
 
 class PayloadTooLargeError(AppError):
     code = "payload_too_large"
+    http_status = status.HTTP_413_CONTENT_TOO_LARGE
+
+
+class FileTooLargeError(AppError):
+    code = "file_too_large"
     http_status = status.HTTP_413_CONTENT_TOO_LARGE
 
 
@@ -174,6 +199,11 @@ def register_exception_handlers(app: FastAPI) -> None:
             http_status=exc.http_status,
             request_id=request_id,
         )
+        headers: dict[str, str] = {}
+        if exc.http_status == status.HTTP_429_TOO_MANY_REQUESTS:
+            retry_after = exc.details.get("retry_after_seconds")
+            if isinstance(retry_after, int) and retry_after > 0:
+                headers["Retry-After"] = str(retry_after)
         return JSONResponse(
             status_code=exc.http_status,
             content=_envelope(
@@ -182,6 +212,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 details=exc.details,
                 request_id=request_id,
             ),
+            headers=headers or None,
         )
 
     @app.exception_handler(RequestValidationError)

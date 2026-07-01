@@ -13,7 +13,25 @@ export type UploadPhase =
   | "failed"
   | "cancelled";
 
-export type UploadKind = "compress" | "split" | "rotate" | "reorder" | "ocr";
+export type UploadKind =
+  | "compress"
+  | "split"
+  | "rotate"
+  | "reorder"
+  | "ocr"
+  | "protect"
+  | "unlock"
+  | "watermark"
+  | "page_numbers"
+  | "crop"
+  | "pdf_to_images"
+  | "images_to_pdf"
+  | "redact"
+  | "sign"
+  | "edit"
+  | "convert"
+  | "repair"
+  | "grayscale";
 
 export type UploadEntry = {
   clientUploadId: string;
@@ -55,6 +73,14 @@ export const useUploadStore = create<UploadState>()(
       update: (id, patch) => {
         const current = get().uploads[id];
         if (!current) return;
+        let changed = false;
+        for (const k of Object.keys(patch) as (keyof UploadEntry)[]) {
+          if (patch[k] !== current[k]) {
+            changed = true;
+            break;
+          }
+        }
+        if (!changed) return;
         const next: UploadEntry = { ...current, ...patch };
         set((state) => ({
           uploads: { ...state.uploads, [id]: next },

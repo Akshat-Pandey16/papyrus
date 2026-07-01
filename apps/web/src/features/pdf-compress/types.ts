@@ -53,7 +53,17 @@ export type JobKind =
   | "rotate"
   | "reorder"
   | "sign"
-  | "metadata";
+  | "metadata"
+  | "protect"
+  | "unlock"
+  | "watermark"
+  | "page_numbers"
+  | "crop"
+  | "pdf_to_images"
+  | "images_to_pdf"
+  | "edit"
+  | "repair"
+  | "grayscale";
 
 export type Job = {
   id: string;
